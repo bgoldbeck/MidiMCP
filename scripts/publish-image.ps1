@@ -16,13 +16,19 @@
 .PARAMETER NoPush
   Build only; do not log in or push.
 
+.PARAMETER RefreshBase
+  Pull the latest Ubuntu base image (security updates). Rebuilds and uploads every layer
+  (~300 MB), so use it now and then, not on every publish.
+
 .EXAMPLE
   scripts\publish-image.cmd
   scripts\publish-image.cmd -NoPush
+  scripts\publish-image.cmd -RefreshBase
 #>
 param(
     [string]$Owner = "bgoldbeck",
-    [switch]$NoPush
+    [switch]$NoPush,
+    [switch]$RefreshBase
 )
 
 $ErrorActionPreference = "Stop"
@@ -201,10 +207,20 @@ Write-Ok "version $Version, commit $commit, working tree clean"
 Write-Step "Building $Image (this can take a few minutes the first time)"
 Set-Content -Path $LogFile -Value ("MidiMCP publish log {0:u}  image {1}  version {2}  commit {3}" -f (Get-Date), $Image, $Version, $commit)
 Write-Info "full build output is also saved to $LogFile"
+# Only changed layers are uploaded. The Ubuntu base is not re-pulled unless -RefreshBase is
+# given (a new base rebuilds and re-uploads every layer, ~300 MB); --cache-from reuses the
+# layers already on ghcr.io so unchanged layers are not uploaded again.
 $buildArgs = @(
-    "build", "--pull", "--progress=plain", "--platform", "linux/amd64",
-    "-t", "${Image}:$Version", "-t", "${Image}:$commit", "-t", "${Image}:latest", "."
+    "build", "--progress=plain", "--platform", "linux/amd64",
+    "--build-arg", "BUILDKIT_INLINE_CACHE=1"
 )
+if ($RefreshBase) {
+    Write-Warn "-RefreshBase: pulling the latest Ubuntu base; every layer is rebuilt and uploaded (~300 MB)."
+    $buildArgs += "--pull"
+} else {
+    $buildArgs += @("--cache-from", "${Image}:latest")
+}
+$buildArgs += @("-t", "${Image}:$Version", "-t", "${Image}:$commit", "-t", "${Image}:latest", ".")
 if ((Invoke-Native "docker" $buildArgs $LogFile) -ne 0) {
     Stop-WithError "docker build failed (see the red lines above, or $LogFile)." "Check your internet connection and that Docker Desktop has enough disk space, then run this again."
 }

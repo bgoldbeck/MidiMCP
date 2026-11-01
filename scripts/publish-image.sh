@@ -4,6 +4,7 @@
 #
 #   sudo bash scripts/publish-image.sh            # prompts for a GitHub token
 #   GHCR_OWNER=someone bash scripts/publish-image.sh
+#   REFRESH_BASE=1 sudo -E bash scripts/publish-image.sh   # also take Ubuntu security updates (full upload)
 #
 # Token: GitHub -> Settings -> Developer settings -> Personal access tokens (classic)
 #        -> scope "write:packages". It is used once for `docker login` and not stored by this script.
@@ -22,8 +23,21 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
+# Upload size: only changed layers are pushed (see the layer notes in the Dockerfile).
+#  - The Ubuntu base is NOT re-pulled by default: a newer base would rebuild and re-upload
+#    every layer (~300 MB). Set REFRESH_BASE=1 now and then to take Ubuntu security updates.
+#  - --cache-from reuses the layers already on ghcr.io even if the local build cache was
+#    cleaned, so unchanged layers stay byte-identical and are not uploaded again.
+build_args=(--platform linux/amd64 --build-arg BUILDKIT_INLINE_CACHE=1)
+if [ "${REFRESH_BASE:-0}" = "1" ]; then
+  echo "REFRESH_BASE=1: pulling the latest Ubuntu base; every layer is rebuilt and uploaded."
+  build_args+=(--pull)
+else
+  build_args+=(--cache-from "${IMAGE}:latest")
+fi
+
 echo "Building ${IMAGE} (version ${VERSION}, commit ${COMMIT})"
-docker build --pull --platform linux/amd64 \
+DOCKER_BUILDKIT=1 docker build "${build_args[@]}" \
   -t "${IMAGE}:${VERSION}" -t "${IMAGE}:${COMMIT}" -t "${IMAGE}:latest" .
 
 if [ -z "${GHCR_TOKEN:-}" ]; then

@@ -73,6 +73,19 @@ git clone https://github.com/bgoldbeck/MidiMCP.git && cd MidiMCP && sudo bash sc
 
 It builds, asks for a GitHub token with the `write:packages` scope (GitHub → Settings → Developer settings → Personal access tokens), and pushes `latest`, the version and the commit tags. The first time, make the package **public** (link printed at the end) so TrueNAS can pull without credentials. The image contains no secrets.
 
+**Upload size.** The image is split into layers that change at different rates, and a publish only uploads the layers that changed:
+
+| Layer | Size (uncompressed) | Uploaded when |
+|---|---|---|
+| Ubuntu base | ~80 MB | Only with `REFRESH_BASE=1` / `-RefreshBase` |
+| General MIDI soundfont | ~150 MB | Practically never |
+| Python + FluidSynth + tini | ~325 MB | Practically never |
+| Extra tools (`lame` for MP3) | < 1 MB | A tool is added to that line |
+| Python libraries | ~50 MB | `pyproject.toml` dependencies change |
+| MidiMCP code | ~1 MB | Every new commit |
+
+So a normal update uploads about 1 MB. The scripts do not re-pull the Ubuntu base on every build, since a newer base would rebuild and re-upload everything. They also reuse the layers already on ghcr.io (`--cache-from`), so even after Docker's local cache is cleaned, unchanged layers are not uploaded again. A few times a year, take Ubuntu security updates with a full upload: `REFRESH_BASE=1 sudo -E bash scripts/publish-image.sh` or `scripts\publish-image.cmd -RefreshBase`.
+
 **Automatic nightly updates:** see [auto-update.md](auto-update.md).
 
 No published image yet? Use [`truenas-app-build-from-github.yaml`](truenas-app-build-from-github.yaml) instead: TrueNAS builds straight from the GitHub repo (a few minutes on first install).
