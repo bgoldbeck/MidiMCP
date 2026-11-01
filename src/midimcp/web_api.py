@@ -11,7 +11,10 @@ Routes::
     GET   /api/templates                          (built-in + custom)
     GET|PUT|DELETE /api/templates/{id}          (PUT/DELETE: custom templates only)
     POST  /api/templates/{id}/duplicate        {newId, name?}
-    GET   /api/projects?search=
+    GET   /api/projects?search=                (each with favorite + collections)
+    GET|POST /api/collections                   (POST {name}: new collection)
+    PATCH|DELETE /api/collections/{id}          (PATCH {name}: rename; DELETE keeps the songs)
+    GET|PUT /api/projects/{id}/organization     {favorite?, collections?: [ids]}
     GET   /api/projects/{id}?revision=
     DELETE /api/projects/{id}                  (moves the song to <data>/trash)
     GET   /api/projects/{id}/revisions
@@ -24,7 +27,7 @@ Routes::
     POST  /api/projects/{id}/exports            {format: midi|wav|mp3|json, revision?, speed?, bitrate?}
     GET   /api/projects/{id}/exports/{file}     (download)
     GET   /api/renders/{file}                   (download)
-    WS    /api/events?token=                    (project.updated, render.queued, render.finished)
+    WS    /api/events?token=                    (project.updated, project.deleted, library.organized, render.*)
 """  # noqa: E501
 
 from __future__ import annotations
@@ -84,6 +87,8 @@ _STATUS_BY_CODE = {
     "JOB_NOT_FOUND": 404,
     "UNKNOWN_TEMPLATE": 404,
     "INVALID_TEMPLATE": 422,
+    "COLLECTION_NOT_FOUND": 404,
+    "INVALID_COLLECTION": 422,
     "NOT_FOUND": 404,
     "REVISION_CONFLICT": 409,
     "PROJECT_EXISTS": 409,
@@ -245,7 +250,62 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
     @route("/api/projects", ["GET"])
     async def projects(request: Request) -> Response:
         search = request.query_params.get("search") or None
-        return await _call(lambda: {"projects": service.list_projects(search)})
+        return await _call(
+            lambda: {"projects": ctx.organizer.annotate(service.list_projects(search))}
+        )
+
+    @route("/api/collections", ["GET", "POST"])
+    async def collections(request: Request) -> Response:
+        if request.method == "GET":
+            return await _call(ctx.organizer.snapshot)
+        try:
+            data = await _body(request)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(ctx.organizer.create_collection, data.get("name"))
+
+    @route("/api/collections/{collection_id}", ["PATCH", "DELETE"])
+    async def collection(request: Request) -> Response:
+        collection_id = request.path_params["collection_id"]
+        if request.method == "DELETE":
+
+            def delete() -> dict:
+                ctx.organizer.delete_collection(collection_id)
+                return {"ok": True, "id": collection_id}
+
+            return await _call(delete)
+        try:
+            data = await _body(request)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(ctx.organizer.rename_collection, collection_id, data.get("name"))
+
+    @route("/api/projects/{project_id}/organization", ["GET", "PUT"])
+    async def organization(request: Request) -> Response:
+        project_id = request.path_params["project_id"]
+        if request.method == "GET":
+            return await _call(ctx.organizer.for_project, project_id)
+        try:
+            data = await _body(request)
+            favorite = data.get("favorite")
+            wanted = data.get("collections")
+            if favorite is not None and not isinstance(favorite, bool):
+                raise ApiError("INVALID_FIELD", "favorite must be true or false")
+            if wanted is not None and (
+                not isinstance(wanted, list) or not all(isinstance(c, str) for c in wanted)
+            ):
+                raise ApiError("INVALID_FIELD", "collections must be a list of collection ids")
+        except Exception as exc:
+            return _error_response(exc)
+
+        def save() -> dict:
+            if favorite is not None:
+                ctx.organizer.set_favorite(project_id, favorite)
+            if wanted is not None:
+                ctx.organizer.set_collections(project_id, wanted)
+            return ctx.organizer.for_project(project_id)
+
+        return await _call(save)
 
     @route("/api/projects/{project_id}", ["GET", "DELETE"])
     async def project(request: Request) -> Response:

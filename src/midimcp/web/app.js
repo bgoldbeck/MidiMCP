@@ -17,6 +17,18 @@ const state = {
   pendingUpdate: null,
   socket: null,
   ownRevisions: new Set(), // revisions this page created; their events are not "news"
+  org: { favorites: [], collections: [] }, // favorites + the user's collections
+  filter: "all", // "all" | "favorites" | a collection id
+  sort: "recent",
+};
+
+const prefs = {
+  get(key, fallback) {
+    try { return localStorage.getItem(`midimcp.${key}`) ?? fallback; } catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(`midimcp.${key}`, value); } catch { /* storage unavailable */ }
+  },
 };
 
 // ------------------------------------------------------------------ helpers
@@ -110,8 +122,13 @@ function openEvents() {
 
 function onServerEvent(event) {
   if (event.type === "project.deleted") {
-    refreshLibrary().catch(() => {});
+    refreshOrganization().then(() => refreshLibrary()).catch(() => {});
     if (state.view?.projectId === event.projectId) closeSong("This song was deleted (it is in the trash folder on the NAS).");
+    return;
+  }
+  if (event.type === "library.organized") {
+    refreshOrganization().then(() => refreshLibrary()).catch(() => {});
+    if (state.view) renderSongOrganization(state.view.projectId).catch(() => {});
     return;
   }
   if (event.type !== "project.updated") return;
@@ -135,15 +152,174 @@ async function refreshLibrary() {
   const search = $("search").value.trim();
   const { projects } = await state.api.projects(search);
   state.projects = projects;
+  if (!["all", "favorites"].includes(state.filter) && !state.org.collections.some((c) => c.id === state.filter)) {
+    state.filter = "all"; // that collection was deleted
+  }
+  renderFilters();
+  const shown = sortSongs(projects.filter((p) => state.filter === "all"
+    || (state.filter === "favorites" ? p.favorite : p.collections.includes(state.filter))));
+  const names = new Map(state.org.collections.map((c) => [c.id, c.name]));
   const list = $("project-list");
-  list.replaceChildren(...projects.map((p) => el("li", {
-    class: state.view?.projectId === p.projectId ? "active" : "",
+  list.replaceChildren(...shown.map((p) => el("li", {
+    class: `song${state.view?.projectId === p.projectId ? " active" : ""}`,
     "data-project": p.projectId,
     onclick: () => openProject(p.projectId).catch(showError),
   },
-  el("span", { class: "title", text: p.title }),
-  el("span", { class: "sub", text: [p.usage, `rev ${p.headRevision}`, relativeTime(p.updatedAt)].filter(Boolean).join(" · ") }))));
-  $("library-empty").hidden = projects.length > 0 || Boolean(search);
+  starButton(p.projectId, p.favorite),
+  el("span", { class: "text" },
+    el("span", { class: "title", text: p.title }),
+    p.collections.length ? el("span", { class: "sub" }, ...p.collections.map((id) => el("span", { class: "badge", text: names.get(id) || id }))) : null,
+    el("span", { class: "sub", text: [p.usage, `rev ${p.headRevision}`, relativeTime(p.updatedAt)].filter(Boolean).join(" · ") })))));
+  const empty = $("library-empty");
+  if (projects.length === 0 && !search) {
+    empty.textContent = "No songs yet. Ask your AI client to compose one; it appears here automatically.";
+  } else if (shown.length === 0 && state.filter === "favorites") {
+    empty.textContent = "No favorites yet. Click ☆ next to a song to star it.";
+  } else if (shown.length === 0 && state.filter !== "all") {
+    empty.textContent = "No songs in this collection yet. Open a song and tick this collection under its title.";
+  } else {
+    empty.textContent = "";
+  }
+  empty.hidden = !empty.textContent;
+}
+
+function sortSongs(songs) {
+  const byTitle = (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  const byRecent = (a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || "");
+  const copy = [...songs];
+  if (state.sort === "title") return copy.sort(byTitle);
+  if (state.sort === "favorites") return copy.sort((a, b) => (b.favorite - a.favorite) || byRecent(a, b));
+  return copy.sort(byRecent);
+}
+
+function starButton(projectId, favorite, extraClass = "") {
+  return el("button", {
+    class: `star${favorite ? " on" : ""}${extraClass}`,
+    title: favorite ? "Remove from favorites" : "Add to favorites",
+    "aria-label": favorite ? "Remove from favorites" : "Add to favorites",
+    "aria-pressed": favorite ? "true" : "false",
+    onclick: (event) => { event.stopPropagation(); setFavorite(projectId, !favorite); },
+  }, favorite ? "★" : "☆");
+}
+
+// ------------------------------------------------------------ organization
+
+async function refreshOrganization() {
+  state.org = await state.api.collections();
+}
+
+function renderFilters() {
+  const favorites = state.org.favorites.length;
+  const chips = [
+    ["all", "All songs", null],
+    ["favorites", "★ Favorites", favorites],
+    ...state.org.collections.map((c) => [c.id, c.name, c.count]),
+  ];
+  $("library-filters").replaceChildren(...chips.map(([id, label, count]) => el("button", {
+    class: `chip${state.filter === id ? " active" : ""}`,
+    "data-filter": id,
+    "aria-pressed": state.filter === id ? "true" : "false",
+    onclick: () => { state.filter = id; prefs.set("filter", id); refreshLibrary().catch(showError); },
+  }, label, count === null ? null : el("span", { class: "count", text: String(count) }))));
+  $("collection-actions").hidden = ["all", "favorites"].includes(state.filter);
+}
+
+async function setFavorite(projectId, favorite) {
+  try {
+    await state.api.setOrganization(projectId, { favorite });
+    await refreshOrganization();
+    await refreshLibrary();
+    if (state.view?.projectId === projectId) await renderSongOrganization(projectId);
+  } catch (error) {
+    showError(error);
+  }
+}
+
+async function renderSongOrganization(projectId) {
+  const mine = await state.api.organization(projectId);
+  if (state.view?.projectId !== projectId) return; // another song was opened meanwhile
+  const star = $("favorite-song");
+  star.textContent = mine.favorite ? "★" : "☆";
+  star.classList.toggle("on", mine.favorite);
+  star.setAttribute("aria-pressed", mine.favorite ? "true" : "false");
+  star.title = mine.favorite ? "Remove from favorites" : "Add to favorites";
+  star.onclick = () => setFavorite(projectId, !mine.favorite);
+  const names = state.org.collections.filter((c) => mine.collections.includes(c.id)).map((c) => c.name);
+  $("song-collections-label").textContent = names.length ? names.join(", ") : "none";
+  const boxes = state.org.collections.map((c) => el("label", {},
+    el("input", {
+      type: "checkbox",
+      "data-collection": c.id,
+      checked: mine.collections.includes(c.id),
+      onchange: () => saveSongCollections(projectId),
+    }), ` ${c.name}`));
+  $("song-collections-list").replaceChildren(
+    ...(boxes.length ? boxes : [el("p", { class: "hint", text: "No collections yet." })]),
+    el("button", { class: "secondary small new", onclick: () => newCollection(projectId) }, "+ New collection…"));
+}
+
+async function saveSongCollections(projectId) {
+  const ids = [...$("song-collections-list").querySelectorAll("input[data-collection]:checked")].map((i) => i.dataset.collection);
+  try {
+    await state.api.setOrganization(projectId, { collections: ids });
+    await refreshOrganization();
+    await refreshLibrary();
+    await renderSongOrganization(projectId);
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/** Ask for a name and create a collection; with ``projectId`` also put that song in it. */
+async function newCollection(projectId = null) {
+  const name = window.prompt("Name for the new collection (e.g. Town themes, Boss fights):");
+  if (!name || !name.trim()) return;
+  try {
+    const created = await state.api.createCollection(name.trim());
+    if (projectId) {
+      const mine = await state.api.organization(projectId);
+      await state.api.setOrganization(projectId, { collections: [...mine.collections, created.id] });
+    } else {
+      state.filter = created.id;
+      prefs.set("filter", created.id);
+    }
+    await refreshOrganization();
+    await refreshLibrary();
+    if (state.view) await renderSongOrganization(state.view.projectId);
+  } catch (error) {
+    showError(error);
+  }
+}
+
+async function renameCollection() {
+  const current = state.org.collections.find((c) => c.id === state.filter);
+  if (!current) return;
+  const name = window.prompt("New name for this collection:", current.name);
+  if (!name || !name.trim() || name.trim() === current.name) return;
+  try {
+    await state.api.renameCollection(current.id, name.trim());
+    await refreshOrganization();
+    await refreshLibrary();
+    if (state.view) await renderSongOrganization(state.view.projectId);
+  } catch (error) {
+    showError(error);
+  }
+}
+
+async function deleteCollection() {
+  const current = state.org.collections.find((c) => c.id === state.filter);
+  if (!current) return;
+  if (!window.confirm(`Delete the collection "${current.name}"? The songs in it are kept.`)) return;
+  try {
+    await state.api.deleteCollection(current.id);
+    state.filter = "all";
+    prefs.set("filter", "all");
+    await refreshOrganization();
+    await refreshLibrary();
+    if (state.view) await renderSongOrganization(state.view.projectId);
+  } catch (error) {
+    showError(error);
+  }
 }
 
 // ------------------------------------------------------------------ project
@@ -165,6 +341,7 @@ async function openProject(projectId, { notice = "" } = {}) {
   renderTracks(view);
   renderChecks(view);
   refreshExports().catch(() => {});
+  renderSongOrganization(projectId).catch(() => {});
   for (const item of $("project-list").children) {
     item.classList.toggle("active", item.dataset.project === projectId);
   }
@@ -573,6 +750,18 @@ async function enterApp(status) {
   $("engine").textContent = audio.available ? `Audio engine: ${audio.engine}` : `Audio engine unavailable: ${audio.error}`;
   setupPlayer();
   state.instruments = (await state.api.instruments()).instruments.filter((i) => i.available !== false);
+  state.filter = prefs.get("filter", "all");
+  state.sort = prefs.get("sort", "recent");
+  $("library-sort").value = state.sort;
+  $("library-sort").onchange = () => {
+    state.sort = $("library-sort").value;
+    prefs.set("sort", state.sort);
+    refreshLibrary().catch(showError);
+  };
+  $("new-collection").onclick = () => newCollection();
+  $("rename-collection").onclick = () => renameCollection();
+  $("delete-collection").onclick = () => deleteCollection();
+  await refreshOrganization().catch(() => {});
   let searchTimer = null;
   $("search").oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => refreshLibrary().catch(showError), 200); };
   $("update-reload").onclick = () => openProject(state.view.projectId, {

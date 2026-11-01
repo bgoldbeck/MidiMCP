@@ -214,8 +214,31 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
     @server.tool()
     @_tool_errors
     def list_projects(search: str | None = None) -> dict[str, Any]:
-        """Projects (songs) with title, usage, tags and head revision."""
-        return {"projects": service.list_projects(search)}
+        """Projects (songs) with title, usage, tags, head revision, and the user's
+        organization: favorite (starred) and the ids of collections holding the song."""
+        return {"projects": ctx.organizer.annotate(service.list_projects(search))}
+
+    @server.tool()
+    @_tool_errors
+    def list_collections() -> dict[str, Any]:
+        """The user's song collections (their own categories, e.g. "Town themes") with
+        the songs in each, plus their favorites. Read-only except add_to_collection."""
+        return ctx.organizer.snapshot()
+
+    @server.tool()
+    @_tool_errors
+    def add_to_collection(project_id: str, collection: str) -> dict[str, Any]:
+        """Put a song into one of the user's EXISTING collections (by name or id), e.g. when
+        asked "add it to my Town themes". Does not create collections or change the song
+        itself; only the user creates, renames or deletes collections and stars songs."""
+        target = ctx.organizer.find(collection)
+        ctx.organizer.add_to_collection(project_id, target["id"])
+        return {
+            "ok": True,
+            "projectId": project_id,
+            "collection": target["name"],
+            **ctx.organizer.for_project(project_id),
+        }
 
     @server.tool()
     @_tool_errors

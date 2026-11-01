@@ -59,6 +59,10 @@ Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile 
 - Live updates: an agent edit reloads the song (or offers "Load new version" while playing).
 - Not yet: revision history panel / A-B / undo (feature 14), piano-roll editing and lock controls (feature 16).
 
+## Favorites and collections
+
+The user's own organization of songs, stored in `<data>/collections.json` (format version 1), separate from song content: starring or filing a song creates no revision and never re-renders. Library: ☆/★ per song, filter chips (All / ★ Favorites / each collection with counts), sort (newest, A–Z, favorites first; filter and sort remembered per browser), **+ Collection**, rename/delete for the selected collection (deleting keeps the songs). Song header: ★ toggle and a *Collections* picker with checkboxes and "+ New collection…". Memberships of deleted songs are kept, so restoring from trash restores them. Changes broadcast `library.organized` so other open pages update live. API: `GET|POST /api/collections`, `PATCH|DELETE /api/collections/{id}`, `GET|PUT /api/projects/{id}/organization`. MCP: `list_projects` includes `favorite` and `collections`; `list_collections`; `add_to_collection` (existing collections only — agents cannot create, rename, delete, or star).
+
 ## Templates page
 
 Header tab **Templates**: browse built-in and custom templates (ensemble with ranges, form with chord symbols in the default key, melody/accompaniment guidance, patterns, dos and don'ts, a copyable prompt). Built-ins (27: six classic RPG styles, nine `old-realm-*` styles in the spirit of late-90s online fantasy RPGs, twelve `retro-*` game-era styles) are read-only and each lists how to make the parts sound played (*Expression*); **Duplicate** creates a custom copy in `<data>/templates/<id>.json` that can be edited as JSON (validated on save: instruments, chords, ranges, tempo, meter, mode) or deleted. Custom templates are offered to agents through `list_templates` / `create_project(template_id=...)`.

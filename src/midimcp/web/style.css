@@ -173,3 +173,24 @@ button.download { font-size: 15px; padding: 9px 16px; }
   .help .tpl-table { display: block; overflow-x: auto; }
   .help code, .recipe pre { overflow-wrap: anywhere; }
 }
+
+/* Favorites and collections */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip { background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font: 500 12px system-ui; }
+.chip.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip .count { opacity: .7; margin-left: 4px; }
+.lib-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.lib-row select { flex: 1; min-width: 0; }
+button.small { padding: 4px 8px; font-size: 12px; }
+.project-list li.song { display: flex; gap: 8px; align-items: start; }
+.project-list li.song .text { flex: 1; min-width: 0; }
+button.star { background: none; border: 0; padding: 0 2px; font-size: 18px; line-height: 1.2; color: var(--muted); cursor: pointer; }
+button.star.on { color: var(--accent); }
+button.star:hover { color: var(--accent); }
+.title-row { display: flex; align-items: center; gap: 8px; }
+.title-row button.star { font-size: 24px; }
+.collections-picker { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.collections-picker summary { cursor: pointer; }
+.collections-picker label { display: block; color: var(--ink); padding: 2px 0; }
+.collections-picker .new { margin-top: 6px; }
+.badge { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-right: 4px; font-size: 11px; color: var(--muted); }

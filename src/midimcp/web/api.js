@@ -88,6 +88,12 @@ export class Api {
   duplicateTemplate(id, newId, name) {
     return this.request("POST", `/api/templates/${encodeURIComponent(id)}/duplicate`, { newId, name });
   }
+  collections() { return this.request("GET", "/api/collections"); }
+  createCollection(name) { return this.request("POST", "/api/collections", { name }); }
+  renameCollection(id, name) { return this.request("PATCH", `/api/collections/${encodeURIComponent(id)}`, { name }); }
+  deleteCollection(id) { return this.request("DELETE", `/api/collections/${encodeURIComponent(id)}`); }
+  organization(id) { return this.request("GET", `/api/projects/${encodeURIComponent(id)}/organization`); }
+  setOrganization(id, body) { return this.request("PUT", `/api/projects/${encodeURIComponent(id)}/organization`, body); }
   resetTrack(id, trackId, body) {
     return this.request(
       "POST",

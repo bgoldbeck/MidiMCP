@@ -43,6 +43,19 @@
     <aside class="card library" aria-label="Song library">
       <h2>Songs</h2>
       <input id="search" type="search" placeholder="Search title, tag, usage…" aria-label="Search songs">
+      <div id="library-filters" class="chips" aria-label="Show"></div>
+      <div class="lib-row">
+        <select id="library-sort" aria-label="Sort songs">
+          <option value="recent">Newest</option>
+          <option value="title">A–Z</option>
+          <option value="favorites">★ first</option>
+        </select>
+        <button id="new-collection" class="secondary small" title="Make your own category">+ Collection</button>
+      </div>
+      <div id="collection-actions" class="lib-row" hidden>
+        <button id="rename-collection" class="secondary small">Rename</button>
+        <button id="delete-collection" class="secondary small">Delete collection</button>
+      </div>
       <ul id="project-list" class="project-list"></ul>
       <p id="library-empty" class="hint" hidden>No songs yet. Ask your AI client to compose one; it appears here automatically.</p>
     </aside>
@@ -57,9 +70,16 @@
       <div id="song" hidden>
         <section class="card song-head">
           <div>
-            <h2 id="song-title"></h2>
+            <div class="title-row">
+              <button id="favorite-song" class="star" aria-pressed="false" title="Add to favorites">☆</button>
+              <h2 id="song-title"></h2>
+            </div>
             <p id="song-meta" class="meta"></p>
             <p id="last-change" class="meta"></p>
+            <details id="song-collections" class="collections-picker">
+              <summary>Collections: <span id="song-collections-label">none</span></summary>
+              <div id="song-collections-list"></div>
+            </details>
           </div>
           <div class="head-actions">
             <span id="revision" class="pill"></span>
