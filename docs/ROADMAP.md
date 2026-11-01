@@ -37,7 +37,7 @@ Second change: the **composition service** (single mutation authority with locks
 | # | Feature | Branch | Delivers | Done when |
 |---|---|---|---|---|
 | 11 | ✅ Web API + live events + downloads | `feature/web-api-websocket-events-and-downloads` | Starlette `/api` routes beside `/mcp` in the same app (no FastAPI dependency needed), token auth, WebSocket revision/render events, download endpoints (MIDI/WAV/project bundle) | MCP edit appears as an event; browser downloads exports |
-| 12 | ⬜ Browser playback | `feature/browser-playback-of-rendered-audio` | Play/pause/stop/seek/loop over rendered audio, speed multiplier via cached re-render, playhead sync | 125% ⇒ 80% duration, same pitch |
+| 12 | 🟨 Browser playback | `feature/browser-playback-of-rendered-audio` | Play/pause/stop/seek/loop over rendered audio, speed multiplier via cached re-render, playhead sync | 125% ⇒ 80% duration, same pitch |
 | 13 | ⬜ React web UI — beginner mode | `feature/react-web-ui-library-transport-and-tracks` | Vite+TS UI served by the container: library, transport, tracks (mute/solo/volume/instrument), measure overview, MCP status, export buttons | All core song tasks work in the browser with no agent connected |
 | 14 | ⬜ Revision history + AI change review | `feature/revision-history-ai-change-summary-and-ab` | History panel, change summaries, A/B audition, undo last AI change | Undo restores prior notes as new head revision |
 | 15 | ⬜ Loops, OGG, export metadata, bundle import | `feature/loop-export-ogg-metadata-and-bundle-import` | Straight + tail-aware loop, OGG encode, export metadata JSON, project bundle `.zip` import | Clean loop with exact sample metadata; bundle round-trips |
