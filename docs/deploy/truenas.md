@@ -65,6 +65,8 @@ git clone https://github.com/bgoldbeck/MidiMCP.git && cd MidiMCP && sudo bash sc
 
 It builds, asks for a GitHub token with the `write:packages` scope (GitHub → Settings → Developer settings → Personal access tokens), and pushes `latest`, the version and the commit tags. The first time, make the package **public** (link printed at the end) so TrueNAS can pull without credentials. The image contains no secrets.
 
+**Automatic nightly updates:** see [auto-update.md](auto-update.md).
+
 No published image yet? Use [`truenas-app-build-from-github.yaml`](truenas-app-build-from-github.yaml) instead: TrueNAS builds straight from the GitHub repo (a few minutes on first install).
 
 ## Updating
