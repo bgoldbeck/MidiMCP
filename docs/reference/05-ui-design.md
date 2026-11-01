@@ -62,3 +62,7 @@ Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile 
 ## Templates page
 
 Header tab **Templates**: browse built-in and custom templates (ensemble with ranges, form with chord symbols in the default key, melody/accompaniment guidance, patterns, dos and don'ts, a copyable prompt). Built-ins (27: six classic RPG styles, nine `old-realm-*` styles in the spirit of late-90s online fantasy RPGs, twelve `retro-*` game-era styles) are read-only and each lists how to make the parts sound played (*Expression*); **Duplicate** creates a custom copy in `<data>/templates/<id>.json` that can be edited as JSON (validated on save: instruments, chords, ranges, tempo, meter, mode) or deleted. Custom templates are offered to agents through `list_templates` / `create_project(template_id=...)`.
+
+## Help and Setup pages
+
+Public (no token, no data): **Help** (`help.html`) has prompt recipes with Copy buttons; **Setup** (`setup.html`) covers installing on TrueNAS or plain Docker, settings, connecting AI clients, updating, data/backups, the developer environment and checks, building and publishing the image (`publish-image.cmd` / `.sh`), the nightly auto-update, and troubleshooting.

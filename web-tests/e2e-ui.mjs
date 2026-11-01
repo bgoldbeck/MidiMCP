@@ -201,6 +201,12 @@ try {
   await page.waitForURL(/help\.html$/);
   const recipes = await page.locator(".recipe .copy").count();
   if (recipes < 10) throw new Error(`help page shows only ${recipes} recipes`);
+  await page.click("a.tab[href='setup.html']");
+  await page.waitForURL(/setup\.html$/);
+  const setupRecipes = await page.locator(".recipe .copy").count();
+  if (setupRecipes < 15) throw new Error(`setup page shows only ${setupRecipes} copyable commands`);
+  await page.click("a.tab[href='help.html']");
+  await page.waitForURL(/help\.html$/);
   await page.click("a.tab[href='./#templates']");
   await page.waitForSelector("#templates-view:not([hidden])");
   await page.click("#tabs .tab[data-view=songs]");
