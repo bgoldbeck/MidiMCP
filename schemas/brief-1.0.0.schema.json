@@ -1,0 +1,278 @@
+{
+  "$defs": {
+    "DurationRange": {
+      "additionalProperties": false,
+      "properties": {
+        "maxSeconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxseconds"
+        },
+        "minSeconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minseconds"
+        }
+      },
+      "title": "DurationRange",
+      "type": "object"
+    },
+    "Lock": {
+      "additionalProperties": false,
+      "description": "Protects a whole track (no range) or a half-open tick range of it.",
+      "properties": {
+        "endTick": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Endtick"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "startTick": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Starttick"
+        },
+        "trackId": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Trackid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "trackId"
+      ],
+      "title": "Lock",
+      "type": "object"
+    },
+    "PartLimits": {
+      "additionalProperties": false,
+      "description": "Register and polyphony guidance for one track.",
+      "properties": {
+        "highestPitch": {
+          "anyOf": [
+            {
+              "maximum": 127,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Highestpitch"
+        },
+        "lowestPitch": {
+          "anyOf": [
+            {
+              "maximum": 127,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lowestpitch"
+        },
+        "maxPolyphony": {
+          "anyOf": [
+            {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maxpolyphony"
+        },
+        "trackId": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Trackid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trackId"
+      ],
+      "title": "PartLimits",
+      "type": "object"
+    }
+  },
+  "$id": "midimcp:brief:1.0.0",
+  "additionalProperties": false,
+  "properties": {
+    "allowedInstrumentIds": {
+      "anyOf": [
+        {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9_.-]{0,127}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Allowedinstrumentids"
+    },
+    "chordPlan": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Chordplan",
+      "type": "array"
+    },
+    "duration": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DurationRange"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "harmonicStrictness": {
+      "default": "advisory",
+      "enum": [
+        "strict",
+        "advisory"
+      ],
+      "title": "Harmonicstrictness",
+      "type": "string"
+    },
+    "locks": {
+      "items": {
+        "$ref": "#/$defs/Lock"
+      },
+      "title": "Locks",
+      "type": "array"
+    },
+    "loopRequired": {
+      "default": false,
+      "title": "Looprequired",
+      "type": "boolean"
+    },
+    "maxTracks": {
+      "anyOf": [
+        {
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Maxtracks"
+    },
+    "mood": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mood"
+    },
+    "partLimits": {
+      "items": {
+        "$ref": "#/$defs/PartLimits"
+      },
+      "title": "Partlimits",
+      "type": "array"
+    },
+    "percussionAllowed": {
+      "default": true,
+      "title": "Percussionallowed",
+      "type": "boolean"
+    },
+    "references": {
+      "items": {
+        "type": "string"
+      },
+      "title": "References",
+      "type": "array"
+    },
+    "schemaVersion": {
+      "default": "1.0.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "setting": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Setting"
+    }
+  },
+  "title": "Brief",
+  "type": "object"
+}
