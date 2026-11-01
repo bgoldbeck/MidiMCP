@@ -1,6 +1,6 @@
 # MidiMCP — Agent Instructions
 
-AI-controlled retro (1990s General MIDI) RPG music composer. Agents compose via MCP; local app validates, plays, exports.
+AI-controlled retro (1990s General MIDI) RPG music composer. Runs as a Docker container on TrueNAS with a web UI; agents compose via MCP over HTTP; the container validates, renders, plays (in browser), exports.
 
 - Design reference: `docs/reference/` (read before structural changes).
 - Build order: `docs/ROADMAP.md`. Implement features in order unless the owner says otherwise.

@@ -4,20 +4,20 @@
 
 | Layer | Choice | Why |
 |---|---|---|
-| UI | React + TypeScript + Vite | Owner familiar; desktop-like UI |
+| UI | React + TypeScript + Vite, served by the container | Web UI reached from any browser on the LAN |
 | Local API | Python + FastAPI | Single authority for UI and agents |
-| MCP | Official Python MCP SDK, stdio transport first | Structured tool calls; all three hosts can spawn stdio servers |
+| MCP | Official Python MCP SDK, Streamable HTTP (token auth); stdio for dev | Agents on the owner's PC reach the container over the LAN |
 | Synth | libFluidSynth + SF2/SF3 | GM-era sampled synthesis, realtime and offline |
 | MIDI I/O | Mido | Standard MIDI File read/write |
 | Storage | JSON per project + SQLite index | Readable source of truth; fast library listing |
 | Live status | WebSocket | Playhead, render jobs, revision changes |
-| Platform | Windows, local, offline | Packaging deferred until MVP stable |
+| Platform | Docker container on TrueNAS SCALE, `/data` volume | See [07-deployment-docker-truenas.md](07-deployment-docker-truenas.md) |
 
 ## Process boundary
 
 ```
 Claude / Codex / Antigravity
-   └─ MCP adapter (stdio; optional loopback HTTP later)
+   └─ MCP endpoint (Streamable HTTP /mcp, bearer token; stdio for dev)
         └─ Composition service  ◄── React UI (HTTP + WebSocket)
              ├─ schema validator / musical constraints / revision manager
              ├─ immutable revision files + SQLite index
@@ -28,15 +28,15 @@ Claude / Codex / Antigravity
 ## Hard rules
 
 1. **One mutation authority.** GUI and MCP both go through the composition service. Agents never touch project JSON directly.
-2. MCP adapter discovers the already-running service; if absent, return a friendly "app not running" error. No per-agent private stores.
-3. Bind to `127.0.0.1` only. Launcher issues a random session token to UI and MCP adapter. Validate request origin.
+2. MCP endpoint, web API and UI run in one process sharing one composition service. No per-agent private stores.
+3. Container listens on the LAN, so a bearer token (`MIDIMCP_TOKEN`) is required for `/mcp` and `/api`. Validate WebSocket origin. Never expose to the internet without VPN/TLS proxy.
 4. No arbitrary file paths, shell execution, URL downloads, or soundbank installs via MCP.
 5. Music logic stays independent of any agent host, the UI, and Unity.
 
 ## Project layout on disk
 
 ```
-RetroMIDI/
+/data/            (container volume; RetroMIDI/ in the original desktop plan)
   bank-registry.json
   banks/
   projects/<project-id>/
@@ -62,8 +62,9 @@ RetroMIDI/
 
 ## Audio
 
-### Realtime transport
-- Backend owns musical time; FluidSynth owns voices. Never schedule notes from React timers.
+### Playback (browser)
+- The server has no sound card: the container renders audio with FluidSynth and the browser plays it. Tempo multiplier = cached re-render at the scaled tempo (pitch unchanged).
+- Backend owns musical time; the browser reports position from the audio element. Never schedule notes from React timers.
 - Play, pause, resume, stop, seek, loop, tempo multiplier (no pitch change).
 - Stop/seek: all-notes-off + controller reset; restore program/controller state after seek.
 - Playhead pushed to UI over WebSocket; UI lag must not affect audio.
@@ -94,7 +95,7 @@ v1: straight loop + one tested tail strategy, chosen explicitly.
 
 ## Default limits
 
-- Single user, local only, Windows first.
+- Single user, one container on a home LAN (TrueNAS).
 - 12 melodic tracks max; percussion channel reserved.
 - 8 minutes max song length; 20,000 notes max.
 - One global tempo per song in v1 (tempo map = later schema extension).

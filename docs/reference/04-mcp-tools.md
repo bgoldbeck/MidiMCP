@@ -55,7 +55,7 @@ Shell commands, arbitrary disk paths, downloading assets, installing unknown ban
 
 ## Hosts
 
-stdio first. Document and test each supported release of:
+Streamable HTTP first (`http://<nas>:<port>/mcp`, bearer token) because agents run on the owner's PC and the server runs on TrueNAS; stdio for local development. Document and test each supported release of:
 - Claude Code
 - OpenAI Codex CLI / IDE
 - Google Antigravity IDE / CLI

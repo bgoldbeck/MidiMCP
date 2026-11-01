@@ -20,11 +20,13 @@
 | UI + MCP edit simultaneously | One authoritative revision sequence; UI updates |
 | Reopen after restart | Same score, bank identity, effects, loop, history |
 | Export MIDI then reimport | Timing/pitch/program preserved within MIDI limits |
-| Fresh install | Works offline with redistributable default bank |
+| Fresh install | `docker compose up` on a clean host works offline with the redistributable default bank |
+| Export download | Browser downloads MIDI/WAV/project bundle; bundle re-imports identically |
+| No token | `/mcp` and `/api` reject unauthenticated requests |
 
 ## v1 definition of done
 
-User can start the app on Windows, connect at least one MCP host, create an original two-instrument 1990s-style song by natural language, see and play it in the GUI, change tempo without pitch shift, make a track/measure-bounded AI revision without touching locked material, save and reopen, render repeatable offline audio, and export MIDI/WAV/OGG with project and loop metadata.
+User can deploy the container on TrueNAS, open the web UI, connect at least one MCP host, create an original two-instrument 1990s-style song by natural language, see and play it in the GUI, change tempo without pitch shift, make a track/measure-bounded AI revision without touching locked material, save and reopen, render repeatable offline audio, and export MIDI/WAV/OGG with project and loop metadata.
 
 ## Engineering rules for implementers
 
@@ -33,7 +35,7 @@ User can start the app on Windows, connect at least one MCP host, create an orig
 3. No soundbank bundled or installed without license verification.
 4. Schema, revision semantics, locks, reproducibility, and MCP behavior are contracts.
 5. Write tests before changing transport timing or serialized formats.
-6. Document Windows setup/run commands and verify them as actually run.
+6. Document Docker/TrueNAS setup and dev commands and verify them as actually run.
 7. Unsupported features are absent or clearly labeled — no inert controls, no fake-success tools.
 8. Music logic independent of agent hosts, UI, and Unity.
 9. Working tested MVP beats premature DAW features.
