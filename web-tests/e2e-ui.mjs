@@ -2,6 +2,7 @@
 // Usage: node web-tests/e2e-ui.mjs <baseUrl> <token> [screenshotPath]
 // Expects the server to hold "Browser Test Song" (1 flute track, 12 notes, 4 bars, rev 3)
 // and a song whose title is an HTML-injection attempt.
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 
 const { chromium } = createRequire(import.meta.url)("playwright");
@@ -88,20 +89,30 @@ try {
   if (await page.isVisible("#update-banner")) throw new Error("update banner shown while not playing");
   step("external edit appeared live");
 
-  await page.click("[data-export=midi]");
-  await waitText("#export-status", "ready");
-  const href = await page.getAttribute("#export-list a", "href");
-  const midi = await (await fetch(new URL(href, base))).arrayBuffer();
-  if (new TextDecoder().decode(midi.slice(0, 4)) !== "MThd") throw new Error("MIDI download broken");
-  step(`MIDI export downloadable (${midi.byteLength} bytes)`);
+  // Download card: each button saves the file straight to the computer.
+  const [midiDownload] = await Promise.all([page.waitForEvent("download"), page.click("[data-export=midi]")]);
+  const midi = await readFile(await midiDownload.path());
+  if (midi.subarray(0, 4).toString("latin1") !== "MThd") throw new Error("MIDI download broken");
+  if (!midiDownload.suggestedFilename().endsWith(".mid")) throw new Error(`MIDI file named ${midiDownload.suggestedFilename()}`);
+  await waitText("#export-status", "downloaded:");
+  await waitText("#export-list", ".mid");
+  step(`MIDI downloaded in the browser (${midi.byteLength} bytes)`);
 
   await page.selectOption("#mp3-bitrate", "128");
-  await page.click("[data-export=mp3]");
-  await waitText("#export-status", "128k.mp3");
-  const mp3Href = await page.getAttribute("#export-list a[href*='.mp3']", "href");
-  const mp3 = new Uint8Array(await (await fetch(new URL(mp3Href, base))).arrayBuffer());
-  if (String.fromCharCode(...mp3.slice(0, 3)) !== "ID3") throw new Error("MP3 download broken");
-  step(`MP3 export downloadable (${mp3.byteLength} bytes)`);
+  const [mp3Download] = await Promise.all([page.waitForEvent("download"), page.click("[data-export=mp3]")]);
+  const mp3 = await readFile(await mp3Download.path());
+  if (mp3.subarray(0, 3).toString("latin1") !== "ID3") throw new Error("MP3 download broken");
+  if (!mp3Download.suggestedFilename().endsWith("-128k.mp3")) throw new Error(`MP3 named ${mp3Download.suggestedFilename()}`);
+  step(`MP3 (128 kbps) downloaded in the browser (${mp3.byteLength} bytes)`);
+
+  // Header "Download song" button: one click, chosen format, remembered after reload.
+  await page.selectOption("#download-format", "mp3:320");
+  const [songDownload] = await Promise.all([page.waitForEvent("download"), page.click("#download-song")]);
+  if (!songDownload.suggestedFilename().endsWith("-320k.mp3")) throw new Error(`song named ${songDownload.suggestedFilename()}`);
+  await waitText("#download-status", "downloaded:");
+  const listed = await page.locator("#export-list a.download-link").count();
+  if (listed < 3 || await page.isHidden("#export-list-title")) throw new Error(`earlier downloads list shows ${listed}`);
+  step(`Download song button saved ${songDownload.suggestedFilename()}; ${listed} earlier downloads listed`);
 
   // Song only allows flute + recorder: picking Harp asks first; Cancel keeps everything.
   await waitText("#allowed-instruments", "Wooden Flute, Recorder");
@@ -192,7 +203,8 @@ try {
   if (shot) await page.screenshot({ path: shot, fullPage: true });
   await page.reload();
   await page.waitForSelector("#app:not([hidden])");
-  step("token remembered after reload");
+  if (await page.inputValue("#download-format") !== "mp3:320") throw new Error("download format not remembered");
+  step("token and download format remembered after reload");
 
   if (errors.length) throw new Error(`browser errors: ${errors.join(" | ")}`);
   console.log("E2E UI PASSED");
