@@ -9,6 +9,8 @@ from midimcp.model.brief import (
 )
 from midimcp.model.score import (
     SCORE_SCHEMA_VERSION,
+    Automation,
+    ControlPoint,
     HarmonyEvent,
     LoopRegion,
     Metadata,
@@ -26,7 +28,9 @@ from midimcp.model.score import (
 __all__ = [
     "BRIEF_SCHEMA_VERSION",
     "SCORE_SCHEMA_VERSION",
+    "Automation",
     "Brief",
+    "ControlPoint",
     "DurationRange",
     "HarmonyEvent",
     "Lock",
