@@ -293,12 +293,13 @@ function renderTracks(view) {
         track.name,
         track.role ? el("span", { class: "role", text: track.role }) : null,
         locks.has(track.id) ? el("span", { class: "lock", text: `🔒 ${locks.get(track.id)}` }) : null),
-      el("td", {}, instrumentSelect),
-      el("td", {}, volume, db),
+      el("td", {}, instrumentSelect, resetButton(track, "instrument", wholeLock)),
+      el("td", {}, volume, db, resetButton(track, "volume", wholeLock)),
       el("td", {}, mute),
-      el("td", { text: track.notes.length }));
+      el("td", { text: track.notes.length }),
+      el("td", {}, resetButton(track, "all", wholeLock)));
   });
-  if (!rows.length) rows.push(el("tr", {}, el("td", { colspan: 5, class: "hint", text: "No tracks yet." })));
+  if (!rows.length) rows.push(el("tr", {}, el("td", { colspan: 6, class: "hint", text: "No tracks yet." })));
   $("track-rows").replaceChildren(...rows);
   const allowed = view.brief.allowedInstrumentIds;
   const names = (allowed || []).map((id) => state.instruments.find((i) => i.id === id)?.name || id);
@@ -346,6 +347,58 @@ function instrumentOptions(track, allowed) {
   const leftovers = rest.filter((i) => !known.has(i.family || "gm")).sort(byName);
   if (leftovers.length) groups.push(el("optgroup", { label: "Other" }, leftovers.map((i) => option(i))));
   return groups;
+}
+
+function instrumentName(id) {
+  return state.instruments.find((i) => i.id === id)?.name || id;
+}
+
+/** Which settings differ from the track's default (its first revision / template choice). */
+function changedFields(track) {
+  const d = state.view?.trackDefaults?.[track.id];
+  if (!d) return [];
+  const fields = [];
+  if (d.instrumentId !== track.instrumentId) fields.push("instrument");
+  if (d.gainDb !== track.gainDb) fields.push("volume");
+  if (d.pan !== track.pan) fields.push("pan");
+  if (d.mute !== track.mute) fields.push("mute");
+  return fields;
+}
+
+function resetButton(track, what, locked) {
+  const d = state.view?.trackDefaults?.[track.id];
+  const changed = changedFields(track);
+  const fields = what === "all" ? changed : changed.filter((f) => f === what);
+  if (!d || !fields.length || locked) return what === "all" ? el("span", { class: "hint", text: "default" }) : null;
+  const parts = {
+    instrument: `instrument → ${instrumentName(d.instrumentId)}`,
+    volume: `volume → ${d.gainDb} dB`,
+    pan: `pan → ${d.pan}`,
+    mute: d.mute ? "muted" : "unmuted",
+  };
+  const label = what === "all" ? "Reset" : "↺";
+  return el("button", {
+    class: what === "all" ? "secondary small" : "icon-button",
+    title: `Back to default (revision ${d.revision}): ${fields.map((f) => parts[f]).join(", ")}`,
+    "aria-label": `Reset ${what === "all" ? "track" : what} of ${track.name} to default`,
+    "data-reset": what,
+    onclick: () => resetTrack(track.id, fields),
+  }, label);
+}
+
+async function resetTrack(trackId, fields) {
+  const view = state.view;
+  try {
+    const result = await state.api.resetTrack(view.projectId, trackId, { expectedRevision: view.revision, fields });
+    state.ownRevisions.add(`${view.projectId}@${result.revision}`);
+    await openProject(view.projectId);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
+      await openProject(view.projectId, { notice: "The song changed meanwhile; reloaded the latest version. Please try again." });
+    } else {
+      showError(error);
+    }
+  }
 }
 
 function changeInstrument(track, instrumentId, allowed) {

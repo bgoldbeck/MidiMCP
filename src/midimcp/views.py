@@ -58,6 +58,7 @@ def project_view(ctx: AppContext, project_id: str, revision: int | None = None) 
         "brief": snap.brief.to_json_dict(),
         "validation": report.to_dict(),
         "lastChange": snap.info.to_dict(),
+        "trackDefaults": ctx.service.track_defaults(project_id) if revision is None else {},
     }
 
 

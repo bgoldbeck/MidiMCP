@@ -117,10 +117,17 @@ try {
   dialogs.answer = null;
   step("instrument outside the allowed list: cancel keeps, OK adds it (one revision)");
 
+  // Reset to default: the seed song started with a wooden flute.
+  await page.click("tr[data-track=flute] button[data-reset=instrument]");
+  await waitText("#revision", "revision 8");
+  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select").selectedOptions[0].textContent === "Wooden Flute");
+  if (await page.locator("tr[data-track=flute] button[data-reset=instrument]").count()) throw new Error("reset button still shown");
+  step("instrument reset to its default (Wooden Flute)");
+
   // A refused change shows a visible error at the top instead of silently resetting.
   const refused = await fetch(`${base}/api/projects/browser-test-song/tracks/flute`, {
     method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ expectedRevision: 7, instrumentId: "retro.lute" }),
+    body: JSON.stringify({ expectedRevision: 8, instrumentId: "retro.lute" }),
   });
   if (refused.status !== 422) throw new Error(`expected 422, got ${refused.status}`);
   await page.evaluate(() => { document.querySelector("#toast").hidden = true; });
