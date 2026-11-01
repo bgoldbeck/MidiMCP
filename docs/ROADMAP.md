@@ -47,7 +47,7 @@ Second change: the **composition service** (single mutation authority with locks
 | # | Feature | Branch | Delivers |
 |---|---|---|---|
 | 16 | ⬜ Piano roll + locks UI | `feature/piano-roll-note-editor-and-lock-ranges` | Drag/resize/velocity edit, lock track/range, copy selection ranges for prompts |
-| 17 | 🟨 Composition templates + theory advisories | `feature/rpg-composition-templates-and-theory-advisories` | Town/forest/crypt/tavern/sea/borderlands templates, breath advisories, original example songs |
+| 17 | ✅ Composition templates + theory advisories | `feature/rpg-composition-templates-and-theory-advisories` | Town/forest/crypt/tavern/sea/borderlands templates that scaffold tracks, roles, ranges, form and chord chart; range/breath/leap/masking/dynamics/repetition advisories (example songs deferred) |
 | 18 | ⬜ Connections page + diagnostics | `feature/connections-page-and-diagnostics` | Per-host setup, health, last MCP call, missing-bank diagnostics, user SoundFont upload |
 | 19 | ⬜ TrueNAS hardening | `feature/truenas-app-hardening-and-backups` | Upgrade/migration path, snapshot-friendly backups, resource limits, fresh-install test |
 

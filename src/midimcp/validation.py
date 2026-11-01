@@ -22,7 +22,12 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Final
 
-from midimcp.instruments import UnknownInstrument, resolve_instrument
+from midimcp.instruments import (
+    UnknownInstrument,
+    instrument_family,
+    instrument_range,
+    resolve_instrument,
+)
 from midimcp.model.brief import Brief
 from midimcp.model.score import Note, Score, Track
 from midimcp.music.theory import scale_pitch_classes
@@ -34,7 +39,9 @@ MAX_DURATION_SECONDS: Final = 8 * 60
 DEFAULT_POLYPHONY_WARNING: Final = 8
 WIDE_RANGE_SEMITONES: Final = 36
 REPEATED_BAR_RUN: Final = 4
-LOOP_RESOLVING_NUMERALS: Final = frozenset({"V", "V7", "v", "vii°", "viio", "vii"})
+LOOP_RESOLVING_NUMERALS: Final = frozenset(
+    {"V", "V7", "v", "vii°", "viio", "vii", "bVII", "IV", "iv", "Vsus4", "bII"}
+)
 
 
 class Severity(StrEnum):
@@ -108,6 +115,7 @@ def validate_score(
     issues += _check_brief_references(score, brief)
     issues += _check_tracks(score, brief, strict_key)
     issues += _check_loop_harmony(score)
+    issues += _check_musicality(score)
     return ValidationReport(issues=issues, summary=_summary(score))
 
 
@@ -517,3 +525,155 @@ def _summary(score: Score) -> dict:
             for tr in score.tracks
         ],
     }
+
+
+# ------------------------------------------------------------- musicality
+# Advisory only: these describe common reasons a part sounds amateurish. They
+# never block saving, and deliberate choices may trigger them.
+
+BREATH_SECONDS: Final = 10.0
+LARGE_LEAP_SEMITONES: Final = 12
+MASKED_SHARE: Final = 0.3
+
+
+def _melody_track(score: Score) -> Track | None:
+    """The track with role 'melody', else (no roles at all) the highest-sounding part."""
+    tracks = [t for t in score.tracks if not t.is_percussion and t.notes]
+    explicit = [t for t in tracks if t.role == "melody"]
+    if explicit:
+        return explicit[0]
+    if any(t.role for t in score.tracks):
+        return None
+    candidates = [t for t in tracks if len(t.notes) >= 8]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda t: sum(n.pitch for n in t.notes) / len(t.notes))
+
+
+def _check_musicality(score: Score) -> list[Issue]:
+    issues: list[Issue] = []
+    t = score.timeline
+    seconds_per_tick = t.tempo_us_per_quarter / 1e6 / t.ppq
+    for track in score.tracks:
+        if not track.notes or track.is_percussion:
+            continue
+        span = instrument_range(track.instrument_id)
+        if span is not None:
+            outside = [n for n in track.notes if not span[0] <= n.pitch <= span[1]]
+            if outside:
+                issues.append(
+                    _warning(
+                        "NOTE_OUTSIDE_INSTRUMENT_RANGE",
+                        f"{len(outside)} note(s) outside the practical range of "
+                        f"{track.instrument_id} ({span[0]}-{span[1]}); they will sound unnatural",
+                        track_id=track.id,
+                        note_id=outside[0].id,
+                        tick=outside[0].start_tick,
+                    )
+                )
+        if instrument_family(track.instrument_id) in {"wind", "brass"}:
+            issues += _check_breath(track, t.ppq, seconds_per_tick)
+        velocities = {n.velocity for n in track.notes}
+        if len(track.notes) >= 16 and len(velocities) == 1:
+            issues.append(
+                _warning(
+                    "FLAT_DYNAMICS",
+                    f"all {len(track.notes)} notes use velocity {velocities.pop()}; "
+                    "vary velocity to shape phrases",
+                    track_id=track.id,
+                )
+            )
+    melody = _melody_track(score)
+    if melody is not None:
+        issues += _check_melody(score, melody)
+    return issues
+
+
+def _check_breath(track: Track, ppq: int, seconds_per_tick: float) -> list[Issue]:
+    notes = sorted(track.notes, key=lambda n: (n.start_tick, n.id))
+    gap = ppq // 8  # anything shorter than a 32nd note is not a breath
+    phrase_start, phrase_end = notes[0].start_tick, notes[0].end_tick
+    for note in [*notes[1:], None]:
+        if note is not None and note.start_tick - phrase_end <= gap:
+            phrase_end = max(phrase_end, note.end_tick)
+            continue
+        length = (phrase_end - phrase_start) * seconds_per_tick
+        if length > BREATH_SECONDS:
+            return [
+                _warning(
+                    "BREATH_LENGTH",
+                    f"wind phrase plays {length:.0f}s without a rest; leave breathing gaps "
+                    f"(under {BREATH_SECONDS:.0f}s)",
+                    track_id=track.id,
+                    tick=phrase_start,
+                )
+            ]
+        if note is not None:
+            phrase_start, phrase_end = note.start_tick, note.end_tick
+    return []
+
+
+def _check_melody(score: Score, melody: Track) -> list[Issue]:
+    issues: list[Issue] = []
+    line = sorted(melody.notes, key=lambda n: (n.start_tick, -n.pitch))
+    # Melodic line = highest note at each onset.
+    tops: list[Note] = []
+    for note in line:
+        if tops and tops[-1].start_tick == note.start_tick:
+            continue
+        tops.append(note)
+    leaps = [
+        b for a, b in itertools.pairwise(tops) if abs(b.pitch - a.pitch) > LARGE_LEAP_SEMITONES
+    ]
+    if leaps:
+        issues.append(
+            _warning(
+                "LARGE_LEAP",
+                f"melody leaps more than an octave {len(leaps)} time(s); keep leaps rare "
+                "and follow them with stepwise motion back",
+                track_id=melody.id,
+                note_id=leaps[0].id,
+                tick=leaps[0].start_tick,
+            )
+        )
+    if len(tops) >= 8 and len({n.pitch % 12 for n in tops}) < 4:
+        issues.append(
+            _warning(
+                "MONOTONOUS_MELODY",
+                "melody uses fewer than 4 different pitches; give it a clearer shape",
+                track_id=melody.id,
+            )
+        )
+    if len(tops) >= 16 and len({n.duration_ticks for n in tops}) == 1:
+        issues.append(
+            _warning(
+                "UNIFORM_RHYTHM",
+                "every melody note has the same length; mix long and short notes",
+                track_id=melody.id,
+            )
+        )
+    others = [
+        t
+        for t in score.tracks
+        if t is not melody and not t.is_percussion and t.role not in {"bass"} and not t.mute
+    ]
+    if others and tops:
+        masked = 0
+        for note in tops:
+            for other in others:
+                if any(
+                    o.start_tick <= note.start_tick < o.end_tick and o.pitch > note.pitch
+                    for o in other.notes
+                ):
+                    masked += 1
+                    break
+        if masked / len(tops) > MASKED_SHARE:
+            issues.append(
+                _warning(
+                    "MELODY_MASKED",
+                    f"{masked} of {len(tops)} melody notes have another part sounding above them; "
+                    "keep accompaniment below the melody",
+                    track_id=melody.id,
+                )
+            )
+    return issues

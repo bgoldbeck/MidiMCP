@@ -173,7 +173,8 @@ function renderHeader(view, notice) {
   const key = view.score.tonality;
   const mode = key.mode === "ionian" ? "major" : key.mode === "aeolian" ? "minor" : key.mode;
   $("song-title").textContent = view.score.metadata.title;
-  $("song-meta").textContent = `${t.quarterNoteBpm} BPM · ${t.meter} · ${key.displaySpelling} ${mode} · ${t.bars} bars · ${formatTime(t.durationSeconds)}`;
+  const template = view.brief.templateId ? ` · template: ${view.brief.templateId}` : "";
+  $("song-meta").textContent = `${t.quarterNoteBpm} BPM · ${t.meter} · ${key.displaySpelling} ${mode} · ${t.bars} bars · ${formatTime(t.durationSeconds)}${template}`;
   const change = view.lastChange;
   $("last-change").textContent = notice || `Last change (${change.author}, ${relativeTime(change.createdAt)}): ${change.summary}`;
   $("revision").textContent = `revision ${view.revision}`;
@@ -287,6 +288,7 @@ function renderTracks(view) {
       el("td", {},
         el("span", { class: `swatch c${index % COLORS.length}` }),
         track.name,
+        track.role ? el("span", { class: "role", text: track.role }) : null,
         locks.has(track.id) ? el("span", { class: "lock", text: `🔒 ${locks.get(track.id)}` }) : null),
       el("td", {}, instrumentSelect),
       el("td", {}, volume, db),

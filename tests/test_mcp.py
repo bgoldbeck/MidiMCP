@@ -463,3 +463,32 @@ def test_smoke_script_against_server(http_server: tuple[str, str], tmp_path: Pat
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "SMOKE TEST PASSED" in completed.stdout
     assert (tmp_path / "out" / "midimcp-smoke-test-r5.mid").is_file()
+
+
+def test_templates_via_mcp(ctx: AppContext) -> None:
+    async def go() -> None:
+        async with Client(build_mcp_server(ctx)) as client:
+            listed = await call(client, "list_templates")
+            assert len(listed["templates"]) == 6
+            detail = await call(client, "get_template", template_id="tavern")
+            assert detail["form"][0]["progression"][1] == "bVII"
+            created = await call(
+                client, "create_project", title="Inn Song", template_id="tavern", tonic="G"
+            )
+            assert created["revision"] == 1
+            assert [t["role"] for t in created["tracks"]] == [
+                "melody",
+                "countermelody",
+                "accompaniment",
+                "bass",
+            ]
+            assert created["harmony"][1]["symbol"] == "F"  # bVII in G mixolydian
+            assert len(created["partLimits"]) == 4
+            missing = await call_error(client, "create_project", title="Bare")
+            assert missing["code"] == "MISSING_ARGUMENT"
+            unknown = await call_error(client, "create_project", title="X", template_id="disco")
+            assert unknown["code"] == "UNKNOWN_TEMPLATE"
+            resource = await client.read_resource("midimcp://templates")
+            assert "peaceful-town" in resource.contents[0].text
+
+    run(go())

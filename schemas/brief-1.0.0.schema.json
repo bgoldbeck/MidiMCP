@@ -271,6 +271,18 @@
       ],
       "default": null,
       "title": "Setting"
+    },
+    "templateId": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Templateid"
     }
   },
   "title": "Brief",

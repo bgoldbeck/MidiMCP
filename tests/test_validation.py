@@ -251,3 +251,89 @@ def test_instrument_resolution(score_dict: dict) -> None:
     score_dict["tracks"][1]["instrumentId"] = "gm.drums"
     codes = validate_score(build(score_dict)).codes(Severity.ERROR)
     assert {"UNKNOWN_INSTRUMENT", "PERCUSSION_INSTRUMENT_MISMATCH"} <= codes
+
+
+def melody_score(score_dict: dict, notes: list[dict], **track: object) -> Score:
+    score_dict["tracks"] = [
+        {
+            "id": "mel",
+            "name": "Melody",
+            "instrumentId": "retro.wooden_flute",
+            "role": "melody",
+            "notes": notes,
+        }
+        | track
+    ]
+    score_dict["timeline"]["totalTicks"] = 64 * BAR
+    score_dict["timeline"]["loop"]["enabled"] = False
+    score_dict["harmony"] = []
+    return build(score_dict)
+
+
+def test_musicality_clean_melody_has_no_advice(score_dict: dict) -> None:
+    pitches = [68, 70, 72, 73, 75, 73, 72, 70] * 3
+    notes = [
+        note(f"m{i}", p, i * 960, 480 if i % 3 else 720, 60 + (i % 5) * 6)
+        for i, p in enumerate(pitches)
+    ]
+    report = validate_score(melody_score(score_dict, notes))
+    musical = {
+        "NOTE_OUTSIDE_INSTRUMENT_RANGE",
+        "BREATH_LENGTH",
+        "LARGE_LEAP",
+        "MONOTONOUS_MELODY",
+        "UNIFORM_RHYTHM",
+        "FLAT_DYNAMICS",
+        "MELODY_MASKED",
+    }
+    assert not musical & report.codes()
+
+
+def test_range_breath_leap_rhythm_dynamics(score_dict: dict) -> None:
+    # 40 back-to-back flute notes (>10 s without a rest), identical length/velocity,
+    # one note far below the flute's range and an octave-plus leap.
+    pitches = [68, 70, 72, 73] * 10
+    pitches[5] = 40
+    notes = [note(f"m{i}", p, i * 480, 480, 70) for i, p in enumerate(pitches)]
+    codes = validate_score(melody_score(score_dict, notes)).codes(Severity.WARNING)
+    assert {
+        "NOTE_OUTSIDE_INSTRUMENT_RANGE",
+        "BREATH_LENGTH",
+        "LARGE_LEAP",
+        "UNIFORM_RHYTHM",
+        "FLAT_DYNAMICS",
+    } <= codes
+
+
+def test_monotonous_melody(score_dict: dict) -> None:
+    notes = [note(f"m{i}", 68 + (i % 2) * 2, i * 960, 480, 60 + i) for i in range(12)]
+    assert "MONOTONOUS_MELODY" in validate_score(melody_score(score_dict, notes)).codes()
+
+
+def test_melody_masked_by_accompaniment(score_dict: dict) -> None:
+    melody = [note(f"m{i}", 60 + (i % 5), i * 960, 900, 70 + i) for i in range(10)]
+    score = melody_score(score_dict, melody)
+    data = score.to_json_dict()
+    data["tracks"].append(
+        {
+            "id": "acc",
+            "name": "Harp",
+            "instrumentId": "retro.harp",
+            "role": "accompaniment",
+            "notes": [note(f"a{i}", 79, i * 960, 960) for i in range(10)],
+        }
+    )
+    codes = validate_score(Score.model_validate(data)).codes()
+    assert "MELODY_MASKED" in codes
+    data["tracks"][1]["role"] = "bass"  # bass parts are ignored for masking
+    assert "MELODY_MASKED" not in validate_score(Score.model_validate(data)).codes()
+
+
+def test_melody_inferred_when_no_roles(score_dict: dict) -> None:
+    notes = [note(f"m{i}", 68 + (i % 2) * 2, i * 960, 480, 60 + i) for i in range(12)]
+    score_dict["tracks"] = [
+        {"id": "x", "name": "x", "instrumentId": "retro.wooden_flute", "notes": notes}
+    ]
+    score_dict["timeline"]["totalTicks"] = 64 * BAR
+    score_dict["timeline"]["loop"]["enabled"] = False
+    assert "MONOTONOUS_MELODY" in validate_score(build(score_dict)).codes()
