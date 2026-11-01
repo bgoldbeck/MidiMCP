@@ -169,3 +169,7 @@ button.download { font-size: 15px; padding: 9px 16px; }
   .topbar { flex-wrap: wrap; row-gap: 8px; }
   .topbar .subtitle { display: none; }
 }
+@media (max-width: 600px) {
+  .help .tpl-table { display: block; overflow-x: auto; }
+  .help code, .recipe pre { overflow-wrap: anywhere; }
+}

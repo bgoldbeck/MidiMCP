@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidiMCP – Setup</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="help.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="icon.svg" alt="" width="30" height="30">
+    <h1>MidiMCP</h1>
+    <span class="subtitle">setup</span>
+    <nav class="tabs">
+      <a class="tab" href="./">Songs</a>
+      <a class="tab" href="./#templates">Templates</a>
+      <a class="tab" href="help.html">Help</a>
+      <a class="tab active" href="setup.html">Setup</a>
+    </nav>
+  </header>
+
+  <main class="help">
+    <nav class="card toc" aria-label="Contents">
+      <strong>On this page</strong>
+      <a href="#overview">How the pieces fit</a>
+      <a href="#truenas">Install on TrueNAS</a>
+      <a href="#docker">Install with plain Docker</a>
+      <a href="#settings">Settings</a>
+      <a href="#clients">Connect AI clients</a>
+      <a href="#update">Updating</a>
+      <a href="#data">Your data and backups</a>
+      <a href="#dev">For developers</a>
+      <a href="#publish">Building and publishing the image</a>
+      <a href="#autoupdate">Nightly auto-update</a>
+      <a href="#trouble">Troubleshooting</a>
+    </nav>
+
+    <section class="card" id="overview">
+      <h2>How the pieces fit</h2>
+      <ul>
+        <li>One Docker container runs everything: this web page, the API, the MCP endpoint your AI clients talk to (<code>/mcp</code>), and the FluidSynth renderer with a General MIDI soundfont.</li>
+        <li>Songs, renders, exports and your templates live in one folder mounted at <code>/data</code> (on TrueNAS: a dataset).</li>
+        <li>An <strong>access token</strong> protects everything except <code>/healthz</code> and these help pages. It is generated on first start and saved as <code>token.txt</code> in the data folder.</li>
+        <li>The image is published by you to <code>ghcr.io/&lt;github-user&gt;/midimcp</code> with the scripts below. No paid services or GitHub Actions are used.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="truenas">
+      <h2>Install on TrueNAS SCALE (fresh)</h2>
+      <p>TrueNAS SCALE 24.10 or later. Menu names can shift slightly between releases.</p>
+      <ol class="steps">
+        <li><strong>Make a dataset.</strong> <em>Datasets</em> → your pool → <em>Add Dataset</em> → name <code>midimcp</code>, preset <strong>Apps</strong> → <em>Save</em>. It appears at <code>/mnt/&lt;pool&gt;/midimcp</code>.</li>
+        <li><strong>Install the app.</strong> <em>Apps</em> → <em>Discover Apps</em> → ⋮ → <em>Install via YAML</em> → name <code>midimcp</code> → paste this, changing only <code>YOUR_POOL</code>:
+          <div class="recipe"><pre>services:
+  midimcp:
+    image: ghcr.io/bgoldbeck/midimcp:latest
+    pull_policy: always
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "8765:8765"
+    volumes:
+      - /mnt/YOUR_POOL/midimcp:/data</pre></div>
+          <p class="hint">Port 8765 taken? Change only the left number, e.g. <code>"8770:8765"</code>.</p>
+        </li>
+        <li><strong>Get the token.</strong> <em>Apps</em> → <code>midimcp</code> → <em>Logs</em> (under "Generated access token"), or in <em>System → Shell</em>:
+          <div class="recipe"><pre>sudo cat /mnt/YOUR_POOL/midimcp/token.txt</pre></div>
+        </li>
+        <li><strong>Open the web UI</strong> at <code>http://&lt;nas-ip&gt;:8765/</code> and paste the token once.</li>
+        <li><strong>Check it</strong> from any PC:
+          <div class="recipe"><pre>curl http://NAS_IP:8765/healthz</pre></div>
+          <p class="hint">Expect <code>"status":"ok"</code> and <code>"audio":true</code>.</p>
+        </li>
+      </ol>
+      <p><strong>No published image yet?</strong> Use this YAML instead; TrueNAS builds the image from GitHub (a few minutes):</p>
+      <div class="recipe"><pre>services:
+  midimcp:
+    build:
+      context: https://github.com/bgoldbeck/MidiMCP.git#main
+    image: midimcp:latest
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "8765:8765"
+    volumes:
+      - /mnt/YOUR_POOL/midimcp:/data</pre></div>
+    </section>
+
+    <section class="card" id="docker">
+      <h2>Install with plain Docker (any Linux, Windows or Mac)</h2>
+      <p><strong>Option A: run the published image.</strong> Make a data folder the container user (UID 568) can write, then start it:</p>
+      <div class="recipe"><pre>mkdir -p ~/midimcp-data && sudo chown 568:568 ~/midimcp-data
+docker run -d --name midimcp --restart unless-stopped \
+  -p 8765:8765 -v ~/midimcp-data:/data \
+  ghcr.io/bgoldbeck/midimcp:latest
+docker exec midimcp cat /data/token.txt</pre></div>
+      <p class="hint">Docker Desktop on Windows/Mac: skip the <code>chown</code> and add <code>--user root</code> if the logs say the token file cannot be created; or run as yourself with <code>--user "$(id -u):$(id -g)"</code> on Linux.</p>
+      <p><strong>Option B: build from source with Docker Compose.</strong></p>
+      <div class="recipe"><pre>git clone https://github.com/bgoldbeck/MidiMCP.git
+cd MidiMCP
+docker compose up -d --build
+docker compose exec midimcp cat /data/token.txt</pre></div>
+      <p class="hint">Data goes to <code>./data</code>. Compose reads <code>PUID</code>, <code>PGID</code>, <code>MIDIMCP_DATA_PATH</code>, <code>MIDIMCP_PORT</code>, <code>MIDIMCP_TOKEN</code> and <code>MIDIMCP_LOG_LEVEL</code> from your environment or a <code>.env</code> file.</p>
+    </section>
+
+    <section class="card" id="settings">
+      <h2>Settings (environment variables)</h2>
+      <table class="tpl-table">
+        <thead><tr><th>Variable</th><th>Default</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>MIDIMCP_TOKEN</code></td><td>generated</td><td>Your own access token (at least 16 characters) instead of the generated <code>token.txt</code>.</td></tr>
+          <tr><td><code>MIDIMCP_DATA_DIR</code></td><td><code>/data</code></td><td>Where songs and renders are stored inside the container.</td></tr>
+          <tr><td><code>MIDIMCP_PORT</code></td><td><code>8765</code></td><td>Port inside the container. To change the outside port, change the left side of <code>ports:</code> instead.</td></tr>
+          <tr><td><code>MIDIMCP_LOG_LEVEL</code></td><td><code>INFO</code></td><td><code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code> or <code>ERROR</code>.</td></tr>
+          <tr><td><code>MIDIMCP_ALLOWED_HOSTS</code></td><td>(off)</td><td>Optional extra check of the Host/Origin on <code>/mcp</code>, e.g. <code>truenas.local:8765,192.168.1.140:8765</code>.</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">On TrueNAS add them to the YAML under the service: <code>environment: { MIDIMCP_TOKEN: "…" }</code>.</p>
+    </section>
+
+    <section class="card" id="clients">
+      <h2>Connect AI clients</h2>
+      <p>Endpoint <code>http://NAS_IP:8765/mcp</code> with header <code>Authorization: Bearer YOUR_TOKEN</code>. Replace both below.</p>
+      <p><strong>Claude Code</strong></p>
+      <div class="recipe"><pre>claude mcp add --transport http --scope user midimcp http://NAS_IP:8765/mcp --header "Authorization: Bearer YOUR_TOKEN"</pre></div>
+      <p class="hint">Stop the per-tool permission prompts by allowing <code>mcp__midimcp</code> in your Claude Code permissions.</p>
+      <p><strong>OpenAI Codex</strong>: add to <code>~/.codex/config.toml</code>, then set <code>MIDIMCP_TOKEN</code> in the shell Codex runs in.</p>
+      <div class="recipe"><pre>[mcp_servers.midimcp]
+url = "http://NAS_IP:8765/mcp"
+bearer_token_env_var = "MIDIMCP_TOKEN"</pre></div>
+      <p><strong>Google Antigravity</strong>: Agent panel → … → MCP Servers → Manage → View raw config:</p>
+      <div class="recipe"><pre>{
+  "mcpServers": {
+    "midimcp": {
+      "serverUrl": "http://NAS_IP:8765/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}</pre></div>
+      <p class="hint">Clients without HTTP MCP support can bridge with <code>npx -y mcp-remote http://NAS_IP:8765/mcp --allow-http --header "Authorization: Bearer YOUR_TOKEN"</code>. After an update that adds tools, restart the client so it sees them. Full guide: <code>docs/agents/connect-agents.md</code>.</p>
+    </section>
+
+    <section class="card" id="update">
+      <h2>Updating</h2>
+      <ul>
+        <li><strong>TrueNAS:</strong> after a new image is published, <em>Apps</em> → <code>midimcp</code> → <em>Update</em> (or <em>Restart</em>; <code>pull_policy: always</code> fetches the new <code>latest</code>). Or let the <a href="#autoupdate">nightly auto-update</a> do it.</li>
+        <li><strong>Plain Docker:</strong>
+          <div class="recipe"><pre>docker pull ghcr.io/bgoldbeck/midimcp:latest
+docker rm -f midimcp
+docker run -d --name midimcp --restart unless-stopped -p 8765:8765 -v ~/midimcp-data:/data ghcr.io/bgoldbeck/midimcp:latest</pre></div>
+        </li>
+        <li><strong>Compose:</strong> <code>git pull && docker compose up -d --build</code>.</li>
+      </ul>
+      <p class="hint">Songs are never touched by updates. Older song files load in newer versions; a newer song file is refused (not misread) by an older version.</p>
+    </section>
+
+    <section class="card" id="data">
+      <h2>Your data and backups</h2>
+      <table class="tpl-table">
+        <thead><tr><th>In the data folder</th><th>Contents</th><th>Safe to delete?</th></tr></thead>
+        <tbody>
+          <tr><td><code>projects/</code></td><td>Songs and every revision</td><td><strong>No</strong></td></tr>
+          <tr><td><code>templates/</code></td><td>Your own templates</td><td>Only if unneeded</td></tr>
+          <tr><td><code>trash/</code></td><td>Deleted songs (move back to <code>projects/</code> to restore)</td><td>Yes</td></tr>
+          <tr><td><code>token.txt</code></td><td>Access token</td><td>Delete + restart for a new one</td></tr>
+          <tr><td><code>library.sqlite</code></td><td>Search index</td><td>Yes (rebuilt)</td></tr>
+          <tr><td><code>renders/</code></td><td>Rendered audio cache</td><td>Yes</td></tr>
+          <tr><td><code>projects/*/exports/</code></td><td>Your downloads</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+      <p>Back up the whole folder. On TrueNAS use periodic snapshots of the <code>midimcp</code> dataset (<em>Data Protection → Periodic Snapshot Tasks</em>).</p>
+    </section>
+
+    <section class="card" id="dev">
+      <h2>For developers</h2>
+      <p>Python 3.11+. Audio tests need FluidSynth and the FluidR3 GM soundfont (<code>sudo apt install fluidsynth fluid-soundfont-gm lame</code>); browser tests need Node.js 20+ and Playwright with Chromium. Missing tools make those tests skip, not fail.</p>
+      <p><strong>Set up</strong> (Linux / macOS; on Windows use <code>py -m venv .venv</code> and <code>.venv\Scripts\Activate.ps1</code>):</p>
+      <div class="recipe"><pre>git clone https://github.com/bgoldbeck/MidiMCP.git
+cd MidiMCP
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"</pre></div>
+      <p><strong>Run the server locally</strong> (web UI at <code>http://localhost:8765/</code>):</p>
+      <div class="recipe"><pre>MIDIMCP_TOKEN=dev-token-0123456789 MIDIMCP_DATA_DIR=./data python -m midimcp serve</pre></div>
+      <p class="hint">For a client that only speaks stdio MCP: <code>python -m midimcp stdio</code>.</p>
+      <p><strong>Checks</strong> (all must pass before a pull request; there is no hosted CI):</p>
+      <div class="recipe"><pre>python -m ruff check .
+python -m ruff format --check .
+python -m pytest</pre></div>
+      <p><strong>Workflow:</strong> one branch per change named <code>feature/…</code>, <code>fix/…</code> or <code>docs/…</code>, starting with a pushed "Start:" commit; run the checks; open a pull request into <code>main</code> describing what changed and how it was tested; merge. Design notes live in <code>docs/reference/</code>, the feature order in <code>docs/ROADMAP.md</code>.</p>
+      <p><strong>Where things are:</strong> <code>src/midimcp/service/</code> (the only code that changes songs), <code>mcp_server.py</code> (AI tools), <code>web_api.py</code> + <code>web/</code> (this UI), <code>render.py</code> (FluidSynth), <code>templates.py</code> + <code>template_styles.py</code>, <code>music/</code> (theory, timing, expression), <code>tests/</code>, <code>web-tests/</code>.</p>
+    </section>
+
+    <section class="card" id="publish">
+      <h2>Building and publishing the image</h2>
+      <p>You publish to the free GitHub Container Registry from your own machine. You need a GitHub <strong>classic personal access token</strong> with only the <code>write:packages</code> scope (GitHub → Settings → Developer settings → Personal access tokens).</p>
+      <p><strong>Windows</strong> (Docker Desktop in Linux-containers mode + Git for Windows): double-click <code>scripts\publish-image.cmd</code>, or from a terminal:</p>
+      <div class="recipe"><pre>scripts\publish-image.cmd</pre></div>
+      <p class="hint">Options: <code>-NoPush</code> (build only), <code>-RefreshBase</code> (take Ubuntu security updates; uploads everything), <code>-Owner name</code>. Output is colored and saved to <code>publish-image.log</code>.</p>
+      <p><strong>Linux / TrueNAS shell:</strong></p>
+      <div class="recipe"><pre>sudo bash scripts/publish-image.sh</pre></div>
+      <p class="hint">Options via environment: <code>GHCR_OWNER=name</code>, <code>GHCR_TOKEN=…</code> (otherwise it asks; paste with Ctrl+Shift+V in a browser shell), <code>REFRESH_BASE=1</code>. The working tree must be clean so the image matches a commit.</p>
+      <p>Both scripts tag <code>latest</code>, the version and the commit, push, and log out again. <strong>First time only:</strong> make the package public at <code>github.com/users/&lt;you&gt;/packages/container/midimcp/settings</code> (Danger Zone → Change visibility) so the NAS can pull without logging in.</p>
+      <p><strong>Upload size:</strong> the image is split into layers that change at different rates, so a normal code change uploads about 1 MB. The soundfont and system packages (~450 MB) only upload again with <code>REFRESH_BASE=1</code> / <code>-RefreshBase</code> or when a system package is added. Add new system tools to the "extra tools" line in the <code>Dockerfile</code>, never to the lines above it.</p>
+    </section>
+
+    <section class="card" id="autoupdate">
+      <h2>Nightly auto-update on TrueNAS</h2>
+      <p>A cron job pulls the newest <code>main</code>, publishes the image if there is a new commit, and redeploys the app.</p>
+      <ol class="steps">
+        <li><strong>Clone the source</strong> next to the data (once):
+          <div class="recipe"><pre>sudo git clone https://github.com/bgoldbeck/MidiMCP.git /mnt/YOUR_POOL/midimcp/src</pre></div>
+        </li>
+        <li><strong>Save the GitHub token</strong> (input hidden; paste with Ctrl+Shift+V, then Enter), then lock it down:
+          <div class="recipe"><pre>sudo bash -c 'umask 077; read -r -s -p "GitHub token: " t; printf "%s\n" "$t" &gt; /mnt/YOUR_POOL/midimcp/ghcr-token; echo; wc -c &lt; /mnt/YOUR_POOL/midimcp/ghcr-token'
+sudo chmod 600 /mnt/YOUR_POOL/midimcp/ghcr-token</pre></div>
+        </li>
+        <li><strong>Test once by hand:</strong>
+          <div class="recipe"><pre>sudo bash /mnt/YOUR_POOL/midimcp/src/scripts/auto-update.sh</pre></div>
+        </li>
+        <li><strong>Schedule it:</strong> <em>System → Advanced Settings → Cron Jobs → Add</em>: command <code>bash /mnt/YOUR_POOL/midimcp/src/scripts/auto-update.sh</code>, user <code>root</code>, schedule <code>0 4 * * *</code>, hide standard output ✔, hide standard error ✘.</li>
+      </ol>
+      <p class="hint">Log: <code>/mnt/YOUR_POOL/midimcp/auto-update.log</code>. Force a rebuild: <code>sudo FORCE=1 bash …/auto-update.sh</code>. Security updates (full upload): <code>sudo REFRESH_BASE=1 FORCE=1 bash …/auto-update.sh</code>.</p>
+    </section>
+
+    <section class="card" id="trouble">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>Logs: "cannot read or create /data/token.txt"</strong>: the container user cannot write the data folder. <code>sudo chown -R 568:568 /mnt/YOUR_POOL/midimcp</code>, then restart.</li>
+        <li><strong><code>"audio": false</code> in <code>/healthz</code></strong>: the image lacks FluidSynth or the soundfont; republish it or use the build-from-GitHub YAML.</li>
+        <li><strong>Publish fails</strong>: read the end of the log (<code>sudo tail -n 30 /mnt/YOUR_POOL/midimcp/auto-update.log</code>). Common causes: expired token, token without <code>write:packages</code>, no internet, disk full on the NAS.</li>
+        <li><strong>Token file "must be mode 600"</strong>: <code>sudo chmod 600 /mnt/YOUR_POOL/midimcp/ghcr-token</code>.</li>
+        <li><strong>AI client can't connect</strong>: check <code>curl http://NAS_IP:8765/healthz</code> from the same PC, the token, and that the URL ends in <code>/mcp</code>.</li>
+        <li><strong>Copy buttons</strong> on plain <code>http://</code> addresses fall back to selecting the text: press Ctrl+C.</li>
+      </ul>
+      <p><strong>Security:</strong> don't port-forward 8765 to the internet. For access away from home use a VPN (e.g. Tailscale on TrueNAS).</p>
+    </section>
+  </main>
+</body>
+</html>
