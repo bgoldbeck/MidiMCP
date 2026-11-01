@@ -416,3 +416,26 @@ def test_stdio_transport(tmp_path: Path) -> None:
             assert projects == {"projects": []}
 
     run(go())
+
+
+def test_smoke_script_against_server(http_server: tuple[str, str], tmp_path: Path) -> None:
+    base, token = http_server
+    script = Path(__file__).resolve().parents[1] / "scripts" / "smoke_test.py"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--url",
+            base,
+            "--token",
+            token,
+            "--out",
+            str(tmp_path / "out"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "SMOKE TEST PASSED" in completed.stdout
+    assert (tmp_path / "out" / "midimcp-smoke-test-r5.mid").is_file()

@@ -1,0 +1,17 @@
+# Local build + run:   cp .env.example .env  (set MIDIMCP_TOKEN)  then  docker compose up -d --build
+# TrueNAS: see docs/deploy/truenas.md
+services:
+  midimcp:
+    build: .
+    image: midimcp:latest
+    container_name: midimcp
+    restart: unless-stopped
+    user: "${PUID:-568}:${PGID:-568}"
+    ports:
+      - "${MIDIMCP_PORT:-8765}:8765"
+    environment:
+      MIDIMCP_TOKEN: ${MIDIMCP_TOKEN:?Set MIDIMCP_TOKEN in .env (openssl rand -hex 32)}
+      MIDIMCP_DATA_DIR: /data
+      MIDIMCP_LOG_LEVEL: ${MIDIMCP_LOG_LEVEL:-INFO}
+    volumes:
+      - ${MIDIMCP_DATA_PATH:-./data}:/data

@@ -9,3 +9,5 @@ dist/
 *.sf3
 *.egg-info/
 build/
+.env
+data/
