@@ -14,7 +14,7 @@ Second change: the **composition service** (single mutation authority with locks
 
 | # | Feature | Branch | Delivers | Done when |
 |---|---|---|---|---|
-| 1 | ⬜ Python project scaffold + CI | `feature/python-project-scaffold-and-ci` | `pyproject.toml`, `src/` layout, pytest, ruff, GitHub Actions on Windows + Linux | CI green on empty test suite |
+| 1 | ✅ Python project scaffold + CI | `feature/python-project-scaffold-and-ci` | `pyproject.toml`, `src/` layout, pytest, ruff, GitHub Actions on Windows + Linux | CI green on empty test suite |
 | 2 | ⬜ Score schema, models, music math | `feature/score-schema-models-and-tick-math` | Pydantic models for score/brief, JSON Schema export, tick⇄bar⇄seconds math, tempo µs/quarter, key/mode pitch-class sets, enharmonic display spelling | G# Ionian ⇒ PC 8 / A♭ major; 6/8 @ 84 ⇒ 2,880 ticks/bar, 32 bars ≈ 68.57 s |
 | 3 | ⬜ Validator (hard + advisory) | `feature/score-validation-hard-errors-and-advisories` | Structural checks, brief constraints (no percussion, track limits, strict key), advisory warnings | Matrix rows for invalid notes, forbidden percussion, out-of-key advisory pass |
 | 4 | ⬜ Project store with immutable revisions | `feature/project-store-immutable-revisions-atomic-writes` | Disk layout, atomic writes, revision snapshots, SQLite index, `expectedRevision` conflicts, schema-version rejection | Save/reopen round-trip identical; stale revision ⇒ conflict, nothing written |
