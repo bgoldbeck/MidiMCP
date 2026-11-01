@@ -15,7 +15,7 @@ Routes::
     PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
     POST  /api/projects/{id}/tracks/{trackId}/reset {expectedRevision, fields?: instrument|volume|pan|mute}
     POST  /api/projects/{id}/restore            {expectedRevision, revision}
-    POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?}
+    POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?, loop?}
     GET   /api/jobs/{jobId}
     GET   /api/projects/{id}/exports
     POST  /api/projects/{id}/exports            {format: midi|wav|mp3|json, revision?, speed?, bitrate?}
@@ -288,6 +288,7 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             data = await _body(request)
             revision = _int(data, "revision")
             start_bar, end_bar = _int(data, "startBar"), _int(data, "endBar")
+            loop = bool(data.get("loop", False))
             speed = data.get("speed", 1.0)
             if isinstance(speed, bool) or not isinstance(speed, (int, float)):
                 raise ApiError("INVALID_FIELD", "speed must be a number")
@@ -308,6 +309,13 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
                 kwargs["start_tick"], kwargs["end_tick"] = bar_range(
                     start_bar, end_bar, t.ppq, t.meter.numerator, t.meter.denominator
                 )
+            if loop:
+                timeline = snap.score.timeline
+                if timeline.loop.enabled:
+                    lo, hi = timeline.loop.start_tick, timeline.loop.end_tick
+                else:
+                    lo, hi = 0, timeline.total_ticks
+                kwargs.update(start_tick=lo, end_tick=hi, tail=False)
             if not MIN_SPEED <= kwargs["speed"] <= MAX_SPEED:
                 raise ApiError("INVALID_FIELD", f"speed must be {MIN_SPEED}-{MAX_SPEED}")
             return ctx.jobs.submit(snap.score, **kwargs).to_dict()
