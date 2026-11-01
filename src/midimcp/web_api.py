@@ -27,13 +27,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
 from mcp.server.mcpserver import MCPServer
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response
+from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
@@ -48,6 +49,24 @@ from midimcp.views import export_project as export_project_files
 from midimcp.views import list_exports, media_type, project_view
 
 log = logging.getLogger(__name__)
+
+WEB_DIR = Path(__file__).resolve().parent / "web"
+_WEB_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+}
+SECURITY_HEADERS = {
+    # Everything is served from this origin; the token must never leak via Referer.
+    "Content-Security-Policy": (
+        "default-src 'self'; connect-src 'self' ws: wss:; media-src 'self' blob:; "
+        "img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+    ),
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "no-cache",
+}
 
 _STATUS_BY_CODE = {
     "PROJECT_NOT_FOUND": 404,
@@ -120,6 +139,22 @@ def _int(data: dict, key: str, *, required: bool = False) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ApiError("INVALID_FIELD", f"{key} must be an integer")
     return value
+
+
+def register_web_ui(server: MCPServer) -> None:
+    """Serve the static browser UI (public: it holds no data; the API needs the token)."""
+
+    @server.custom_route("/", methods=["GET"])
+    async def index(request: Request) -> Response:
+        return RedirectResponse("/ui/", status_code=307)
+
+    @server.custom_route("/ui/{path:path}", methods=["GET"])
+    async def ui(request: Request) -> Response:
+        name = request.path_params["path"] or "index.html"
+        path = (WEB_DIR / name).resolve()
+        if path.parent != WEB_DIR or path.suffix not in _WEB_TYPES or not path.is_file():
+            return JSONResponse({"code": "NOT_FOUND", "message": "no such file"}, status_code=404)
+        return FileResponse(path, media_type=_WEB_TYPES[path.suffix], headers=SECURITY_HEADERS)
 
 
 def register_api(server: MCPServer, ctx: AppContext) -> None:

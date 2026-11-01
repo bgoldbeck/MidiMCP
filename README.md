@@ -63,3 +63,9 @@ MIDIMCP_TOKEN=dev-token-0123456789 MIDIMCP_DATA_DIR=./data python -m midimcp ser
 ```
 
 There is no hosted CI (GitHub Actions is intentionally not used). Run the lint and test commands above before every pull request.
+
+Browser UI tests need Node.js 20+ and, for the end-to-end run, Playwright with Chromium (skipped when missing):
+
+```bash
+node --test web-tests/*.test.mjs
+```

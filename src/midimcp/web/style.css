@@ -1,0 +1,31 @@
+:root {
+  --bg: #17130f; --panel: #221c16; --ink: #efe4cf; --muted: #b5a68b;
+  --accent: #d9a441; --accent-ink: #1d1508; --danger: #e0715a; --ok: #8fbf6a; --line: #3a3026;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+.topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.topbar h1 { font: 600 20px Georgia, serif; margin: 0; letter-spacing: .5px; color: var(--accent); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 14px 16px; }
+h2 { margin: 0 0 8px; font: 600 17px Georgia, serif; }
+label { color: var(--muted); }
+select, input[type=password], input[type=text], input[type=search] {
+  background: #120f0b; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: inherit;
+}
+button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 6px; padding: 7px 12px; font: 600 14px system-ui; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+button.link { background: none; color: var(--muted); text-decoration: underline; padding: 0; margin-left: auto; }
+.inline { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; }
+.buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#seek { width: 100%; margin: 14px 0 6px; accent-color: var(--accent); }
+.readout { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; color: var(--muted); }
+.readout strong { color: var(--ink); }
+.pill { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+.pill.busy { color: var(--accent); border-color: var(--accent); }
+.meta, .hint { color: var(--muted); margin: 6px 0 0; font-size: 13px; }
+.error { color: var(--danger); margin: 14px 16px; }
+code { color: var(--accent); }
+form { display: flex; gap: 8px; flex-wrap: wrap; }

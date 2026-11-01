@@ -29,11 +29,12 @@ from midimcp import __version__
 from midimcp.config import ConfigError, Settings
 from midimcp.context import AppContext
 from midimcp.mcp_server import build_mcp_server
-from midimcp.web_api import EventsDispatcher, register_api
+from midimcp.web_api import EventsDispatcher, register_api, register_web_ui
 
 log = logging.getLogger("midimcp")
 
-PUBLIC_PATHS = frozenset({"/healthz"})
+PUBLIC_PATHS = frozenset({"/healthz", "/"})
+PUBLIC_PREFIXES = ("/ui/",)
 
 
 class BearerAuthMiddleware:
@@ -47,7 +48,7 @@ class BearerAuthMiddleware:
         if scope["type"] not in {"http", "websocket"} or self.token is None:
             await self.app(scope, receive, send)
             return
-        if scope["path"] in PUBLIC_PATHS:
+        if scope["path"] in PUBLIC_PATHS or scope["path"].startswith(PUBLIC_PREFIXES):
             await self.app(scope, receive, send)
             return
         request = HTTPConnection(scope)
@@ -85,6 +86,7 @@ def build_app(settings: Settings, ctx: AppContext | None = None) -> ASGIApp:
         )
 
     register_api(server, ctx)
+    register_web_ui(server)
 
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=bool(settings.allowed_hosts),
