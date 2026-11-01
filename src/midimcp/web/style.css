@@ -118,3 +118,4 @@ button.danger:hover { background: #3a1d17; }
 .overview .lane-swatch.c5 { fill: #6ad9c4; }
 .overview .lane-swatch.c6 { fill: #d9d06a; }
 .overview .lane-swatch.c7 { fill: #d96ab0; }
+.topbar .logo { display: block; }

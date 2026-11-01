@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MidiMCP">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2119"/>
+      <stop offset="1" stop-color="#140f0b"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0c060"/>
+      <stop offset="1" stop-color="#b9822a"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#d9a441" stroke-opacity=".55" stroke-width="10"/>
+  <!-- lute: pear-shaped body, rose, bridge, neck and bent-back pegbox -->
+  <g transform="rotate(-38 256 256)">
+    <path d="M256 196c74 0 118 58 118 128 0 78-54 128-118 128s-118-50-118-128c0-70 44-128 118-128z" fill="url(#wood)"/>
+    <path d="M256 196c74 0 118 58 118 128 0 78-54 128-118 128s-118-50-118-128c0-70 44-128 118-128z" fill="none" stroke="#7a4f14" stroke-width="6"/>
+    <circle cx="256" cy="318" r="30" fill="#2a1d0f"/>
+    <circle cx="256" cy="318" r="30" fill="none" stroke="#7a4f14" stroke-width="4"/>
+    <circle cx="256" cy="318" r="18" fill="none" stroke="#c9913a" stroke-width="3" stroke-dasharray="5 4"/>
+    <rect x="226" y="398" width="60" height="12" rx="4" fill="#5a3a10"/>
+    <rect x="240" y="72" width="32" height="130" rx="6" fill="#8a5a1c"/>
+    <path d="M240 76l-6-42h44l-6 42z" fill="#6e4512"/>
+    <g fill="#f3dfb0">
+      <circle cx="232" cy="46" r="5"/><circle cx="232" cy="62" r="5"/>
+      <circle cx="280" cy="46" r="5"/><circle cx="280" cy="62" r="5"/>
+    </g>
+    <g stroke="#f3dfb0" stroke-width="2" opacity=".85">
+      <line x1="249" y1="80" x2="249" y2="404"/><line x1="256" y1="80" x2="256" y2="404"/><line x1="263" y1="80" x2="263" y2="404"/>
+    </g>
+  </g>
+  <!-- retro pixel notes rising from the strings -->
+  <g fill="#8fbf6a">
+    <rect x="352" y="112" width="24" height="24"/><rect x="368" y="64" width="8" height="56"/><rect x="376" y="64" width="20" height="8"/>
+  </g>
+  <g fill="#6aa6d9">
+    <rect x="404" y="176" width="20" height="20"/><rect x="416" y="136" width="8" height="46"/>
+  </g>
+  <g fill="#d9a441" opacity=".9">
+    <rect x="96" y="392" width="14" height="14"/><rect x="72" y="420" width="10" height="10"/><rect x="124" y="424" width="10" height="10"/>
+  </g>
+</svg>
