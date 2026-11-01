@@ -72,8 +72,14 @@ unset GHCR_TOKEN
 printf '%s\n' "$commit" > "$MARKER"
 log "published $short"
 
+redeploy() {
+  # TrueNAS 25.10+ uses `call -j`; older releases use `call -job`.
+  midclt call -j app.redeploy "$APP_NAME" >>"$LOG_FILE" 2>&1 \
+    || midclt call -job app.redeploy "$APP_NAME" >>"$LOG_FILE" 2>&1
+}
+
 if command -v midclt >/dev/null 2>&1; then
-  if midclt call -job app.redeploy "$APP_NAME" >>"$LOG_FILE" 2>&1; then
+  if redeploy; then
     log "redeployed TrueNAS app '$APP_NAME'"
   else
     fail "published, but redeploying app '$APP_NAME' failed; press Update/Restart in Apps (see $LOG_FILE)"
