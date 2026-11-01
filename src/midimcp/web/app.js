@@ -520,7 +520,7 @@ function setupPlayer() {
   $("play").onclick = () => player.play().catch(showError);
   $("pause").onclick = () => player.pause();
   $("stop").onclick = () => player.stop();
-  $("loop").onchange = (e) => player.setLoop(e.target.checked);
+  $("loop").onchange = (e) => player.setLoop(e.target.checked).catch(() => {});
   $("volume").oninput = (e) => player.setVolume(Number(e.target.value));
   $("speed").replaceChildren(...SPEEDS.map((s) => el("option", { value: s, selected: s === 1, text: `${Math.round(s * 100)}%` })));
   $("speed").onchange = (e) => player.setSpeed(Number(e.target.value)).catch(() => {});

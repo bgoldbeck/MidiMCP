@@ -115,6 +115,7 @@ def validate_score(
     issues += _check_brief_references(score, brief)
     issues += _check_tracks(score, brief, strict_key)
     issues += _check_loop_harmony(score)
+    issues += _check_loop_seam(score)
     issues += _check_musicality(score)
     return ValidationReport(issues=issues, summary=_summary(score))
 
@@ -674,6 +675,74 @@ def _check_melody(score: Score, melody: Track) -> list[Issue]:
                     f"{masked} of {len(tops)} melody notes have another part sounding above them; "
                     "keep accompaniment below the melody",
                     track_id=melody.id,
+                )
+            )
+    return issues
+
+
+# ---------------------------------------------------------------- loop seam
+
+LOOP_JUMP_SEMITONES: Final = 7
+LOOP_ENERGY_RATIO: Final = 3.0
+
+
+def _check_loop_seam(score: Score) -> list[Issue]:
+    """How the loop end joins the loop start: cut-off notes, melodic jump, energy jump."""
+    loop = score.timeline.loop
+    if not loop.enabled or loop.end_tick <= loop.start_tick:
+        return []
+    issues: list[Issue] = []
+    start, end = loop.start_tick, loop.end_tick
+    cut = [
+        (t, n)
+        for t in score.tracks
+        if not t.mute and not t.is_percussion
+        for n in t.notes
+        if n.start_tick < end < n.end_tick
+    ]
+    if cut:
+        track, note = cut[0]
+        issues.append(
+            _warning(
+                "LOOP_NOTE_CUT",
+                f"{len(cut)} note(s) ring past the loop end and will be cut off when the "
+                "loop restarts; end them at the loop point",
+                track_id=track.id,
+                note_id=note.id,
+                tick=note.start_tick,
+            )
+        )
+    melody = _melody_track(score)
+    if melody is not None:
+        before = [n for n in melody.notes if start <= n.start_tick < end]
+        if before:
+            last = max(before, key=lambda n: (n.start_tick, n.pitch))
+            first = min(before, key=lambda n: (n.start_tick, -n.pitch))
+            jump = abs(first.pitch - last.pitch)
+            if jump > LOOP_JUMP_SEMITONES:
+                issues.append(
+                    _warning(
+                        "LOOP_MELODY_JUMP",
+                        f"melody jumps {jump} semitones from the loop's last note back to its "
+                        "first; approach the opening note by step or a small leap",
+                        track_id=melody.id,
+                        tick=last.start_tick,
+                    )
+                )
+    t = score.timeline
+    bar = ticks_per_bar(t.ppq, t.meter.numerator, t.meter.denominator)
+    if end - start >= 2 * bar:
+        audible = [n for tr in score.tracks if not tr.mute for n in tr.notes]
+        first_bar = sum(1 for n in audible if start <= n.start_tick < start + bar)
+        last_bar = sum(1 for n in audible if end - bar <= n.start_tick < end)
+        low, high = sorted((first_bar, last_bar))
+        if high >= 6 and (low == 0 or high / low > LOOP_ENERGY_RATIO):
+            issues.append(
+                _warning(
+                    "LOOP_ENERGY_JUMP",
+                    f"the loop's last bar has {last_bar} notes and its first bar {first_bar}; "
+                    "match the density so the restart is not abrupt",
+                    tick=end - bar,
                 )
             )
     return issues

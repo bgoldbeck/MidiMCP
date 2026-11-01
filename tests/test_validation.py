@@ -29,7 +29,8 @@ def add_track(score_dict: dict, tid: str, notes: list[dict], **extra: object) ->
 def test_example_score_is_clean(score_dict: dict) -> None:
     report = validate_score(build(score_dict))
     assert report.ok
-    assert report.issues == []
+    # The sketch fixture leaves the loop's last bar empty; only that seam advice fires.
+    assert [i.code for i in report.issues] == ["LOOP_ENERGY_JUMP"]
     assert report.summary["bars"] == 8
     assert report.summary["noteCount"] == 7
     assert report.summary["durationSeconds"] == pytest.approx(17.143, abs=0.001)
@@ -227,7 +228,7 @@ def test_empty_track_warning(score_dict: dict) -> None:
 def test_loop_harmony(score_dict: dict) -> None:
     score_dict["harmony"][1]["romanNumeral"] = "V"
     score_dict["harmony"][1]["symbol"] = "Eb"
-    assert validate_score(build(score_dict)).issues == []
+    assert "LOOP_HARMONY_UNRESOLVED" not in validate_score(build(score_dict)).codes()
     score_dict["harmony"][1]["romanNumeral"] = "ii"
     score_dict["harmony"][1]["symbol"] = "Bbm"
     assert "LOOP_HARMONY_UNRESOLVED" in validate_score(build(score_dict)).codes(Severity.WARNING)
@@ -337,3 +338,49 @@ def test_melody_inferred_when_no_roles(score_dict: dict) -> None:
     score_dict["timeline"]["totalTicks"] = 64 * BAR
     score_dict["timeline"]["loop"]["enabled"] = False
     assert "MONOTONOUS_MELODY" in validate_score(build(score_dict)).codes()
+
+
+def loop_score(score_dict: dict, melody: list[dict], extra: list[dict] | None = None) -> Score:
+    score_dict["tracks"] = [
+        {
+            "id": "mel",
+            "name": "Melody",
+            "instrumentId": "retro.wooden_flute",
+            "role": "melody",
+            "notes": melody,
+        }
+    ]
+    if extra:
+        score_dict["tracks"].append(
+            {
+                "id": "acc",
+                "name": "Harp",
+                "instrumentId": "retro.harp",
+                "role": "accompaniment",
+                "notes": extra,
+            }
+        )
+    score_dict["harmony"] = []
+    return build(score_dict)  # loop covers bars 1-8 (0 .. 8*BAR)
+
+
+def test_loop_seam_clean(score_dict: dict) -> None:
+    melody = [note(f"m{b}", 68 + (b % 3), b * BAR, BAR - 240, 70 + b) for b in range(8)]
+    codes = validate_score(loop_score(score_dict, melody)).codes()
+    assert not {"LOOP_NOTE_CUT", "LOOP_MELODY_JUMP", "LOOP_ENERGY_JUMP"} & codes
+
+
+def test_loop_note_cut_and_melody_jump(score_dict: dict) -> None:
+    melody = [note("first", 60, 0, 960)] + [note(f"m{b}", 72, b * BAR, 960) for b in range(1, 7)]
+    melody.append(note("last", 79, 8 * BAR - 480, 400))
+    score_dict["timeline"]["totalTicks"] = 9 * BAR
+    extra = [note("ring", 55, 8 * BAR - 960, 1920)]  # sounds across the loop end
+    codes = validate_score(loop_score(score_dict, melody, extra)).codes(Severity.WARNING)
+    assert {"LOOP_NOTE_CUT", "LOOP_MELODY_JUMP"} <= codes
+
+
+def test_loop_energy_jump(score_dict: dict) -> None:
+    melody = [note(f"m{b}", 68, b * BAR, 960) for b in range(7)]
+    busy_last_bar = [note(f"x{i}", 70 + (i % 3), 7 * BAR + i * 240, 200) for i in range(12)]
+    codes = validate_score(loop_score(score_dict, melody + busy_last_bar)).codes()
+    assert "LOOP_ENERGY_JUMP" in codes

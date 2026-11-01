@@ -326,3 +326,17 @@ def test_reset_track_endpoint(client: TestClient) -> None:
         f"/api/projects/{PID}/tracks/flute/reset", headers=AUTH, json={"expectedRevision": 1}
     )
     assert stale.status_code == 409
+
+
+@pytest.mark.skipif(not HAS_AUDIO, reason="fluidsynth and FluidR3 required")
+def test_loop_render_endpoint(client: TestClient) -> None:
+    job = client.post(f"/api/projects/{PID}/render", headers=AUTH, json={"loop": True}).json()
+    for _ in range(200):
+        if job["status"] in {"completed", "failed"}:
+            break
+        time.sleep(0.05)
+        job = client.get(f"/api/jobs/{job['jobId']}", headers=AUTH).json()
+    assert job["status"] == "completed", job
+    assert (job["render"]["startTick"], job["render"]["endTick"]) == (0, 4 * 2880)
+    # 4 bars of 6/8 at 84 BPM = 8.571 s, and no decay tail.
+    assert job["render"]["durationSeconds"] == pytest.approx(8.571, abs=0.01)

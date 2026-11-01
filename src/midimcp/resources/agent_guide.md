@@ -31,6 +31,16 @@ Every mutating tool needs `expected_revision` = the latest revision you received
 
 `harmony` has one entry per bar, e.g. `{"startTick": 23040, "symbol": "Em", "romanNumeral": "vi"}`. Roman numerals count on the tonic's major scale: in minor/modal keys `bIII`, `bVI`, `bVII` are the flattened degrees; upper case = major chord, lower case = minor, `°` = diminished.
 
+## Making it loop well (game music)
+
+The web UI's Loop plays exactly the loop region back-to-back, the way a game engine will. Check the seam:
+
+- **Harmony:** the last bar should lead back to the first chord (V→I, bVII→i, IV→I). Templates already end their last section that way.
+- **Melody:** the last melody note should sit a step or small leap from the first one; avoid ending high and restarting low.
+- **No cut-offs:** end every note at or before the loop end; a note ringing past it is chopped on restart.
+- **Same energy:** the last bar should be about as busy as the first. A thinned-out "ending" makes the loop hiccup.
+- `validate_project` reports `LOOP_HARMONY_UNRESOLVED`, `LOOP_MELODY_JUMP`, `LOOP_NOTE_CUT` and `LOOP_ENERGY_JUMP`.
+
 ## Musical guidance (late-1990s RPG MIDI character)
 
 - 4- or 8-bar phrases with a memorable motif; develop it (A / B / A′) instead of repeating it unchanged.

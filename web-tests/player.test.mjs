@@ -48,9 +48,12 @@ class FakeApi {
     return { jobId: `j${this.renders.length}`, status: "queued" };
   }
   async waitForJob(job) {
-    const speed = this.renders.at(-1).speed;
-    return { ...job, status: "completed", downloadPath: `/api/renders/${job.jobId}-${speed}.wav`,
-             render: { speed } };
+    const request = this.renders.at(-1);
+    const startTick = request.loop ? 2880 : 0;
+    const endTick = request.loop ? 4 * 2880 : 23040;
+    return { ...job, status: "completed",
+             downloadPath: `/api/renders/${job.jobId}-${request.speed}${request.loop ? "-loop" : ""}.wav`,
+             render: { speed: request.speed, startTick, endTick } };
   }
   url(path) { return `${path}?token=${this.token}`; }
 }
@@ -115,18 +118,34 @@ test("play, pause, stop and seek", async () => {
   assert.equal(player.tick, 0);
 });
 
-test("loop wraps from loop end to loop start while playing", async () => {
-  const { player, audio, runFrame } = makePlayer();
+test("loop mode plays a seamless loop render offset to the loop start", async () => {
+  const { player, audio, api } = makePlayer();
   await player.load(view({ loop: true }));
-  assert.equal(player.loop.enabled, true);
-  await player.play();
-  audio.currentTime = player.map.tickToSeconds(4 * 2880 + 10);
-  runFrame();
+  assert.deepEqual(api.renders.at(-1), { id: "lanterns", revision: 3, speed: 1, loop: true });
+  assert.equal(audio.loop, true);
+  assert.match(audio.src, /-loop\.wav/);
+  assert.equal(player.tick, 2880); // audio time 0 = loop start (bar 2)
+  audio.currentTime = player.map.tickToSeconds(2880);
+  assert.equal(player.tick, 2 * 2880);
+  player.seekBar(1); // before the loop: clamped to the loop start
   assert.equal(player.tick, 2880);
-  player.setLoop(false);
-  audio.currentTime = player.map.tickToSeconds(4 * 2880 + 10);
-  runFrame();
-  assert.equal(player.tick, 4 * 2880 + 10);
+  player.seekBar(8); // after the loop: clamped inside it
+  assert.equal(player.tick, 4 * 2880 - 1);
+});
+
+test("toggling the loop re-renders and keeps position and play state", async () => {
+  const { player, audio, api } = makePlayer();
+  await player.load(view({ loop: true }));
+  await player.play();
+  player.seekBar(3);
+  await player.setLoop(false);
+  assert.equal(api.renders.at(-1).loop, undefined);
+  assert.equal(audio.loop, false);
+  assert.equal(player.tick, 2 * 2880);
+  assert.equal(player.state, "playing");
+  await player.setLoop(true);
+  assert.equal(api.renders.at(-1).loop, true);
+  assert.equal(player.tick, 2 * 2880);
 });
 
 test("ended without loop returns to ready at the start", async () => {
@@ -136,7 +155,7 @@ test("ended without loop returns to ready at the start", async () => {
   audio.currentTime = 30;
   audio.dispatchEvent(new Event("ended"));
   assert.equal(player.state, "ready");
-  assert.equal(audio.currentTime, 0);
+  assert.equal(player.tick, 0);
 });
 
 test("speed change re-renders and keeps the musical position and play state", async () => {

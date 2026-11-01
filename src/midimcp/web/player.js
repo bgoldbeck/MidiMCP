@@ -73,27 +73,38 @@ export class Player extends EventTarget {
     audio.addEventListener("ended", () => this._onEnded());
   }
 
-  /** Load a project view (from api.project) and render it at the current speed. */
-  async load(view, { speed = this.speed, keepTick = 0, autoplay = false } = {}) {
+  /**
+   * Load a project view (from api.project) and render it at the current speed.
+   * With the loop on, the server renders exactly the loop section (no decay tail) and the
+   * browser repeats it gaplessly - what a game engine would do. Otherwise the whole song.
+   */
+  async load(view, { speed = this.speed, keepTick = null, autoplay = false, loop = null } = {}) {
     const loadToken = ++this._loadToken;
     this.pause();
+    const sameSong = this.view && this.view.projectId === view.projectId;
     this.view = view;
     this.speed = speed;
     this.map = new TimeMap(view.timing, speed);
-    const loop = view.score.timeline.loop;
-    this.loop = loop.enabled
-      ? { enabled: true, startTick: loop.startTick, endTick: loop.endTick }
-      : { enabled: false, startTick: 0, endTick: view.timing.totalTicks };
+    const songLoop = view.score.timeline.loop;
+    const enabled = loop ?? (sameSong ? this.loop.enabled : songLoop.enabled);
+    this.loop = songLoop.enabled
+      ? { enabled, startTick: songLoop.startTick, endTick: songLoop.endTick }
+      : { enabled, startTick: 0, endTick: view.timing.totalTicks };
+    this.offsetTick = 0;
     this._setState("loading");
     this._emit("loading", { speed });
     try {
-      const job = await this.api.render(view.projectId, { revision: view.revision, speed });
+      const options = { revision: view.revision, speed };
+      if (this.loop.enabled) options.loop = true;
+      const job = await this.api.render(view.projectId, options);
       const done = await this.api.waitForJob(job);
       if (loadToken !== this._loadToken) return; // superseded by a newer load
+      this.audio.loop = this.loop.enabled;
       this.audio.src = this.api.url(done.downloadPath);
       this.render = done.render;
+      this.offsetTick = done.render?.startTick ?? 0;
       await whenMetadata(this.audio);
-      this.audio.currentTime = this.map.tickToSeconds(keepTick);
+      this.seekTick(keepTick ?? (this.loop.enabled ? this.loop.startTick : 0));
       this._setState("ready");
       this._emit("loaded", { render: done.render });
       this._emitPosition();
@@ -119,7 +130,9 @@ export class Player extends EventTarget {
   }
 
   get tick() {
-    return this.map ? this.map.secondsToTick(this.audio.currentTime) : 0;
+    if (!this.map) return 0;
+    const tick = (this.offsetTick || 0) + this.map.secondsToTick(this.audio.currentTime);
+    return this.loop.enabled ? Math.min(tick, this.loop.endTick) : tick;
   }
 
   async play() {
@@ -140,7 +153,7 @@ export class Player extends EventTarget {
   stop() {
     if (!["playing", "paused", "ready"].includes(this.state)) return;
     this.audio.pause();
-    this.audio.currentTime = this.map.tickToSeconds(this.loop.enabled ? this.loop.startTick : 0);
+    this.seekTick(this.loop.enabled ? this.loop.startTick : 0);
     this._setState("ready");
     this._stopFrames();
     this._emitPosition();
@@ -148,8 +161,11 @@ export class Player extends EventTarget {
 
   seekTick(tick) {
     if (!this.map) return;
-    const clamped = Math.min(Math.max(0, tick), this.map.totalTicks);
-    this.audio.currentTime = this.map.tickToSeconds(clamped);
+    let target = Math.min(Math.max(0, tick), this.map.totalTicks);
+    if (this.loop.enabled) {
+      target = Math.min(Math.max(target, this.loop.startTick), this.loop.endTick - 1);
+    }
+    this.audio.currentTime = this.map.tickToSeconds(target - (this.offsetTick || 0));
     this._emitPosition();
   }
 
@@ -157,8 +173,15 @@ export class Player extends EventTarget {
     this.seekTick(this.map.barToTick(bar));
   }
 
-  setLoop(enabled) {
-    this.loop.enabled = Boolean(enabled);
+  /** Switch between the seamless loop render and the full song (re-renders, keeps position). */
+  async setLoop(enabled) {
+    enabled = Boolean(enabled);
+    if (!this.view || enabled === this.loop.enabled) {
+      this.loop.enabled = enabled;
+      return;
+    }
+    const wasPlaying = this.state === "playing";
+    await this.load(this.view, { speed: this.speed, keepTick: this.tick, autoplay: wasPlaying, loop: enabled });
   }
 
   setVolume(volume) {
@@ -169,8 +192,7 @@ export class Player extends EventTarget {
   async setSpeed(speed) {
     if (!this.view || speed === this.speed) return;
     const wasPlaying = this.state === "playing";
-    const tick = this.tick;
-    await this.load(this.view, { speed, keepTick: tick, autoplay: wasPlaying });
+    await this.load(this.view, { speed, keepTick: this.tick, autoplay: wasPlaying });
   }
 
   /** Called every animation frame while playing: emits position, enforces the loop. */
@@ -178,9 +200,6 @@ export class Player extends EventTarget {
     this._stopFrames();
     const step = () => {
       if (this.state !== "playing") return;
-      if (this.loop.enabled && this.tick >= this.loop.endTick) {
-        this.audio.currentTime = this.map.tickToSeconds(this.loop.startTick);
-      }
       this._emitPosition();
       this._frame = this.raf(step);
     };
@@ -188,14 +207,10 @@ export class Player extends EventTarget {
   }
 
   _onEnded() {
-    if (this.loop.enabled && this.state === "playing") {
-      this.audio.currentTime = this.map.tickToSeconds(this.loop.startTick);
-      this.audio.play();
-      return;
-    }
+    // With the loop on, audio.loop repeats the loop render and "ended" never fires.
     this._setState("ready");
     this._stopFrames();
-    this.audio.currentTime = 0;
+    this.seekTick(0);
     this._emitPosition();
   }
 

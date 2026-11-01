@@ -202,7 +202,11 @@ class Renderer:
         start_tick: int | None = None,
         end_tick: int | None = None,
         include_muted: bool = False,
+        tail: bool | None = None,
     ) -> RenderResult:
+        """Render ``[start_tick, end_tick)``. ``tail`` adds the reverb/decay tail after the
+        end; by default only when rendering to the end of the song. Loop renders pass
+        ``tail=False`` so the file repeats seamlessly."""
         if not MIN_SPEED <= speed <= MAX_SPEED:
             raise RenderError(f"speed must be between {MIN_SPEED} and {MAX_SPEED}")
         total = score.timeline.total_ticks
@@ -216,17 +220,27 @@ class Renderer:
         if not any(t.notes for t in score.tracks if include_muted or not t.mute):
             raise RenderBlocked("nothing to render: no audible notes")
 
+        with_tail = (end == total) if tail is None else tail
         bank = self.registry.require(score.sound_profile.bank_id, score.sound_profile.bank_sha256)
-        key = self._cache_key(score, bank.sha256 or "", speed, start, end, include_muted)
+        key = self._cache_key(score, bank.sha256 or "", speed, start, end, include_muted, with_tail)
         target = self.cache_dir / f"{key}.wav"
         with self._lock:
             if target.is_file():
                 return self._result(target, key, score, speed, start, end, cached=True)
-            self._render_to(target, score, Path(bank.path), speed, start, end, include_muted)
+            self._render_to(
+                target, score, Path(bank.path), speed, start, end, include_muted, with_tail
+            )
             return self._result(target, key, score, speed, start, end, cached=False)
 
     def _cache_key(
-        self, score: Score, bank_sha: str, speed: float, start: int, end: int, muted: bool
+        self,
+        score: Score,
+        bank_sha: str,
+        speed: float,
+        start: int,
+        end: int,
+        muted: bool,
+        tail: bool,
     ) -> str:
         content = score.to_json_dict()
         content.pop("revision", None)
@@ -239,6 +253,7 @@ class Renderer:
             "speed": repr(float(speed)),
             "range": [start, end],
             "includeMuted": muted,
+            "tail": tail,
             "format": "wav-s16",
         }
         return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()[:40]
@@ -252,6 +267,7 @@ class Renderer:
         start: int,
         end: int,
         include_muted: bool,
+        tail: bool,
     ) -> None:
         t = score.timeline
         scaled = score.model_copy(
@@ -297,7 +313,7 @@ class Renderer:
                 detail = (completed.stderr or completed.stdout).strip()[-500:]
                 raise RenderError(f"FluidSynth failed (exit {completed.returncode}): {detail}")
             sliced = work_dir / "out.wav"
-            self._slice(raw_path, sliced, score, speed, start, end, tail=end == t.total_ticks)
+            self._slice(raw_path, sliced, score, speed, start, end, tail=tail)
             os.replace(sliced, target)
 
     def _slice(

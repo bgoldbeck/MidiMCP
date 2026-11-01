@@ -130,3 +130,19 @@ def test_region_render(tmp_path: Path, score: Score) -> None:
     assert region.frames == tick_to_frame(4 * 2880, score, 1.0, 48_000) - tick_to_frame(
         2880, score, 1.0, 48_000
     )
+
+
+@needs_fluidsynth
+def test_loop_render_has_exact_length_and_no_tail(tmp_path: Path, score: Score) -> None:
+    renderer = Renderer(SoundbankRegistry(tmp_path / "data"), tmp_path / "r")
+    loop = score.timeline.loop
+    seamless = renderer.render(
+        score, start_tick=loop.start_tick, end_tick=loop.end_tick, tail=False
+    )
+    expected = tick_to_frame(loop.end_tick, score, 1.0, 48_000) - tick_to_frame(
+        loop.start_tick, score, 1.0, 48_000
+    )
+    assert seamless.frames == expected  # exactly the loop: repeats with no gap
+    with_tail = renderer.render(score)
+    assert with_tail.frames == expected + 2 * 48_000
+    assert seamless.cache_key != with_tail.cache_key
