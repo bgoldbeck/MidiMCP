@@ -139,7 +139,7 @@ def test_tools_and_resources_listed(ctx: AppContext) -> None:
                 "validate_project",
                 "list_instruments",
             } <= names
-            assert not {"unlock", "lock", "register_soundbank"} & names
+            assert not {"unlock", "lock", "register_soundbank", "delete_project"} & names
             guide = await client.read_resource("midimcp://guide")
             assert "expected_revision" in guide.contents[0].text
             caps = await call(client, "list_capabilities")

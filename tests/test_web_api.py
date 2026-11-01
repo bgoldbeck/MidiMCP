@@ -261,3 +261,21 @@ def test_update_track_allow_instrument(client: TestClient, ctx: AppContext) -> N
     )
     assert ok.status_code == 200 and ok.json()["revision"] == 5
     assert ctx.store.load(PID).brief.allowed_instrument_ids == ["retro.wooden_flute", "retro.harp"]
+
+
+def test_delete_project(client: TestClient, ctx: AppContext) -> None:
+    assert client.delete(f"/api/projects/{PID}", params={"token": TOKEN}).status_code == 401
+    with client.websocket_connect(f"/api/events?token={TOKEN}") as ws:
+        assert ws.receive_json()["type"] == "hello"
+        deadline = time.time() + 5
+        while ctx.events.subscriber_count == 0 and time.time() < deadline:
+            time.sleep(0.01)
+        response = client.delete(f"/api/projects/{PID}", headers=AUTH)
+        assert response.status_code == 200, response.text
+        assert response.json()["trash"].startswith(f"{PID}--")
+        event = ws.receive_json()
+        assert (event["type"], event["projectId"]) == ("project.deleted", PID)
+    assert client.get(f"/api/projects/{PID}", headers=AUTH).status_code == 404
+    assert client.get("/api/projects", headers=AUTH).json()["projects"] == []
+    assert client.delete(f"/api/projects/{PID}", headers=AUTH).status_code == 404
+    assert any((ctx.data_dir / "trash").iterdir())

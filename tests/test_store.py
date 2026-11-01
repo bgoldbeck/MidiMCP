@@ -336,3 +336,22 @@ def test_index_rebuilds_when_missing_or_corrupt(store: ProjectStore, score: Scor
     assert [(p.project_id, p.head_revision) for p in listing] == [("lanterns-of-the-vale", 2)]
     db.write_bytes(b"this is not sqlite")
     assert [p.project_id for p in store.list_projects()] == ["lanterns-of-the-vale"]
+
+
+def test_delete_moves_project_to_trash(store: ProjectStore, score: Score) -> None:
+    store.create_project(score)
+    seen: list[str] = []
+    store.add_delete_listener(seen.append)
+    trash = store.delete_project("lanterns-of-the-vale")
+    assert trash.parent == store.root / "trash"
+    assert trash.name.startswith("lanterns-of-the-vale--")
+    assert (trash / "revisions" / "000001.json").is_file()
+    assert not store.exists("lanterns-of-the-vale")
+    assert store.list_projects() == []
+    assert seen == ["lanterns-of-the-vale"]
+    with pytest.raises(ProjectNotFound):
+        store.delete_project("lanterns-of-the-vale")
+    # The ID is free again, and a second delete gets its own trash folder.
+    store.create_project(score)
+    second = store.delete_project("lanterns-of-the-vale")
+    assert second != trash and second.is_dir()

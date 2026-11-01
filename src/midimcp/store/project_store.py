@@ -137,6 +137,7 @@ class ProjectStore:
         self._locks: dict[str, threading.RLock] = {}
         self._locks_guard = threading.Lock()
         self._listeners: list[Callable[[CommitResult], None]] = []
+        self._delete_listeners: list[Callable[[str], None]] = []
 
     def add_listener(self, listener: Callable[[CommitResult], None]) -> None:
         """Call ``listener(result)`` after every new revision (not for idempotent replays)."""
@@ -273,6 +274,37 @@ class ProjectStore:
                     report = validate_score(snapshot.score, snapshot.brief)
                     return CommitResult(snapshot, report, replayed=True)
         return None
+
+    def delete_project(self, project_id: str) -> Path:
+        """Move a project to ``<root>/trash/`` (recoverable) and drop it from the index.
+
+        Returns the trash folder. Restore by moving that folder back into
+        ``projects/`` under its original ID.
+        """
+        project_dir = self._existing_dir(project_id)
+        trash = self.root / "trash"
+        trash.mkdir(exist_ok=True)
+        with self._lock(project_id):
+            stamp = _iso(self._clock()).replace(":", "-").replace(".", "-")
+            target = trash / f"{project_id}--{stamp}"
+            n = 2
+            while target.exists():
+                target = trash / f"{project_id}--{stamp}-{n}"
+                n += 1
+            project_dir.rename(target)
+        try:
+            self.index.delete(project_id)
+        except sqlite3.Error:
+            log.warning("library index delete failed; it will be rebuilt", exc_info=True)
+        for listener in list(self._delete_listeners):
+            try:
+                listener(project_id)
+            except Exception:
+                log.warning("delete listener failed", exc_info=True)
+        return target
+
+    def add_delete_listener(self, listener: Callable[[str], None]) -> None:
+        self._delete_listeners.append(listener)
 
     def load_revision(self, project_id: str, revision: int) -> ProjectSnapshot:
         project_dir = self._existing_dir(project_id)

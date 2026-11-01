@@ -41,6 +41,7 @@
       <section id="welcome" class="card">
         <h2>Choose a song</h2>
         <p class="hint">Pick a song on the left. New songs and edits made by Claude, Codex or Antigravity show up live.</p>
+        <p id="welcome-note" class="meta" hidden></p>
       </section>
 
       <div id="song" hidden>
@@ -50,7 +51,10 @@
             <p id="song-meta" class="meta"></p>
             <p id="last-change" class="meta"></p>
           </div>
-          <span id="revision" class="pill"></span>
+          <div class="head-actions">
+            <span id="revision" class="pill"></span>
+            <button id="delete-song" class="danger">Delete song</button>
+          </div>
         </section>
 
         <p id="update-banner" class="banner" hidden>

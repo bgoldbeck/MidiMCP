@@ -10,6 +10,7 @@ Routes::
     GET   /api/instruments?bankId=&search=
     GET   /api/projects?search=
     GET   /api/projects/{id}?revision=
+    DELETE /api/projects/{id}                  (moves the song to <data>/trash)
     GET   /api/projects/{id}/revisions
     PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
     POST  /api/projects/{id}/restore            {expectedRevision, revision}
@@ -189,9 +190,16 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
         search = request.query_params.get("search") or None
         return await _call(lambda: {"projects": service.list_projects(search)})
 
-    @route("/api/projects/{project_id}", ["GET"])
+    @route("/api/projects/{project_id}", ["GET", "DELETE"])
     async def project(request: Request) -> Response:
         project_id = request.path_params["project_id"]
+        if request.method == "DELETE":
+
+            def delete() -> dict:
+                trash = ctx.store.delete_project(project_id)
+                return {"ok": True, "projectId": project_id, "trash": trash.name}
+
+            return await _call(delete)
         raw = request.query_params.get("revision")
         try:
             revision = int(raw) if raw else None
