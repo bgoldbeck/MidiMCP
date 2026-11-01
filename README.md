@@ -32,4 +32,4 @@ python -m ruff check .
 python -m ruff format --check .
 ```
 
-CI runs lint and tests on Windows and Linux for every pull request.
+There is no hosted CI (GitHub Actions is intentionally not used). Run the lint and test commands above before every pull request.
