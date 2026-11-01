@@ -20,6 +20,14 @@ SCORE_SCHEMA_VERSION: Final = "1.0.0"
 SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({SCORE_SCHEMA_VERSION})
 
 ID_PATTERN: Final = r"^[a-z0-9][a-z0-9_-]{0,63}$"
+TRACK_ROLES: Final = (
+    "melody",
+    "countermelody",
+    "accompaniment",
+    "bass",
+    "pad",
+    "percussion",
+)
 INSTRUMENT_ID_PATTERN: Final = r"^[a-z0-9][a-z0-9_.-]{0,127}$"
 _ID_RE: Final = re.compile(ID_PATTERN)
 
@@ -67,6 +75,7 @@ class Track(ScoreModel):
     gain_db: Annotated[float, Field(ge=-60.0, le=12.0)] = 0.0
     pan: Annotated[float, Field(ge=-1.0, le=1.0)] = 0.0
     mute: bool = False
+    role: Literal[TRACK_ROLES] | None = None  # type: ignore[valid-type]
     notes: list[Note] = Field(default_factory=list)
 
 
