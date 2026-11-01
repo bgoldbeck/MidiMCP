@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidiMCP</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>MidiMCP</h1>
+    <span id="connection" class="pill">offline</span>
+    <button id="logout" class="link" hidden>Forget token</button>
+  </header>
+
+  <section id="login" class="card" hidden>
+    <h2>Connect</h2>
+    <p>Paste your MidiMCP access token (from the app logs or <code>token.txt</code> in the dataset).</p>
+    <form id="login-form">
+      <input id="token-input" type="password" autocomplete="off" placeholder="access token" required>
+      <button type="submit">Connect</button>
+    </form>
+    <p id="login-error" class="error" hidden></p>
+  </section>
+
+  <main id="app" hidden>
+    <section class="card">
+      <label>Song
+        <select id="project-select"><option value="">Loading…</option></select>
+      </label>
+      <p id="song-meta" class="meta"></p>
+    </section>
+
+    <section class="card transport" aria-label="Transport">
+      <div class="buttons">
+        <button id="play" disabled title="Play">▶ Play</button>
+        <button id="pause" disabled title="Pause">⏸ Pause</button>
+        <button id="stop" disabled title="Stop">⏹ Stop</button>
+        <label class="inline"><input id="loop" type="checkbox"> Loop</label>
+        <label class="inline">Speed
+          <select id="speed"></select>
+        </label>
+        <label class="inline">Volume
+          <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8">
+        </label>
+      </div>
+      <input id="seek" type="range" min="1" max="1" step="1" value="1" disabled aria-label="Seek (bar)">
+      <div class="readout">
+        <span>Bar <strong id="bar">–</strong> · Beat <strong id="beat">–</strong></span>
+        <span><strong id="time">0:00</strong> / <span id="duration">0:00</span></span>
+        <span id="player-state" class="pill">empty</span>
+      </div>
+      <p class="hint">Speed is preview-only: the song is re-rendered at the new tempo, pitch stays the same.</p>
+    </section>
+
+    <p id="error" class="error" hidden></p>
+  </main>
+  <audio id="audio" preload="auto"></audio>
+</body>
+</html>
