@@ -9,7 +9,9 @@ description = "AI-controlled retro MIDI composer for 1990s-style fantasy RPG mus
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
-dependencies = []
+dependencies = [
+  "pydantic>=2.7,<3",
+]
 
 [project.optional-dependencies]
 dev = [
