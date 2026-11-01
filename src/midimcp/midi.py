@@ -110,11 +110,14 @@ def _absolute_to_delta(events: list[tuple[int, mido.Message | mido.MetaMessage]]
     return track
 
 
-def score_to_midi(score: Score, *, include_muted: bool = False) -> mido.MidiFile:
+def score_to_midi(
+    score: Score, *, include_muted: bool = False, tail_ticks: int = 0
+) -> mido.MidiFile:
+    """Build a MIDI file. ``tail_ticks`` extends every track's end (render decay tail)."""
     tracks = [t for t in score.tracks if include_muted or not t.mute]
     channels = _assign_channels(score, tracks)
     timeline = score.timeline
-    end = timeline.total_ticks
+    end = timeline.total_ticks + max(0, tail_ticks)
 
     conductor: list[tuple[int, mido.MetaMessage]] = [
         (0, mido.MetaMessage("track_name", name=score.metadata.title)),
@@ -210,9 +213,9 @@ def score_to_midi(score: Score, *, include_muted: bool = False) -> mido.MidiFile
     return midi
 
 
-def export_midi_bytes(score: Score, *, include_muted: bool = False) -> bytes:
+def export_midi_bytes(score: Score, *, include_muted: bool = False, tail_ticks: int = 0) -> bytes:
     buffer = io.BytesIO()
-    score_to_midi(score, include_muted=include_muted).save(file=buffer)
+    score_to_midi(score, include_muted=include_muted, tail_ticks=tail_ticks).save(file=buffer)
     return buffer.getvalue()
 
 
