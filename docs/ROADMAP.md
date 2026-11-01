@@ -19,7 +19,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 3 | ✅ Validator (hard + advisory) | `feature/score-validation-hard-errors-and-advisories` | Structural checks, brief constraints (no percussion, track limits, strict key), advisory warnings | Matrix rows for invalid notes, forbidden percussion, out-of-key advisory pass |
 | 4 | ✅ Project store with immutable revisions | `feature/project-store-immutable-revisions-atomic-writes` | Disk layout, atomic writes, revision snapshots, SQLite index, `expectedRevision` conflicts, schema-version rejection | Save/reopen round-trip identical; stale revision ⇒ conflict, nothing written |
 | 5 | ✅ Composition service (mutation authority) | `feature/composition-service-locks-and-range-replace` | create/add_track/update_track/replace_notes/edit_notes/set_arrangement, locks, idempotent `operationId`, change summaries, undo/restore-as-new-head | Edit bars 9–16 leaves everything else untouched; locked edit rejected atomically |
-| 6 | 🟨 MIDI export + import | `feature/type1-midi-export-and-reimport` | Mido Type 1 export (tempo/meter/key meta, named tracks, programs, ch-10 rule), reimport | Export→reimport preserves timing/pitch/program; no-percussion song has zero ch-10 events |
+| 6 | ✅ MIDI export + import | `feature/type1-midi-export-and-reimport` | Mido Type 1 export (tempo/meter/key meta, named tracks, programs, ch-10 rule), reimport | Export→reimport preserves timing/pitch/program; no-percussion song has zero ch-10 events |
 
 ## Phase 2 — Sound, the AI bridge, and the container (first end-to-end loop)
 

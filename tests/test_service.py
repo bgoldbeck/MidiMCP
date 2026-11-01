@@ -325,7 +325,7 @@ def test_create_project_idempotent(service: CompositionService) -> None:
 def test_brief_rules_enforced(song: CompositionService) -> None:
     with pytest.raises(ValidationFailed) as caught:
         song.add_track(
-            PID, expected_revision=5, instrument_id="retro.drums", name="Drums", is_percussion=True
+            PID, expected_revision=5, instrument_id="gm.drums", name="Drums", is_percussion=True
         )
     assert "PERCUSSION_FORBIDDEN" in caught.value.report.codes()
 

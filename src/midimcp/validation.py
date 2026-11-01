@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Final
 
+from midimcp.instruments import UnknownInstrument, resolve_instrument
 from midimcp.model.brief import Brief
 from midimcp.model.score import Note, Score, Track
 from midimcp.music.theory import scale_pitch_classes
@@ -309,6 +310,26 @@ def _check_tracks(score: Score, brief: Brief, strict_key: bool) -> list[Issue]:
                     track_id=tid,
                 )
             )
+        try:
+            instrument = resolve_instrument(track.instrument_id)
+        except UnknownInstrument:
+            issues.append(
+                _error(
+                    "UNKNOWN_INSTRUMENT",
+                    f"instrument {track.instrument_id!r} is not known; use list_instruments",
+                    track_id=tid,
+                )
+            )
+        else:
+            if instrument.is_percussion != track.is_percussion:
+                issues.append(
+                    _error(
+                        "PERCUSSION_INSTRUMENT_MISMATCH",
+                        f"track {tid!r}: isPercussion must be "
+                        f"{str(instrument.is_percussion).lower()} for {track.instrument_id!r}",
+                        track_id=tid,
+                    )
+                )
         if allowed is not None and track.instrument_id not in allowed:
             issues.append(
                 _error(
