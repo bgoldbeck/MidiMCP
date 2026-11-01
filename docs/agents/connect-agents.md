@@ -58,6 +58,15 @@ Agent panel → **…** → **MCP Servers** → **Manage MCP Servers** → **Vie
 }
 ```
 
+### Antigravity says a tool "is not enabled" or invents tool names
+
+If the agent calls tools that don't exist (`song_create`, `template_use`, ...) or probes URLs like `/tools`, it never received MidiMCP's tool list:
+
+1. **Manage MCP Servers**: `midimcp` must show its tools (about 26) with no error. Enable every tool toggle, then press **Refresh**.
+2. Start a **new conversation** (tool lists are loaded when a conversation starts) and say "use the midimcp MCP tools".
+3. Server older than this fix? Its tool schemas used JSON Schema features Antigravity rejects (`$ref`, `anyOf`). Update the app (auto-update or Apps → Update); the server now advertises only portable schemas.
+4. Still nothing: check the URL from the PC Antigravity runs on with `curl http://NAS_IP:8765/healthz`, and that the config uses `serverUrl` (not `url`) and the right token.
+
 ## Fallback for clients without HTTP MCP support
 
 Bridge stdio to HTTP with `mcp-remote` (needs Node.js):

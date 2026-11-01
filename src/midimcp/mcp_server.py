@@ -22,6 +22,7 @@ from midimcp import __version__
 from midimcp.context import AppContext
 from midimcp.encode import EncodeError
 from midimcp.instruments import UnknownInstrument
+from midimcp.mcp_schema import make_tools_portable, portable_schema
 from midimcp.midi import MidiExportError
 from midimcp.model.brief import Brief
 from midimcp.model.schema import brief_json_schema, score_json_schema
@@ -861,4 +862,8 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             ctx, project_id, format, revision=revision, speed=speed, bitrate=bitrate
         )
 
+    # Advertise portable schemas so Gemini-based clients (Antigravity) accept every tool.
+    brief = portable_schema(Brief.model_json_schema(by_alias=True))["properties"]
+    editable = {k: v for k, v in brief.items() if k not in {"locks", "schemaVersion"}}
+    make_tools_portable(server, {"update_brief": {"changes": editable}})
     return server
