@@ -92,6 +92,10 @@ class LibraryIndex:
                 ],
             )
 
+    def delete(self, project_id: str) -> None:
+        with closing(self._connect()) as conn, conn:
+            conn.execute("DELETE FROM projects WHERE project_id = ?", (project_id,))
+
     def project_ids(self) -> set[str]:
         with closing(self._connect()) as conn:
             return {row[0] for row in conn.execute("SELECT project_id FROM projects")}

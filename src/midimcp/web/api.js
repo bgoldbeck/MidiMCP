@@ -68,6 +68,7 @@ export class Api {
     const q = revision ? `?revision=${revision}` : "";
     return this.request("GET", `/api/projects/${encodeURIComponent(id)}${q}`);
   }
+  deleteProject(id) { return this.request("DELETE", `/api/projects/${encodeURIComponent(id)}`); }
   revisions(id) { return this.request("GET", `/api/projects/${encodeURIComponent(id)}/revisions`); }
   instruments(search = "") {
     const q = search ? `?search=${encodeURIComponent(search)}` : "";

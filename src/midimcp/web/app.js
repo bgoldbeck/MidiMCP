@@ -108,6 +108,11 @@ function openEvents() {
 }
 
 function onServerEvent(event) {
+  if (event.type === "project.deleted") {
+    refreshLibrary().catch(() => {});
+    if (state.view?.projectId === event.projectId) closeSong("This song was deleted (it is in the trash folder on the NAS).");
+    return;
+  }
   if (event.type !== "project.updated") return;
   refreshLibrary().catch(() => {});
   const view = state.view;
@@ -150,6 +155,7 @@ async function openProject(projectId, { notice = "" } = {}) {
   state.pendingUpdate = null;
   $("update-banner").hidden = true;
   $("welcome").hidden = true;
+  $("welcome-note").hidden = true;
   $("song").hidden = false;
   renderHeader(view, notice);
   renderOverview(view);
@@ -333,6 +339,31 @@ function renderChecks(view) {
   $("check-summary").textContent = `${errors.length} errors · ${warnings.length} warnings (advice, not mandatory)`;
 }
 
+function closeSong(note = "") {
+  state.player.unload();
+  state.view = null;
+  $("song").hidden = true;
+  $("welcome").hidden = false;
+  $("welcome-note").textContent = note;
+  $("welcome-note").hidden = !note;
+  for (const item of $("project-list").children) item.classList.remove("active");
+}
+
+async function deleteSong() {
+  const view = state.view;
+  if (!view) return;
+  const title = view.score.metadata.title;
+  const ok = window.confirm(`Delete "${title}"?\n\nIt is moved to the trash folder on the NAS (data/trash) and can be recovered from there.`);
+  if (!ok) return;
+  try {
+    await state.api.deleteProject(view.projectId);
+    closeSong(`Deleted "${title}". It is in the trash folder on the NAS if you need it back.`);
+    await refreshLibrary();
+  } catch (error) {
+    showError(error);
+  }
+}
+
 // ------------------------------------------------------------------ exports
 
 async function refreshExports() {
@@ -409,6 +440,7 @@ async function enterApp(status) {
   $("update-reload").onclick = () => openProject(state.view.projectId, {
     notice: state.pendingUpdate ? `Updated to revision ${state.pendingUpdate.revision}: ${state.pendingUpdate.summary}` : "",
   }).catch(showError);
+  $("delete-song").onclick = () => deleteSong();
   for (const button of document.querySelectorAll("[data-export]")) {
     button.onclick = () => createExport(button.dataset.export);
   }
