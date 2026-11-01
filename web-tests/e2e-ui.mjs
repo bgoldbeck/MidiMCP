@@ -120,6 +120,24 @@ try {
   if (listed < 3 || await page.isHidden("#export-list-title")) throw new Error(`earlier downloads list shows ${listed}`);
   step(`Download song button saved ${songDownload.suggestedFilename()}; ${listed} earlier downloads listed`);
 
+  // Ready-made Antigravity config: download it and connect with exactly what it says.
+  const [configDownload] = await Promise.all([page.waitForEvent("download"), page.click("#config-antigravity")]);
+  if (configDownload.suggestedFilename() !== "mcp_config.json") throw new Error(`config named ${configDownload.suggestedFilename()}`);
+  const config = JSON.parse(await readFile(await configDownload.path(), "utf8")).mcpServers.midimcp;
+  if (config.serverUrl !== `${base}/mcp`) throw new Error(`serverUrl ${config.serverUrl}`);
+  const handshake = await fetch(config.serverUrl, {
+    method: "POST",
+    headers: { ...config.headers, "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "e2e", version: "1" } } }),
+  });
+  const reply = await handshake.text();
+  if (handshake.status !== 200 || !reply.includes('"midimcp"')) throw new Error(`MCP handshake ${handshake.status}: ${reply.slice(0, 200)}`);
+  const [toolsDownload] = await Promise.all([page.waitForEvent("download"), page.click("#config-tools")]);
+  const toolList = JSON.parse(await readFile(await toolsDownload.path(), "utf8"));
+  if (!toolList.tools.some((t) => t.name === "replace_notes" && t.inputSchema)) throw new Error("tool schema download broken");
+  step(`Antigravity config downloaded and connects; tool list has ${toolList.tools.length} tools with schemas`);
+
   // Favorites and collections: star, make a collection, file the song, rename, filter, delete.
   const songRow = "#project-list li[data-project=browser-test-song]";
   await page.click("#favorite-song");
@@ -243,6 +261,9 @@ try {
   await page.click("a.tab[href='setup.html']");
   await page.waitForURL(/setup\.html$/);
   const setupRecipes = await page.locator(".recipe .copy").count();
+  const configHref = await page.getAttribute("a[data-mcp-config=antigravity]", "href");
+  if (!configHref || !configHref.includes("client=antigravity&token=")) throw new Error(`setup config link ${configHref}`);
+  if (await page.isVisible("[data-needs-login]")) throw new Error("login note shown while logged in");
   if (setupRecipes < 15) throw new Error(`setup page shows only ${setupRecipes} copyable commands`);
   await page.click("a.tab[href='help.html']");
   await page.waitForURL(/help\.html$/);

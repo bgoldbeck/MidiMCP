@@ -122,7 +122,16 @@ docker compose exec midimcp cat /data/token.txt</pre></div>
 
     <section class="card" id="clients">
       <h2>Connect AI clients</h2>
-      <p>Endpoint <code>http://NAS_IP:8765/mcp</code> with header <code>Authorization: Bearer YOUR_TOKEN</code>. Replace both below.</p>
+      <p><strong>Easiest:</strong> download a config with your NAS address and token already filled in. These files contain your token, so keep them private.</p>
+      <div class="buttons config-downloads">
+        <a class="button" data-mcp-config="antigravity" download="mcp_config.json">⬇ Antigravity (mcp_config.json)</a>
+        <a class="button secondary" data-mcp-config="claude" download=".mcp.json">⬇ Claude Code (.mcp.json)</a>
+        <a class="button secondary" data-mcp-config="codex" download="config.toml">⬇ Codex (config.toml)</a>
+        <a class="button secondary" data-mcp-config="tools" download="midimcp-tools.json">⬇ Tool list with schemas (JSON)</a>
+      </div>
+      <p class="hint" data-needs-login>These buttons work after you log in once on the <a href="./">Songs page</a> in this browser.</p>
+      <p><strong>Antigravity</strong> wants an <code>mcp_config.json</code>: Agent panel → … → MCP Servers → Manage MCP Servers → View raw config, paste the downloaded file's contents (or save it as <code>~/.gemini/antigravity/mcp_config.json</code>), then refresh. If you already have servers there, copy only the <code>"midimcp"</code> entry into your <code>"mcpServers"</code>.</p>
+      <p>By hand: endpoint <code>http://NAS_IP:8765/mcp</code> with header <code>Authorization: Bearer YOUR_TOKEN</code>. Replace both below.</p>
       <p><strong>Claude Code</strong></p>
       <div class="recipe"><pre>claude mcp add --transport http --scope user midimcp http://NAS_IP:8765/mcp --header "Authorization: Bearer YOUR_TOKEN"</pre></div>
       <p class="hint">Stop the per-tool permission prompts by allowing <code>mcp__midimcp</code> in your Claude Code permissions.</p>
