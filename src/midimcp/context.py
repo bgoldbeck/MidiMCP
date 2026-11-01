@@ -5,17 +5,19 @@ from __future__ import annotations
 import re
 import threading
 import uuid
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from midimcp.events import EventBus
 from midimcp.model.score import Score
 from midimcp.render import Renderer, RenderError, RenderResult
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
-from midimcp.store import ProjectStore
+from midimcp.store import CommitResult, ProjectStore
 
 _SAFE_FILE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$")
 
@@ -55,8 +57,14 @@ class RenderJob:
 class RenderJobs:
     """Single-worker render queue (FluidSynth renders are CPU-bound)."""
 
-    def __init__(self, renderer: Renderer, max_jobs: int = 200) -> None:
+    def __init__(
+        self,
+        renderer: Renderer,
+        max_jobs: int = 200,
+        on_event: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
         self.renderer = renderer
+        self._on_event = on_event
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="render")
         self._jobs: dict[str, RenderJob] = {}
         self._lock = threading.Lock()
@@ -66,6 +74,11 @@ class RenderJobs:
         job_id = uuid.uuid4().hex[:16]
         future = self._executor.submit(self.renderer.render, score, **kwargs)
         job = RenderJob(job_id, score.project_id, score.revision, future)
+        if self._on_event is not None:
+            self._on_event({"type": "render.queued", "job": job.to_dict()})
+            future.add_done_callback(
+                lambda _f: self._on_event({"type": "render.finished", "job": job.to_dict()})
+            )
         with self._lock:
             self._jobs[job_id] = job
             while len(self._jobs) > self._max_jobs:
@@ -100,7 +113,23 @@ class AppContext:
         self.service = CompositionService(self.store)
         self.registry = SoundbankRegistry(self.data_dir)
         self.renderer = renderer or Renderer(self.registry, self.data_dir / "renders")
-        self.jobs = RenderJobs(self.renderer)
+        self.events = EventBus()
+        self.jobs = RenderJobs(self.renderer, on_event=self.events.publish)
+        self.store.add_listener(self._on_commit)
+
+    def _on_commit(self, result: CommitResult) -> None:
+        info = result.snapshot.info
+        self.events.publish(
+            {
+                "type": "project.updated",
+                "projectId": result.snapshot.project_id,
+                "revision": result.revision,
+                "title": result.snapshot.score.metadata.title,
+                "author": info.author,
+                "summary": info.summary,
+                "createdAt": info.created_at,
+            }
+        )
 
     def render_file(self, name: str) -> Path | None:
         if not _SAFE_FILE.match(name) or not name.endswith(".wav"):

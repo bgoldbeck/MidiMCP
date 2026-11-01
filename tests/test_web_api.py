@@ -1,0 +1,243 @@
+from __future__ import annotations
+
+import shutil
+import time
+from pathlib import Path
+
+import pytest
+from starlette.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
+
+from midimcp.config import Settings
+from midimcp.context import AppContext
+from midimcp.server import build_app
+from midimcp.service import CompositionService
+from midimcp.soundbanks import SoundbankRegistry
+from tests.sf2 import full_gm_presets, write_fake_sf2
+
+TOKEN = "web-api-test-token-0123456789"
+AUTH = {"Authorization": f"Bearer {TOKEN}"}
+PID = "lanterns"
+HAS_AUDIO = (
+    shutil.which("fluidsynth") is not None
+    and Path("/usr/share/sounds/sf2/FluidR3_GM.sf2").is_file()
+)
+
+
+@pytest.fixture
+def ctx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AppContext:
+    if not HAS_AUDIO:
+        system = tmp_path / "system"
+        system.mkdir()
+        write_fake_sf2(system / "FluidR3_GM.sf2", full_gm_presets())
+        monkeypatch.setattr(
+            "midimcp.context.SoundbankRegistry",
+            lambda data: SoundbankRegistry(data, system_dir=system),
+        )
+    context = AppContext(tmp_path / "data")
+    service = CompositionService(context.store)
+    service.create_project(
+        title="Lanterns", tempo_bpm=84, meter=(6, 8), tonic="G#", bars=4, project_id=PID
+    )
+    service.add_track(
+        PID, expected_revision=1, instrument_id="retro.wooden_flute", name="Flute", track_id="flute"
+    )
+    notes = [
+        {"pitch": 68 + (i % 3) * 2, "startTick": i * 1440, "durationTicks": 1320, "velocity": 76}
+        for i in range(8)
+    ]
+    service.replace_notes(
+        PID, expected_revision=2, track_id="flute", start_tick=0, end_tick=4 * 2880, notes=notes
+    )
+    return context
+
+
+@pytest.fixture
+def client(ctx: AppContext, tmp_path: Path):
+    settings = Settings(data_dir=tmp_path / "data", token=TOKEN, host="127.0.0.1")
+    with TestClient(build_app(settings, ctx), base_url="http://nas.local:8765") as c:
+        yield c
+
+
+def test_requires_token(client: TestClient) -> None:
+    assert client.get("/api/projects").status_code == 401
+    assert client.get("/api/projects", params={"token": TOKEN}).status_code == 200
+    assert (
+        client.patch("/api/projects/x/tracks/y", params={"token": TOKEN}, json={}).status_code
+        == 401
+    )  # query token only for GET/WS
+
+
+def test_status_and_instruments(client: TestClient) -> None:
+    status = client.get("/api/status", headers=AUTH).json()
+    assert status["mcpPath"] == "/mcp" and status["banks"][0]["id"] == "fluidr3-gm"
+    found = client.get("/api/instruments", params={"search": "harp"}, headers=AUTH).json()
+    assert [i["id"] for i in found["instruments"]] == ["retro.harp", "retro.harpsichord"]
+
+
+def test_list_and_get_project(client: TestClient) -> None:
+    listing = client.get("/api/projects", headers=AUTH).json()
+    assert [p["projectId"] for p in listing["projects"]] == [PID]
+    view = client.get(f"/api/projects/{PID}", headers=AUTH).json()
+    assert view["revision"] == 3
+    assert view["timing"]["ticksPerBar"] == 2880 and view["timing"]["bars"] == 4
+    assert view["validation"]["ok"] is True
+    assert view["lastChange"]["author"] == "agent"
+    old = client.get(f"/api/projects/{PID}", params={"revision": 1}, headers=AUTH).json()
+    assert old["score"]["tracks"] == []
+    assert client.get("/api/projects/nope", headers=AUTH).status_code == 404
+    assert (
+        client.get(f"/api/projects/{PID}", params={"revision": "x"}, headers=AUTH).status_code
+        == 400
+    )
+    history = client.get(f"/api/projects/{PID}/revisions", headers=AUTH).json()
+    assert [r["revision"] for r in history["revisions"]] == [1, 2, 3]
+
+
+def test_update_track_and_conflicts(client: TestClient, ctx: AppContext) -> None:
+    ok = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 3, "instrumentId": "retro.recorder", "mute": True},
+    )
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["revision"] == 4
+    track = ctx.store.load(PID).score.track("flute")
+    assert (track.instrument_id, track.mute) == ("retro.recorder", True)
+    stale = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 3, "mute": False},
+    )
+    assert stale.status_code == 409 and stale.json()["currentRevision"] == 4
+    assert (
+        client.patch(
+            f"/api/projects/{PID}/tracks/flute", headers=AUTH, json={"mute": False}
+        ).status_code
+        == 400
+    )
+    assert (
+        client.patch(
+            f"/api/projects/{PID}/tracks/nope",
+            headers=AUTH,
+            json={"expectedRevision": 4, "mute": False},
+        ).status_code
+        == 404
+    )
+    bad = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 4, "instrumentId": "retro.kazoo"},
+    )
+    assert bad.status_code == 400 and bad.json()["code"] == "UNKNOWN_INSTRUMENT"
+    assert (
+        client.patch(
+            f"/api/projects/{PID}/tracks/flute", headers=AUTH, content=b"not json"
+        ).status_code
+        == 400
+    )
+
+
+def test_locked_track_returns_423(client: TestClient, ctx: AppContext) -> None:
+    CompositionService(ctx.store).lock(PID, expected_revision=3, track_id="flute")
+    locked = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 4, "gainDb": -6},
+    )
+    assert locked.status_code == 423 and locked.json()["code"] == "LOCKED"
+
+
+def test_restore(client: TestClient, ctx: AppContext) -> None:
+    result = client.post(
+        f"/api/projects/{PID}/restore", headers=AUTH, json={"expectedRevision": 3, "revision": 2}
+    )
+    assert result.status_code == 200 and result.json()["revision"] == 4
+    assert ctx.store.load(PID).score.track("flute").notes == []
+
+
+def test_exports_list_and_download(client: TestClient) -> None:
+    made = client.post(f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "midi"})
+    assert made.status_code == 200, made.text
+    entry = made.json()
+    assert entry["file"] == "lanterns-r3.mid" and entry["mediaType"] == "audio/midi"
+    listed = client.get(f"/api/projects/{PID}/exports", headers=AUTH).json()["exports"]
+    assert [e["file"] for e in listed] == ["lanterns-r3.mid"]
+    download = client.get(entry["downloadPath"], params={"token": TOKEN})
+    assert download.status_code == 200 and download.content.startswith(b"MThd")
+    assert (
+        client.post(
+            f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "mp3"}
+        ).status_code
+        == 400
+    )
+    assert (
+        client.get(
+            f"/api/projects/{PID}/exports/../../token.txt", params={"token": TOKEN}
+        ).status_code
+        in {400, 404}  # path is normalised away; never serves the file
+    )
+
+
+def test_render_argument_errors(client: TestClient) -> None:
+    assert (
+        client.post(f"/api/projects/{PID}/render", headers=AUTH, json={"speed": 9}).status_code
+        == 400
+    )
+    assert (
+        client.post(f"/api/projects/{PID}/render", headers=AUTH, json={"startBar": 1}).status_code
+        == 400
+    )
+    assert client.get("/api/jobs/missing", headers=AUTH).status_code == 404
+
+
+def test_websocket_requires_token_and_same_origin(client: TestClient) -> None:
+    with pytest.raises(WebSocketDisconnect), client.websocket_connect("/api/events") as ws:
+        ws.receive_json()
+    with (
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect(
+            f"/api/events?token={TOKEN}", headers={"origin": "http://evil.example"}
+        ) as ws,
+    ):
+        ws.receive_json()
+    with client.websocket_connect(
+        f"/api/events?token={TOKEN}", headers={"origin": "http://testserver"}
+    ) as ws:
+        assert ws.receive_json()["type"] == "hello"
+
+
+def test_websocket_receives_project_updates(client: TestClient, ctx: AppContext) -> None:
+    with client.websocket_connect(f"/api/events?token={TOKEN}") as ws:
+        assert ws.receive_json()["type"] == "hello"
+        deadline = time.time() + 5
+        while ctx.events.subscriber_count == 0 and time.time() < deadline:
+            time.sleep(0.01)
+        # An agent edit (MCP side) must reach the browser.
+        CompositionService(ctx.store).update_track(
+            PID,
+            expected_revision=3,
+            track_id="flute",
+            changes={"gain_db": -4.0},
+            author="agent",
+        )
+        event = ws.receive_json()
+        assert event["type"] == "project.updated"
+        assert (event["projectId"], event["revision"], event["author"]) == (PID, 4, "agent")
+        assert "gainDb" in event["summary"]
+
+
+@pytest.mark.skipif(not HAS_AUDIO, reason="fluidsynth and FluidR3 required")
+def test_render_job_and_events(client: TestClient, ctx: AppContext) -> None:
+    with client.websocket_connect(f"/api/events?token={TOKEN}") as ws:
+        assert ws.receive_json()["type"] == "hello"
+        job = client.post(f"/api/projects/{PID}/render", headers=AUTH, json={"speed": 1.25}).json()
+        assert job["status"] in {"queued", "running", "completed"}
+        seen = []
+        while not seen or seen[-1]["type"] != "render.finished":
+            seen.append(ws.receive_json())
+        finished = seen[-1]["job"]
+        assert finished["status"] == "completed" and finished["render"]["speed"] == 1.25
+    status = client.get(f"/api/jobs/{job['jobId']}", headers=AUTH).json()
+    audio = client.get(status["downloadPath"], params={"token": TOKEN})
+    assert audio.status_code == 200 and audio.content[:4] == b"RIFF"

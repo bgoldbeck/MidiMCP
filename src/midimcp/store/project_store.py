@@ -136,6 +136,18 @@ class ProjectStore:
         self._clock = clock
         self._locks: dict[str, threading.RLock] = {}
         self._locks_guard = threading.Lock()
+        self._listeners: list[Callable[[CommitResult], None]] = []
+
+    def add_listener(self, listener: Callable[[CommitResult], None]) -> None:
+        """Call ``listener(result)`` after every new revision (not for idempotent replays)."""
+        self._listeners.append(listener)
+
+    def _notify(self, result: CommitResult) -> None:
+        for listener in list(self._listeners):
+            try:
+                listener(result)
+            except Exception:
+                log.warning("commit listener failed", exc_info=True)
 
     # ------------------------------------------------------------------ paths
 
@@ -192,7 +204,9 @@ class ProjectStore:
                 if staging.exists():
                     shutil.rmtree(staging, ignore_errors=True)
             self._update_index(score, info, created_at=info.created_at)
-            return CommitResult(ProjectSnapshot(project_id, 1, score, brief, info), report)
+            result = CommitResult(ProjectSnapshot(project_id, 1, score, brief, info), report)
+        self._notify(result)
+        return result
 
     def load(self, project_id: str) -> ProjectSnapshot:
         """Load the head revision, recovering from interrupted commits if needed."""
@@ -241,9 +255,11 @@ class ProjectStore:
                 # Another process committed this revision number first.
                 raise RevisionConflict(project_id, expected_revision, new_revision) from exc
             self._update_index(score, info, created_at=manifest["createdAt"])
-            return CommitResult(
+            result = CommitResult(
                 ProjectSnapshot(project_id, new_revision, score, brief, info), report
             )
+        self._notify(result)
+        return result
 
     def find_operation(self, project_id: str, operation_id: str) -> CommitResult | None:
         """Return the commit made with ``operation_id``, if any (for idempotent retries)."""
