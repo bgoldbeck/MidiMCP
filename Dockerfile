@@ -3,6 +3,10 @@
 # determinism tests and docs/reference/08-soundbanks.md checksum were verified against.
 FROM ubuntu:24.04
 
+LABEL org.opencontainers.image.source="https://github.com/bgoldbeck/MidiMCP" \
+      org.opencontainers.image.description="MidiMCP retro MIDI composer (MCP server + FluidSynth renderer)" \
+      org.opencontainers.image.licenses="Proprietary"
+
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

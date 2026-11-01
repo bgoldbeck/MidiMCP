@@ -1,0 +1,13 @@
+# Alternative when no published image exists: TrueNAS builds the image straight from GitHub.
+# Takes a few minutes on first install. Change only the dataset path.
+services:
+  midimcp:
+    build:
+      context: https://github.com/bgoldbeck/MidiMCP.git#main
+    image: midimcp:latest
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "8765:8765"
+    volumes:
+      - /mnt/YOUR_POOL/midimcp:/data

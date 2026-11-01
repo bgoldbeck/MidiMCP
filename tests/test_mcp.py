@@ -390,18 +390,42 @@ def test_http_mcp_session_and_download(http_server: tuple[str, str]) -> None:
     run(go())
 
 
-def test_server_refuses_to_start_without_token(tmp_path: Path) -> None:
+def test_server_generates_token_when_unset(tmp_path: Path) -> None:
+    port = free_port()
     env = {k: v for k, v in os.environ.items() if not k.startswith("MIDIMCP_")}
-    env["MIDIMCP_DATA_DIR"] = str(tmp_path)
-    completed = subprocess.run(
+    env.update(MIDIMCP_DATA_DIR=str(tmp_path), MIDIMCP_PORT=str(port), MIDIMCP_HOST="127.0.0.1")
+    if not HAS_AUDIO:
+        system = tmp_path / "system"
+        system.mkdir()
+        write_fake_sf2(system / "FluidR3_GM.sf2", full_gm_presets())
+        env["MIDIMCP_SYSTEM_SF2_DIR"] = str(system)
+    process = subprocess.Popen(
         [sys.executable, "-m", "midimcp", "serve"],
         env=env,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
-        timeout=60,
     )
-    assert completed.returncode == 2
-    assert "MIDIMCP_TOKEN" in completed.stderr
+    try:
+        base = f"http://127.0.0.1:{port}"
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            try:
+                if httpx.get(f"{base}/healthz", timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                time.sleep(0.2)
+        token = (tmp_path / "token.txt").read_text().strip()
+        assert len(token) == 64
+        assert httpx.post(f"{base}/mcp", json={}).status_code == 401
+        export_404 = httpx.get(f"{base}/api/renders/missing.wav", params={"token": token})
+        assert export_404.status_code == 404  # authenticated, file simply absent
+        if sys.platform != "win32":
+            assert (tmp_path / "token.txt").stat().st_mode & 0o777 == 0o600
+    finally:
+        process.terminate()
+        output = process.communicate(timeout=10)[0]
+    assert "Generated access token" in output and token in output
 
 
 def test_stdio_transport(tmp_path: Path) -> None:

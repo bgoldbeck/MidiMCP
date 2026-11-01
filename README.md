@@ -16,7 +16,7 @@ Runs as one Docker container (designed for TrueNAS SCALE): MCP over HTTP at `/mc
 cp .env.example .env
 ```
 
-Edit `.env` and set `MIDIMCP_TOKEN` (e.g. from `openssl rand -hex 32`), then:
+Optionally set `MIDIMCP_TOKEN` in `.env`; if empty, a token is generated on first start (printed in the logs, saved to `data/token.txt`). Then:
 
 ```bash
 docker compose up -d --build

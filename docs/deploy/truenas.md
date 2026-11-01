@@ -1,88 +1,91 @@
 # Deploy MidiMCP on TrueNAS SCALE
 
-Tested container behavior: Ubuntu 24.04 image, FluidSynth 2.3.4, FluidR3 GM, runs as UID/GID 568 (TrueNAS `apps`). TrueNAS menus below are for SCALE 24.10 "Electric Eel" and later (Docker-based apps); names can shift slightly between releases.
+Two steps: make a dataset, paste one YAML. Menus are for SCALE 24.10 "Electric Eel" and later (Docker-based apps); names can shift slightly between releases.
 
 ## 1. Make a dataset
 
-Storage → your pool → **Add Dataset** → name `apps/midimcp` (preset *Apps*). Inside it create a child dataset or folder `data`.
+**Datasets** → select your pool → **Add Dataset** → name `midimcp`, preset **Apps** → **Save**.
 
-Give the `apps` user (UID 568) ownership of `data`: Datasets → `apps/midimcp/data` → **Edit Permissions** → owner user/group `apps`, apply recursively.
+It appears at `/mnt/<your-pool>/midimcp`. The *Apps* preset lets the container user (`apps`, UID 568) write there.
 
-Result: `/mnt/POOL/apps/midimcp/data` (replace `POOL` with your pool name everywhere below).
+## 2. Install the app
 
-## 2. Pick a token
+**Apps** → **Discover Apps** → three-dot menu → **Install via YAML** → name `midimcp` → paste [`truenas-app.yaml`](truenas-app.yaml), changing only `YOUR_POOL` on the `volumes:` line → **Save**.
 
-Any long random string. On the NAS shell or your PC:
-
-```bash
-openssl rand -hex 32
+```yaml
+services:
+  midimcp:
+    image: ghcr.io/bgoldbeck/midimcp:latest
+    pull_policy: always
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "8765:8765"
+    volumes:
+      - /mnt/YOUR_POOL/midimcp:/data
 ```
 
-Keep it; your AI clients need it too.
+If port 8765 is taken, change only the left number (e.g. `"8770:8765"`).
 
-## 3. Build the image on the NAS
+## 3. Get your access token
 
-System → **Shell** (or SSH in as an admin):
-
-```bash
-cd /mnt/POOL/apps/midimcp
-```
+On first start the app generates a token. Find it in **Apps** → `midimcp` → **Logs** (the line after "Generated access token"), or in the shell:
 
 ```bash
-sudo git clone https://github.com/bgoldbeck/MidiMCP.git src
+sudo cat /mnt/YOUR_POOL/midimcp/token.txt
 ```
 
-```bash
-cd src && sudo docker build -t midimcp:latest .
-```
+Your AI clients need it: [../agents/connect-agents.md](../agents/connect-agents.md). To use your own token instead, add `environment: { MIDIMCP_TOKEN: "<at least 16 chars>" }` to the YAML.
 
-(No hosted CI or registry is used; the image is built locally. Alternatively build on your PC and push to a registry of your choice, then change `image:` in the YAML.)
-
-## 4. Install the app
-
-Apps → **Discover Apps** → three-dot menu → **Install via YAML**. Name it `midimcp` and paste [`truenas-app.yaml`](truenas-app.yaml) with your pool path and token filled in. Save.
-
-## 5. Check it
+## 4. Check it
 
 From your PC:
 
 ```bash
-curl http://truenas.local:8765/healthz
+curl http://<nas-ip>:8765/healthz
 ```
 
-Expect `{"status":"ok","version":"0.1.0","audio":true,"auth":true}`. Then run the full end-to-end check (needs this repo and Python on your PC, `python -m pip install -e ".[dev]"`):
+Expect `{"status":"ok",...,"audio":true,"auth":true}`. Optional full test (needs this repo + Python on your PC):
 
 ```bash
-python scripts/smoke_test.py --url http://truenas.local:8765 --token YOUR_TOKEN
+python scripts/smoke_test.py --url http://<nas-ip>:8765 --token YOUR_TOKEN
 ```
 
-It composes a 4-bar test song, renders it, and downloads the `.mid` and `.wav` into `smoke-output/`.
+## Where the image comes from
 
-## 6. Connect your AI client
+`ghcr.io/bgoldbeck/midimcp` is published by hand with [`scripts/publish-image.sh`](../../scripts/publish-image.sh) — no paid GitHub services. Run it on any machine with Docker and git, e.g. the TrueNAS shell:
 
-See [../agents/connect-agents.md](../agents/connect-agents.md).
+```bash
+git clone https://github.com/bgoldbeck/MidiMCP.git && cd MidiMCP && sudo bash scripts/publish-image.sh
+```
+
+It builds, asks for a GitHub token with the `write:packages` scope (GitHub → Settings → Developer settings → Personal access tokens), and pushes `latest`, the version and the commit tags. The first time, make the package **public** (link printed at the end) so TrueNAS can pull without credentials. The image contains no secrets.
+
+No published image yet? Use [`truenas-app-build-from-github.yaml`](truenas-app-build-from-github.yaml) instead: TrueNAS builds straight from the GitHub repo (a few minutes on first install).
 
 ## Updating
 
-```bash
-cd /mnt/POOL/apps/midimcp/src && sudo git pull && sudo docker build -t midimcp:latest .
-```
+Publish a new image (above), then **Apps** → `midimcp` → **Update** / **Restart** (`pull_policy: always` fetches the new `latest`). Songs are untouched; the store format is versioned and unknown versions are refused rather than misread.
 
-Then Apps → `midimcp` → **Restart**. Songs in `data/` are untouched; the store format is versioned and unknown versions are refused rather than misread.
-
-## What lives in `data/`
+## What lives in the dataset
 
 | Path | Contents | Safe to delete? |
 |---|---|---|
 | `projects/` | Songs and every revision (source of truth) | **No** |
+| `token.txt` | Access token | Delete + restart to get a new token |
 | `library.sqlite` | Search index | Yes (rebuilt automatically) |
 | `renders/` | Rendered WAV cache | Yes |
 | `banks/`, `bank-registry.json` | Your imported SoundFonts | Only if you no longer need them |
 
-Back up with normal TrueNAS **periodic snapshots** / replication of `apps/midimcp/data`.
+Back up with normal TrueNAS **periodic snapshots** / replication of the `midimcp` dataset.
+
+## Troubleshooting
+
+- Logs say `cannot read or create /data/token.txt`: the container user can't write the dataset. Shell: `sudo chown -R 568:568 /mnt/YOUR_POOL/midimcp`, then restart the app.
+- `audio: false` in `/healthz`: the image is broken or not the published one; republish or use the build-from-GitHub YAML.
 
 ## Security
 
-- The token protects everything except `/healthz`. Without `MIDIMCP_TOKEN` the container refuses to start.
+- The token protects everything except `/healthz`.
 - Do **not** port-forward 8765 to the internet. For access away from home use a VPN (e.g. the Tailscale app on TrueNAS).
-- Optional: set `MIDIMCP_ALLOWED_HOSTS=truenas.local:8765,192.168.1.10:8765` to also enforce Host/Origin checks on `/mcp`.
+- Optional: `MIDIMCP_ALLOWED_HOSTS=truenas.local:8765,192.168.1.140:8765` also enforces Host/Origin checks on `/mcp`.

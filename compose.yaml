@@ -1,4 +1,5 @@
-# Local build + run:   cp .env.example .env  (set MIDIMCP_TOKEN)  then  docker compose up -d --build
+# Local build + run:   docker compose up -d --build
+# The access token is generated on first start: see the logs or ./data/token.txt
 # TrueNAS: see docs/deploy/truenas.md
 services:
   midimcp:
@@ -10,7 +11,7 @@ services:
     ports:
       - "${MIDIMCP_PORT:-8765}:8765"
     environment:
-      MIDIMCP_TOKEN: ${MIDIMCP_TOKEN:?Set MIDIMCP_TOKEN in .env (openssl rand -hex 32)}
+      MIDIMCP_TOKEN: ${MIDIMCP_TOKEN:-}
       MIDIMCP_DATA_DIR: /data
       MIDIMCP_LOG_LEVEL: ${MIDIMCP_LOG_LEVEL:-INFO}
     volumes:
