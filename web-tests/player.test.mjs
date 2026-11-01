@@ -185,6 +185,31 @@ test("a newer load wins over an older one still rendering", async () => {
   assert.match(player.audio.src, /j2/);
 });
 
+test("reloading while playing can resume, also when a second reload supersedes the first", async () => {
+  const { player, api } = makePlayer();
+  await player.load(view({ revision: 3 }));
+  await player.play();
+  player.seekBar(2);
+  assert.equal(player.wantsPlayback, true);
+  let release;
+  const slow = new Promise((resolve) => { release = resolve; });
+  const original = api.waitForJob.bind(api);
+  api.waitForJob = async (job) => { if (job.jobId === "j2") await slow; return original(job); };
+  const first = player.load(view({ revision: 4 }), { keepTick: player.tick, autoplay: player.wantsPlayback });
+  assert.equal(player.state, "loading");
+  assert.equal(player.wantsPlayback, true); // still wants to play while rendering
+  await player.load(view({ revision: 5 }), { keepTick: 2880 }); // second change, no autoplay flag
+  release();
+  await first;
+  assert.equal(player.view.revision, 5);
+  assert.equal(player.state, "playing");
+  assert.equal(player.tick, 2880);
+  await player.load(view({ revision: 6 })); // a plain reload after that does not start playback
+  player.pause();
+  await player.load(view({ revision: 7 }));
+  assert.equal(player.state, "ready");
+});
+
 test("render failure emits error and leaves player empty", async () => {
   const { player, api } = makePlayer();
   api.waitForJob = async () => { throw new ApiError(422, { code: "RENDER_BLOCKED", message: "x" }); };
