@@ -43,3 +43,18 @@ Label preview-only controls. Confirm before discarding unsaved changes.
 - AI change summary, e.g. "Flute: 12 notes replaced in measures 9–16; lute unchanged."
 - Before/after audition of last revision; one-click **Undo last AI change**.
 - Preferences persist across restarts.
+
+## Implemented (features 12–13)
+
+Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile in the image), served at `/ui/`:
+
+- Token login (remembered in localStorage), live connection indicator (WebSocket).
+- Library with search; updates live when songs are created or edited.
+- Song header with last change (author, time, summary) and revision.
+- Transport: play / pause / stop, loop, speed 50–150 % (server re-render, pitch unchanged), volume, bar/beat/time readout.
+- Overview: mini piano roll per track with sections, loop region and moving playhead; click to seek.
+- Tracks: instrument, volume (dB), mute — each saved as a new revision; locked tracks shown and not editable.
+- Checks: validation errors and advisory warnings.
+- Export: MIDI / WAV / JSON into the project's exports folder with download links.
+- Live updates: an agent edit reloads the song (or offers "Load new version" while playing).
+- Not yet: revision history panel / A-B / undo (feature 14), piano-roll editing and lock controls (feature 16).

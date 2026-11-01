@@ -37,7 +37,11 @@ sudo cat /mnt/YOUR_POOL/midimcp/token.txt
 
 Your AI clients need it: [../agents/connect-agents.md](../agents/connect-agents.md). To use your own token instead, add `environment: { MIDIMCP_TOKEN: "<at least 16 chars>" }` to the YAML.
 
-## 4. Check it
+## 4. Open the web interface
+
+Browse to `http://<nas-ip>:8765/` and paste the access token once (the browser remembers it; **Forget token** clears it). You get the song library, playback with loop and speed, an overview, tracks (instrument, volume, mute), checks and exports. Edits made by your AI client appear live.
+
+## 5. Check it
 
 From your PC:
 
