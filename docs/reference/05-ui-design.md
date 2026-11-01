@@ -1,0 +1,45 @@
+# 05 — UI Design
+
+Target: between a simple MIDI player and a light DAW. Must make sense to someone with no DAW experience.
+
+## Layout
+
+- **Top transport:** Play / Pause / Stop / Loop, playhead, position / total, BPM, tempo multiplier, meter, key, output volume.
+- **Left library:** projects, search/tags, soundbanks, instrument browser with single-note audition.
+- **Center arrangement:** bar ruler, named tracks, note blocks or compact piano-roll lanes, track colors, zoom/scroll, playhead.
+- **Right inspector:** selected track/note/section — instrument, velocity, gain, pan, mute, solo, lock, effects.
+- **Bottom panel:** MCP connection health, AI-operation history, validation warnings, export jobs, versions.
+
+## Beginner mode (default)
+
+Open/Create, Play, Stop, Tempo, Loop, Export; track list with mute, volume, instrument picker; measure overview; AI revision status; one obvious **Edit Notes** button into advanced mode.
+
+No inert "Ask AI" button in v1 — composition happens in the user's connected agent; the app shows activity and example prompts.
+
+## Advanced mode
+
+Piano roll (drag pitch/time, resize, velocity), select-and-regenerate measures, chord editor, lock track / lock range, (later) tempo changes and automation.
+
+## Playback-only vs project mutation
+
+| Control | Kind |
+|---|---|
+| Play / pause / stop / seek | Playback-only |
+| Tempo multiplier 50–150% | Playback-only until user applies as project BPM |
+| Master volume | Playback-only |
+| Mute / solo while auditioning | Playback-only by default; optional save |
+| Track instrument | Mutation, revisioned |
+| Note move / length / velocity | Mutation, revisioned |
+| Loop region | Mutation when saved |
+| AI regenerate measures | Mutation after validation, revisioned |
+| Undo / restore | New or navigated revision, history kept |
+
+Label preview-only controls. Confirm before discarding unsaved changes.
+
+## Agent-safe editing
+
+- Selections expose exact measure/tick range, track ID, revision (copyable into a prompt).
+- Locks visible and enforced by service.
+- AI change summary, e.g. "Flute: 12 notes replaced in measures 9–16; lute unchanged."
+- Before/after audition of last revision; one-click **Undo last AI change**.
+- Preferences persist across restarts.
