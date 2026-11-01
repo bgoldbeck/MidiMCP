@@ -81,6 +81,13 @@ export class Api {
       changes,
     );
   }
+  templates() { return this.request("GET", "/api/templates"); }
+  template(id) { return this.request("GET", `/api/templates/${encodeURIComponent(id)}`); }
+  saveTemplate(id, data) { return this.request("PUT", `/api/templates/${encodeURIComponent(id)}`, data); }
+  deleteTemplate(id) { return this.request("DELETE", `/api/templates/${encodeURIComponent(id)}`); }
+  duplicateTemplate(id, newId, name) {
+    return this.request("POST", `/api/templates/${encodeURIComponent(id)}/duplicate`, { newId, name });
+  }
   resetTrack(id, trackId, body) {
     return this.request(
       "POST",

@@ -340,3 +340,26 @@ def test_loop_render_endpoint(client: TestClient) -> None:
     assert (job["render"]["startTick"], job["render"]["endTick"]) == (0, 4 * 2880)
     # 4 bars of 6/8 at 84 BPM = 8.571 s, and no decay tail.
     assert job["render"]["durationSeconds"] == pytest.approx(8.571, abs=0.01)
+
+
+def test_template_routes(client: TestClient) -> None:
+    listed = client.get("/api/templates", headers=AUTH).json()["templates"]
+    assert len(listed) == 6 and all(t["builtIn"] for t in listed)
+    town = client.get("/api/templates/peaceful-town", headers=AUTH).json()
+    assert town["chart"][0]["chords"][:4] == ["G", "Em", "C", "D"]
+    assert client.get("/api/templates/disco", headers=AUTH).status_code == 404
+    copy = client.post(
+        "/api/templates/peaceful-town/duplicate",
+        headers=AUTH,
+        json={"newId": "my-town", "name": "My Town"},
+    )
+    assert copy.status_code == 200 and copy.json()["builtIn"] is False
+    edited = {**copy.json(), "default_tempo": 96}
+    saved = client.put("/api/templates/my-town", headers=AUTH, json=edited)
+    assert saved.status_code == 200 and saved.json()["default_tempo"] == 96
+    bad = client.put("/api/templates/my-town", headers=AUTH, json={**edited, "default_tempo": 500})
+    assert bad.status_code == 422 and bad.json()["code"] == "INVALID_TEMPLATE"
+    assert client.put("/api/templates/tavern", headers=AUTH, json=edited).status_code == 422
+    assert client.delete("/api/templates/tavern", headers=AUTH).status_code == 422
+    assert client.delete("/api/templates/my-town", headers=AUTH).status_code == 200
+    assert client.get("/api/templates/my-town", headers=AUTH).status_code == 404

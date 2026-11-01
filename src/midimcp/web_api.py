@@ -8,6 +8,9 @@ Routes::
 
     GET   /api/status
     GET   /api/instruments?bankId=&search=
+    GET   /api/templates                          (built-in + custom)
+    GET|PUT|DELETE /api/templates/{id}          (PUT/DELETE: custom templates only)
+    POST  /api/templates/{id}/duplicate        {newId, name?}
     GET   /api/projects?search=
     GET   /api/projects/{id}?revision=
     DELETE /api/projects/{id}                  (moves the song to <data>/trash)
@@ -79,6 +82,8 @@ _STATUS_BY_CODE = {
     "NOTE_NOT_FOUND": 404,
     "BANK_NOT_FOUND": 404,
     "JOB_NOT_FOUND": 404,
+    "UNKNOWN_TEMPLATE": 404,
+    "INVALID_TEMPLATE": 422,
     "NOT_FOUND": 404,
     "REVISION_CONFLICT": 409,
     "PROJECT_EXISTS": 409,
@@ -109,7 +114,8 @@ def _error_response(exc: Exception) -> JSONResponse:
         return JSONResponse(body, status_code=_STATUS_BY_CODE.get(body["code"], 400))
     if isinstance(exc, (UnknownInstrument, ValueError)):
         code = getattr(exc, "code", "INVALID_ARGUMENT")
-        return JSONResponse({"code": code, "message": str(exc)}, status_code=400)
+        status = _STATUS_BY_CODE.get(code, 400)
+        return JSONResponse({"code": code, "message": str(exc)}, status_code=status)
     log.exception("unexpected API error")
     return JSONResponse({"code": "INTERNAL_ERROR", "message": str(exc)}, status_code=500)
 
@@ -190,6 +196,51 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
         return await _call(
             lambda: {"bankId": bank, "instruments": ctx.registry.instruments(bank, search)}
         )
+
+    @route("/api/templates", ["GET"])
+    async def templates(request: Request) -> Response:
+        return await _call(lambda: {"templates": ctx.templates.summaries()})
+
+    @route("/api/templates/{template_id}", ["GET", "PUT", "DELETE"])
+    async def template(request: Request) -> Response:
+        template_id = request.path_params["template_id"]
+        if request.method == "GET":
+            return await _call(ctx.templates.detail, template_id)
+        if request.method == "DELETE":
+
+            def delete() -> dict:
+                ctx.templates.delete(template_id)
+                return {"ok": True, "templateId": template_id}
+
+            return await _call(delete)
+        try:
+            data = await _body(request)
+        except Exception as exc:
+            return _error_response(exc)
+
+        def save() -> dict:
+            ctx.templates.save(template_id, data)
+            return ctx.templates.detail(template_id)
+
+        return await _call(save)
+
+    @route("/api/templates/{template_id}/duplicate", ["POST"])
+    async def duplicate_template(request: Request) -> Response:
+        template_id = request.path_params["template_id"]
+        try:
+            data = await _body(request)
+            new_id = data.get("newId")
+            if not isinstance(new_id, str):
+                raise ApiError("MISSING_FIELD", "newId is required")
+            name = data.get("name")
+        except Exception as exc:
+            return _error_response(exc)
+
+        def duplicate() -> dict:
+            ctx.templates.duplicate(template_id, new_id, name if isinstance(name, str) else None)
+            return ctx.templates.detail(new_id)
+
+        return await _call(duplicate)
 
     @route("/api/projects", ["GET"])
     async def projects(request: Request) -> Response:

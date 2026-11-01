@@ -58,3 +58,7 @@ Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile 
 - Export: MIDI / WAV / MP3 (128–320 kbps) / JSON into the project's exports folder with download links.
 - Live updates: an agent edit reloads the song (or offers "Load new version" while playing).
 - Not yet: revision history panel / A-B / undo (feature 14), piano-roll editing and lock controls (feature 16).
+
+## Templates page
+
+Header tab **Templates**: browse built-in and custom templates (ensemble with ranges, form with chord symbols in the default key, melody/accompaniment guidance, patterns, dos and don'ts, a copyable prompt). Built-ins are read-only; **Duplicate** creates a custom copy in `<data>/templates/<id>.json` that can be edited as JSON (validated on save: instruments, chords, ranges, tempo, meter, mode) or deleted. Custom templates are offered to agents through `list_templates` / `create_project(template_id=...)`.

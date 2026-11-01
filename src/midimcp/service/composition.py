@@ -200,9 +200,9 @@ class CompositionService:
         """Create a project scaffolded from a composition template (one revision):
         tracks with roles, part limits, sections and a bar-by-bar chord chart."""
         from midimcp.music.theory import parse_key
-        from midimcp.templates import build_scaffold, get_template, resolve_key
+        from midimcp.templates import TemplateLibrary, build_scaffold, resolve_key
 
-        template = get_template(template_id)
+        template = TemplateLibrary(self.store.root).get(template_id)
         tonic_name, mode_name = resolve_key(template, tonic, mode)
         meter = meter or template.meter
         bars = bars or template.form_bars

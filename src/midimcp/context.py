@@ -18,6 +18,7 @@ from midimcp.render import Renderer, RenderError, RenderResult
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
 from midimcp.store import CommitResult, ProjectStore
+from midimcp.templates import TemplateLibrary
 
 _SAFE_FILE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$")
 
@@ -114,6 +115,7 @@ class AppContext:
         self.registry = SoundbankRegistry(self.data_dir)
         self.renderer = renderer or Renderer(self.registry, self.data_dir / "renders")
         self.events = EventBus()
+        self.templates = TemplateLibrary(self.data_dir)
         self.jobs = RenderJobs(self.renderer, on_event=self.events.publish)
         self.store.add_listener(self._on_commit)
         self.store.add_delete_listener(

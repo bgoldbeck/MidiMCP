@@ -2,6 +2,7 @@
 // All text from songs is inserted with textContent / DOM nodes, never as HTML.
 import { Api, ApiError, getToken, setToken } from "./api.js";
 import { Player, SPEEDS, formatTime } from "./player.js";
+import { setupTemplates } from "./templates-view.js";
 
 const $ = (id) => document.getElementById(id);
 const COLORS = ["#d9a441", "#8fbf6a", "#6aa6d9", "#d97a6a", "#b48ad9", "#6ad9c4", "#d9d06a", "#d96ab0"];
@@ -545,6 +546,17 @@ async function enterApp(status) {
   $("delete-song").onclick = () => deleteSong();
   for (const button of document.querySelectorAll("[data-export]")) {
     button.onclick = () => createExport(button.dataset.export);
+  }
+  const templates = setupTemplates({ api: state.api, el, showError, instrumentName });
+  $("tabs").hidden = false;
+  for (const tab of document.querySelectorAll("#tabs .tab")) {
+    tab.onclick = () => {
+      const view = tab.dataset.view;
+      for (const t of document.querySelectorAll("#tabs .tab")) t.classList.toggle("active", t === tab);
+      $("app").hidden = view !== "songs";
+      $("templates-view").hidden = view !== "templates";
+      if (view === "templates") templates.refreshList().catch(showError);
+    };
   }
   openEvents();
   await refreshLibrary();

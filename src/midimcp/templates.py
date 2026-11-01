@@ -11,12 +11,24 @@ All templates are original descriptions of common genre practice.
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any, Final
 
-from midimcp.instruments import instrument_range, resolve_instrument
-from midimcp.music.theory import normalize_mode, parse_key, parse_roman
+from midimcp.instruments import UnknownInstrument, instrument_range, resolve_instrument
+from midimcp.model.score import TRACK_ROLES, is_valid_identifier
+from midimcp.music.theory import (
+    MODES,
+    TheoryError,
+    normalize_mode,
+    parse_key,
+    parse_note_name,
+    parse_roman,
+)
 from midimcp.music.timing import DEFAULT_PPQ, ticks_per_bar
+from midimcp.store.files import atomic_write, pretty_json_bytes
 
 
 class TemplateError(ValueError):
@@ -828,3 +840,304 @@ def build_scaffold(
 def resolve_key(template: Template, tonic: str | None, mode: str | None) -> tuple[str, str]:
     key = parse_key(tonic or template.default_tonic, normalize_mode(mode or template.mode))
     return key.requested_spelling, key.mode
+
+
+# ------------------------------------------------------------- custom library
+
+_PART_FIELDS = (
+    "role",
+    "track_id",
+    "name",
+    "instrument_id",
+    "gain_db",
+    "pan",
+    "lowest",
+    "highest",
+    "max_polyphony",
+    "guidance",
+)
+_TEMPLATE_FIELDS = (
+    "id",
+    "name",
+    "summary",
+    "mood",
+    "setting",
+    "tempo_range",
+    "default_tempo",
+    "meter",
+    "mode",
+    "default_tonic",
+    "alternative_modes",
+    "parts",
+    "form",
+    "loop",
+    "percussion_allowed",
+    "melody",
+    "accompaniment",
+    "dos",
+    "donts",
+    "patterns",
+)
+_ID_TEXT = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
+
+
+class TemplateValidationError(TemplateError):
+    code = "INVALID_TEMPLATE"
+
+
+def template_from_dict(data: Any) -> Template:
+    """Build and validate a template from its JSON form (as produced by ``to_dict``)."""
+    errors: list[str] = []
+
+    def need(obj: dict, key: str, kind: type | tuple, where: str) -> Any:
+        if key not in obj:
+            errors.append(f"{where}: missing '{key}'")
+            return None
+        value = obj[key]
+        if kind is list and isinstance(value, tuple):
+            value = list(value)
+        if kind is float and isinstance(value, int) and not isinstance(value, bool):
+            return float(value)
+        if not isinstance(value, kind) or (isinstance(value, bool) and kind is not bool):
+            errors.append(f"{where}: '{key}' has the wrong type")
+            return None
+        return value
+
+    if not isinstance(data, dict):
+        raise TemplateValidationError("template must be a JSON object")
+    unknown = set(data) - set(_TEMPLATE_FIELDS) - {"formBars", "ticksPerBar", "builtIn", "chart"}
+    if unknown:
+        errors.append(f"unknown fields: {', '.join(sorted(unknown))}")
+    tid = need(data, "id", str, "template")
+    if tid is not None and not _ID_TEXT.match(tid):
+        errors.append("template: 'id' must be lowercase letters, digits and dashes")
+    strings = {
+        k: need(data, k, str, "template")
+        for k in (
+            "name",
+            "summary",
+            "mood",
+            "setting",
+            "mode",
+            "default_tonic",
+            "melody",
+            "accompaniment",
+        )
+    }
+    mode = strings["mode"]
+    if mode is not None and mode not in MODES:
+        errors.append(f"template: mode must be one of {', '.join(MODES)}")
+    if strings["default_tonic"] is not None:
+        try:
+            parse_note_name(strings["default_tonic"])
+        except TheoryError:
+            errors.append("template: default_tonic is not a note name")
+    tempo_range = need(data, "tempo_range", list, "template")
+    default_tempo = need(data, "default_tempo", int, "template")
+    if tempo_range is not None:
+        if (
+            len(tempo_range) != 2
+            or not all(isinstance(v, int) for v in tempo_range)
+            or not (20 <= tempo_range[0] <= tempo_range[1] <= 300)
+        ):
+            errors.append("template: tempo_range must be [low, high] BPM between 20 and 300")
+        elif default_tempo is not None and not tempo_range[0] <= default_tempo <= tempo_range[1]:
+            errors.append("template: default_tempo must lie inside tempo_range")
+    meter = need(data, "meter", list, "template")
+    if meter is not None and (
+        len(meter) != 2 or meter[1] not in (1, 2, 4, 8, 16, 32) or not 1 <= meter[0] <= 32
+    ):
+        errors.append("template: meter must be [numerator, denominator] like [6, 8]")
+    alt_modes = need(data, "alternative_modes", list, "template") or []
+    if any(m not in MODES for m in alt_modes):
+        errors.append("template: alternative_modes contains an unknown mode")
+    parts: list[Part] = []
+    for index, raw in enumerate(need(data, "parts", list, "template") or []):
+        where = f"parts[{index}]"
+        if not isinstance(raw, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        values = {
+            "role": need(raw, "role", str, where),
+            "track_id": need(raw, "track_id", str, where),
+            "name": need(raw, "name", str, where),
+            "instrument_id": need(raw, "instrument_id", str, where),
+            "gain_db": need(raw, "gain_db", float, where),
+            "pan": need(raw, "pan", float, where),
+            "lowest": need(raw, "lowest", int, where),
+            "highest": need(raw, "highest", int, where),
+            "max_polyphony": need(raw, "max_polyphony", int, where),
+            "guidance": need(raw, "guidance", str, where),
+        }
+        if values["role"] is not None and values["role"] not in TRACK_ROLES:
+            errors.append(f"{where}: role must be one of {', '.join(TRACK_ROLES)}")
+        if values["track_id"] is not None and not is_valid_identifier(values["track_id"]):
+            errors.append(f"{where}: track_id must be lowercase letters, digits, - or _")
+        if values["instrument_id"] is not None:
+            try:
+                resolve_instrument(values["instrument_id"])
+            except UnknownInstrument:
+                errors.append(f"{where}: unknown instrument {values['instrument_id']!r}")
+        low, high = values["lowest"], values["highest"]
+        if low is not None and high is not None and not 0 <= low < high <= 127:
+            errors.append(f"{where}: need 0 <= lowest < highest <= 127")
+        if values["gain_db"] is not None and not -60 <= values["gain_db"] <= 12:
+            errors.append(f"{where}: gain_db must be between -60 and 12")
+        if values["pan"] is not None and not -1 <= values["pan"] <= 1:
+            errors.append(f"{where}: pan must be between -1 and 1")
+        if values["max_polyphony"] is not None and not 1 <= values["max_polyphony"] <= 32:
+            errors.append(f"{where}: max_polyphony must be 1-32")
+        if None not in values.values():
+            parts.append(Part(**values))
+    if not parts and not errors:
+        errors.append("template: needs at least one part")
+    if len({p.track_id for p in parts}) != len(parts):
+        errors.append("template: track_id values must be unique")
+    form: list[SectionPlan] = []
+    for index, raw in enumerate(need(data, "form", list, "template") or []):
+        where = f"form[{index}]"
+        if not isinstance(raw, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        label = need(raw, "label", str, where)
+        bars = need(raw, "bars", int, where)
+        progression = need(raw, "progression", list, where)
+        intent = need(raw, "intent", str, where)
+        if bars is not None and not 1 <= bars <= 128:
+            errors.append(f"{where}: bars must be 1-128")
+        if progression is not None:
+            if not progression:
+                errors.append(f"{where}: progression needs at least one chord")
+            for numeral in progression:
+                try:
+                    parse_roman(str(numeral), 0, mode if mode in MODES else "ionian")
+                except TheoryError:
+                    errors.append(
+                        f"{where}: cannot read chord {numeral!r} (use I, vi, bVII, V7 ...)"
+                    )
+        if None not in (label, bars, progression, intent):
+            form.append(SectionPlan(label, bars, tuple(str(n) for n in progression), intent))
+    if not form and not errors:
+        errors.append("template: form needs at least one section")
+    loop = need(data, "loop", bool, "template")
+    percussion = need(data, "percussion_allowed", bool, "template")
+    dos = need(data, "dos", list, "template") or []
+    donts = need(data, "donts", list, "template") or []
+    patterns = data.get("patterns", {})
+    if not isinstance(patterns, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) for k, v in patterns.items()
+    ):
+        errors.append("template: patterns must map names to text")
+    if errors:
+        raise TemplateValidationError("; ".join(errors[:12]))
+    return Template(
+        id=tid,
+        name=strings["name"],
+        summary=strings["summary"],
+        mood=strings["mood"],
+        setting=strings["setting"],
+        tempo_range=(tempo_range[0], tempo_range[1]),
+        default_tempo=default_tempo,
+        meter=(meter[0], meter[1]),
+        mode=mode,
+        default_tonic=strings["default_tonic"],
+        alternative_modes=tuple(alt_modes),
+        parts=tuple(parts),
+        form=tuple(form),
+        loop=loop,
+        percussion_allowed=percussion,
+        melody=strings["melody"],
+        accompaniment=strings["accompaniment"],
+        dos=tuple(str(d) for d in dos),
+        donts=tuple(str(d) for d in donts),
+        patterns=dict(patterns),
+    )
+
+
+def chart_preview(template: Template) -> list[dict[str, Any]]:
+    """Each section's chords spelled in the template's default key (for the UI)."""
+    tonic = parse_note_name(template.default_tonic)
+    return [
+        {
+            "label": s.label,
+            "bars": s.bars,
+            "intent": s.intent,
+            "chords": [parse_roman(n, tonic, template.mode).symbol for n in s.progression],
+            "numerals": list(s.progression),
+        }
+        for s in template.form
+    ]
+
+
+class TemplateLibrary:
+    """Built-in templates (read-only) plus user templates in ``<data>/templates/*.json``."""
+
+    def __init__(self, data_dir: Path | str) -> None:
+        self.directory = Path(data_dir) / "templates"
+
+    def _custom_path(self, template_id: str) -> Path:
+        if not _ID_TEXT.match(template_id):
+            raise TemplateValidationError("template id must be lowercase letters, digits, dashes")
+        return self.directory / f"{template_id}.json"
+
+    def _custom(self) -> dict[str, Template]:
+        found: dict[str, Template] = {}
+        if not self.directory.is_dir():
+            return found
+        for path in sorted(self.directory.glob("*.json")):
+            try:
+                template = template_from_dict(json.loads(path.read_text(encoding="utf-8")))
+            except (ValueError, TemplateError):
+                continue  # broken file: skipped, still editable on disk
+            if template.id == path.stem and template.id not in TEMPLATES:
+                found[template.id] = template
+        return found
+
+    def all(self) -> dict[str, Template]:
+        return {**TEMPLATES, **self._custom()}
+
+    def is_builtin(self, template_id: str) -> bool:
+        return template_id in TEMPLATES
+
+    def get(self, template_id: str) -> Template:
+        template = self.all().get(template_id)
+        if template is None:
+            raise TemplateError(
+                f"unknown template {template_id!r}; choose one of {', '.join(self.all())}"
+            )
+        return template
+
+    def summaries(self) -> list[dict[str, Any]]:
+        return [{**t.summary_dict(), "builtIn": self.is_builtin(t.id)} for t in self.all().values()]
+
+    def detail(self, template_id: str) -> dict[str, Any]:
+        template = self.get(template_id)
+        return {
+            **template.to_dict(),
+            "builtIn": self.is_builtin(template_id),
+            "chart": chart_preview(template),
+        }
+
+    def save(self, template_id: str, data: dict[str, Any]) -> Template:
+        if self.is_builtin(template_id):
+            raise TemplateValidationError("built-in templates are read-only; duplicate it first")
+        template = template_from_dict({**data, "id": template_id})
+        self.directory.mkdir(parents=True, exist_ok=True)
+        payload = {k: v for k, v in template.to_dict().items() if k in _TEMPLATE_FIELDS}
+        atomic_write(self._custom_path(template_id), pretty_json_bytes(payload))
+        return template
+
+    def duplicate(self, source_id: str, new_id: str, name: str | None = None) -> Template:
+        if new_id in self.all():
+            raise TemplateValidationError(f"a template called {new_id!r} already exists")
+        source = self.get(source_id).to_dict()
+        source["name"] = name or f"{source['name']} (copy)"
+        return self.save(new_id, source)
+
+    def delete(self, template_id: str) -> None:
+        if self.is_builtin(template_id):
+            raise TemplateValidationError("built-in templates cannot be deleted")
+        path = self._custom_path(template_id)
+        if not path.is_file():
+            raise TemplateError(f"unknown template {template_id!r}")
+        path.unlink()
