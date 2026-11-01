@@ -101,3 +101,11 @@ New bank or engine version ⇒ new render profile. Never silently change a proje
 **Hard errors (reject):** bad schema, missing bank, invalid pitch/velocity/time, locked-range change, forbidden percussion, track-count overflow.
 
 **Advisory warnings (report, never auto-fix):** extreme range, excess simultaneous notes, out-of-key pitches when not strict, excessive repetition, voice collisions, abrupt loop harmony, impossible breath lengths for wind parts.
+
+### Implemented validation codes (`midimcp.validation`)
+
+Errors: `TRACK_ID_DUPLICATE`, `NOTE_ID_DUPLICATE` (note IDs are project-wide), `SECTION_ID_DUPLICATE`, `TOO_MANY_TRACKS` (12), `BRIEF_MAX_TRACKS_EXCEEDED`, `TOO_MANY_NOTES` (20,000), `SONG_TOO_LONG` (8 min), `DURATION_OUT_OF_RANGE`, `LOOP_INVALID`, `LOOP_REQUIRED`, `SECTION_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `HARMONY_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `NOTE_OUTSIDE_TIMELINE`, `PERCUSSION_FORBIDDEN`, `INSTRUMENT_NOT_ALLOWED`, `NOTE_OUT_OF_KEY` (strict only).
+
+Warnings: `NOTE_OUT_OF_KEY` (advisory), `NOTE_BELOW_REGISTER`, `NOTE_ABOVE_REGISTER`, `POLYPHONY_EXCEEDED`, `HIGH_POLYPHONY` (> 8 without part limit), `UNISON_OVERLAP`, `WIDE_RANGE` (> 36 semitones), `EXCESSIVE_REPETITION` (same bar ≥ 4× in a row), `LOOP_HARMONY_UNRESOLVED`, `TIMELINE_NOT_BAR_ALIGNED`, `EMPTY_TRACK`, `PART_LIMITS_UNKNOWN_TRACK`, `LOCK_UNKNOWN_TRACK`, `LOCK_OUTSIDE_TIMELINE`.
+
+Not yet implemented: missing-bank error (needs soundbank registry, feature 7); wind-instrument breath-length advisory (needs instrument family metadata, feature 7/17). Lock enforcement is a mutation-time check (feature 5).
