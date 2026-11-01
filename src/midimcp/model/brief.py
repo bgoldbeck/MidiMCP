@@ -85,6 +85,7 @@ class Brief(ScoreModel):
     part_limits: list[PartLimits] = Field(default_factory=list)
     mood: str | None = None
     setting: str | None = None
+    template_id: str | None = None
     references: list[str] = Field(default_factory=list)
     loop_required: bool = False
     locks: list[Lock] = Field(default_factory=list)

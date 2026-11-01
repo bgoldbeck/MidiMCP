@@ -30,16 +30,19 @@ from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
 from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError, sound_profile_issues
 from midimcp.store.errors import StoreError
+from midimcp.templates import get_template as get_template_data
+from midimcp.templates import list_templates as list_templates_data
 from midimcp.validation import MAX_DURATION_SECONDS, MAX_NOTES, MAX_TRACKS, validate_score
 from midimcp.views import export_project as export_project_files
 from midimcp.views import timing
 
 INSTRUCTIONS = """\
 MidiMCP composes original 1990s General-MIDI-style fantasy RPG music. Read the
-resource midimcp://guide first. Workflow: list_instruments -> create_project ->
-set_arrangement -> add_track -> replace_notes (by bar range) -> validate_project
--> render_preview. Every mutation needs expected_revision (the latest revision
-you received). Locked material is protected: never try to bypass LOCKED errors.
+resource midimcp://guide first. Workflow: list_templates -> create_project with
+template_id (gives tracks, sections and a chord chart) -> replace_notes (by bar
+range, following the chords) -> validate_project -> render_preview. Every
+mutation needs expected_revision (the latest revision you received). Locked
+material is protected: never try to bypass LOCKED errors.
 """
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -138,6 +141,12 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         return resources.files("midimcp.resources").joinpath("agent_guide.md").read_text("utf-8")
 
     @server.resource(
+        "midimcp://templates", name="Composition templates", mime_type="application/json"
+    )
+    def templates_resource() -> str:
+        return json.dumps({"templates": list_templates_data()})
+
+    @server.resource(
         "midimcp://schema/score", name="Score JSON Schema", mime_type="application/json"
     )
     def score_schema() -> str:
@@ -234,70 +243,140 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
 
     @server.tool()
     @_tool_errors
+    def list_templates() -> dict[str, Any]:
+        """Composition templates (peaceful town, forest, crypt, tavern, sea, borderlands):
+        tempo, meter, mode, ensemble and form. Pass template_id to create_project."""
+        return {"templates": list_templates_data()}
+
+    @server.tool()
+    @_tool_errors
+    def get_template(template_id: str) -> dict[str, Any]:
+        """Full template guidance: parts (role, instrument, register, what to play), form with
+        chord progressions per section, accompaniment patterns, dos and don'ts."""
+        return get_template_data(template_id).to_dict()
+
+    @server.tool()
+    @_tool_errors
     def create_project(
         title: str,
-        tempo_bpm: Annotated[float, Field(description="Quarter-note beats per minute")],
-        meter_numerator: int,
-        meter_denominator: int,
-        tonic: Annotated[str, Field(description="Key tonic, e.g. G#, Ab, D, Bb")],
+        template_id: Annotated[
+            str | None,
+            Field(
+                description="Recommended. Scaffolds tracks (with roles and pitch ranges), "
+                "sections and a bar-by-bar chord chart; other musical fields become optional "
+                "overrides. See list_templates."
+            ),
+        ] = None,
+        tempo_bpm: Annotated[float | None, Field(description="Quarter-note BPM")] = None,
+        meter_numerator: int | None = None,
+        meter_denominator: int | None = None,
+        tonic: Annotated[str | None, Field(description="Key tonic, e.g. G#, Ab, D, Bb")] = None,
         mode: Annotated[
-            str,
+            str | None,
             Field(
                 description="ionian/major, dorian, phrygian, lydian, "
                 "mixolydian, aeolian/minor, locrian"
             ),
-        ] = "ionian",
-        bars: Annotated[int, Field(ge=1, description="Song length in bars")] = 32,
-        loop: bool = True,
+        ] = None,
+        bars: Annotated[int | None, Field(ge=1, description="Song length in bars")] = None,
+        loop: bool | None = None,
         usage: str | None = None,
         tags: list[str] | None = None,
         bank_id: str = DEFAULT_BANK_ID,
-        percussion_allowed: bool = True,
+        percussion_allowed: bool | None = None,
         allowed_instrument_ids: list[str] | None = None,
         max_tracks: int | None = None,
-        harmonic_strictness: Literal["strict", "advisory"] = "advisory",
+        harmonic_strictness: Literal["strict", "advisory"] | None = None,
         chord_plan: list[str] | None = None,
         mood: str | None = None,
         setting: str | None = None,
         references: list[str] | None = None,
         operation_id: str | None = None,
     ) -> dict[str, Any]:
-        """Create an empty song. Returns projectId, revision (1) and timing (ticksPerBar...)."""
+        """Create a song. With template_id you get a ready scaffold (fill it with replace_notes);
+        without it, give tempo_bpm, meter and tonic and add tracks yourself.
+        Returns projectId, revision, timing (ticksPerBar...) and the key."""
         bank = ctx.registry.require(bank_id)
-        brief = Brief.model_validate(
-            {
-                "percussionAllowed": percussion_allowed,
-                "allowedInstrumentIds": allowed_instrument_ids,
-                "maxTracks": max_tracks,
-                "harmonicStrictness": harmonic_strictness,
-                "chordPlan": chord_plan or [],
-                "mood": mood,
-                "setting": setting,
-                "references": references or [],
-                "loopRequired": loop,
-            }
+        brief_fields = {
+            "percussionAllowed": percussion_allowed,
+            "allowedInstrumentIds": allowed_instrument_ids,
+            "maxTracks": max_tracks,
+            "harmonicStrictness": harmonic_strictness,
+            "chordPlan": chord_plan,
+            "mood": mood,
+            "setting": setting,
+            "references": references,
+            "loopRequired": loop,
+        }
+        given = {k: v for k, v in brief_fields.items() if v is not None}
+        meter = (
+            (meter_numerator, meter_denominator) if meter_numerator and meter_denominator else None
         )
-        result = service.create_project(
-            title=title,
-            tempo_bpm=tempo_bpm,
-            meter=(meter_numerator, meter_denominator),
-            tonic=tonic,
-            mode=mode,
-            bars=bars,
-            usage=usage,
-            tags=tags or [],
-            loop=loop,
-            bank_id=bank.id,
-            bank_sha256=bank.sha256,
-            brief=brief,
-            author="agent",
-            operation_id=operation_id,
-        )
+        if template_id is not None:
+            result = service.create_from_template(
+                template_id=template_id,
+                title=title,
+                tonic=tonic,
+                mode=mode,
+                tempo_bpm=tempo_bpm,
+                meter=meter,
+                bars=bars,
+                usage=usage,
+                tags=tags or [],
+                bank_id=bank.id,
+                bank_sha256=bank.sha256,
+                brief_overrides=given,
+                author="agent",
+                operation_id=operation_id,
+            )
+        else:
+            missing = [
+                name
+                for name, value in (("tempo_bpm", tempo_bpm), ("meter", meter), ("tonic", tonic))
+                if value is None
+            ]
+            if missing:
+                raise ToolError(
+                    json.dumps(
+                        {
+                            "code": "MISSING_ARGUMENT",
+                            "message": f"without template_id, give {', '.join(missing)} "
+                            "(meter = meter_numerator + meter_denominator)",
+                        }
+                    )
+                )
+            loop_value = True if loop is None else loop
+            brief = Brief.model_validate(
+                {"percussionAllowed": True, "loopRequired": loop_value, **given}
+            )
+            result = service.create_project(
+                title=title,
+                tempo_bpm=tempo_bpm,
+                meter=meter,
+                tonic=tonic,
+                mode=mode or "ionian",
+                bars=bars or 32,
+                usage=usage,
+                tags=tags or [],
+                loop=loop_value,
+                bank_id=bank.id,
+                bank_sha256=bank.sha256,
+                brief=brief,
+                author="agent",
+                operation_id=operation_id,
+            )
         snap = service.get_project(result.project_id)
         return {
             **result.to_dict(),
             "timing": _timing(snap.score),
             "key": snap.score.tonality.to_json_dict(),
+            "tracks": [
+                {"id": t.id, "name": t.name, "role": t.role, "instrumentId": t.instrument_id}
+                for t in snap.score.tracks
+            ],
+            "sections": [s.to_json_dict() for s in snap.score.sections],
+            "harmony": [h.to_json_dict() for h in snap.score.harmony],
+            "partLimits": [p.to_json_dict() for p in snap.brief.part_limits],
         }
 
     @server.tool()
@@ -372,9 +451,12 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         track_id: str | None = None,
         gain_db: float = 0.0,
         pan: Annotated[float, Field(ge=-1, le=1)] = 0.0,
+        role: Literal["melody", "countermelody", "accompaniment", "bass", "pad", "percussion"]
+        | None = None,
         operation_id: str | None = None,
     ) -> dict[str, Any]:
-        """Add an empty instrument track. Percussion is detected from the instrument ID."""
+        """Add an empty instrument track. Percussion is detected from the instrument ID.
+        Give a role so the music checks know which part is the melody."""
         from midimcp.instruments import resolve_instrument
 
         instrument = resolve_instrument(instrument_id)
@@ -387,6 +469,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             is_percussion=instrument.is_percussion,
             gain_db=gain_db,
             pan=pan,
+            role=role,
             author="agent",
             operation_id=operation_id,
         ).to_dict()

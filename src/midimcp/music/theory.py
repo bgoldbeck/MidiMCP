@@ -178,3 +178,78 @@ def parse_key(tonic: str, mode: str) -> Key:
 
 def pitch_class_of(midi_pitch: int) -> int:
     return midi_pitch % 12
+
+
+# ------------------------------------------------------------------ chords
+
+_ROMAN = {"i": 0, "ii": 1, "iii": 2, "iv": 3, "v": 4, "vi": 5, "vii": 6}
+_ROMAN_RE: Final = re.compile(
+    r"^(?P<acc>[b#]?)(?P<num>VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(?P<qual>°|o|\+)?(?P<ext>maj7|7|sus4|sus2|6|9)?$"
+)
+_FLAT_NAMES: Final = ("C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B")
+
+
+@dataclass(frozen=True)
+class Chord:
+    numeral: str
+    root_pitch_class: int
+    quality: str  # "major" | "minor" | "diminished" | "augmented"
+    extension: str
+    symbol: str
+    pitch_classes: tuple[int, ...]
+
+
+def spell_in_key(pitch_class: int, tonic_pc: int, mode: str) -> str:
+    """Spell a pitch class the way the key does (diatonic), else with flats."""
+    parent = MAJOR_KEY_SPELLING[parent_major_pitch_class(tonic_pc, mode)]
+    for name in spell_major_scale(parent):
+        if parse_note_name(name) == pitch_class:
+            return name
+    return _FLAT_NAMES[pitch_class]
+
+
+def parse_roman(numeral: str, tonic_pc: int, mode: str) -> Chord:
+    """Resolve a roman numeral (I, vi, bVII, V7, vii°, ivsus4 ...) in a key.
+
+    Case sets major/minor; ``°``/``o`` diminished, ``+`` augmented; a leading
+    ``b``/``#`` alters the degree of the tonic's *major* scale (so minor-key
+    progressions are written i, iv, v, bIII, bVI, bVII).
+    """
+    match = _ROMAN_RE.match(numeral.strip())
+    if not match:
+        raise TheoryError(f"cannot parse roman numeral {numeral!r}")
+    degree = _ROMAN[match.group("num").lower()]
+    # Degrees are counted on the tonic's major scale (standard borrowed-chord notation):
+    # in D dorian or D minor, bVII = C, bIII = F, iv = G minor, V = A major.
+    root = (tonic_pc + MAJOR_STEPS[degree] + {"": 0, "b": -1, "#": 1}[match.group("acc")]) % 12
+    qual = match.group("qual")
+    if qual in {"°", "o"}:
+        quality, intervals, suffix = "diminished", (0, 3, 6), "dim"
+    elif qual == "+":
+        quality, intervals, suffix = "augmented", (0, 4, 8), "aug"
+    elif match.group("num").isupper():
+        quality, intervals, suffix = "major", (0, 4, 7), ""
+    else:
+        quality, intervals, suffix = "minor", (0, 3, 7), "m"
+    ext = match.group("ext") or ""
+    if ext == "7":
+        intervals += (10,) if quality != "diminished" else (9,)
+    elif ext == "maj7":
+        intervals += (11,)
+    elif ext == "6":
+        intervals += (9,)
+    elif ext == "9":
+        intervals += (10, 14)
+    elif ext == "sus4":
+        intervals = (0, 5, 7)
+    elif ext == "sus2":
+        intervals = (0, 2, 7)
+    root_name = spell_in_key(root, tonic_pc, mode)
+    return Chord(
+        numeral=numeral,
+        root_pitch_class=root,
+        quality=quality,
+        extension=ext,
+        symbol=f"{root_name}{suffix}{ext}",
+        pitch_classes=tuple((root + i) % 12 for i in intervals),
+    )

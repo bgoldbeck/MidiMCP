@@ -56,7 +56,7 @@ DEFAULT_PROFILE_ID = "retro-gm-1997-v1"
 DEFAULT_BANK_ID = "fluidr3-gm"
 
 _GENERATED_NOTE_ID = re.compile(r"^n(\d+)$")
-_TRACK_PROPERTIES = {"name", "instrument_id", "gain_db", "pan", "mute", "is_percussion"}
+_TRACK_PROPERTIES = {"name", "instrument_id", "gain_db", "pan", "mute", "is_percussion", "role"}
 
 
 @dataclass(frozen=True)
@@ -127,8 +127,12 @@ class CompositionService:
         brief: Brief | None = None,
         author: Author = "agent",
         operation_id: str | None = None,
+        tracks: Sequence[dict[str, Any]] = (),
+        sections: Sequence[dict[str, Any]] = (),
+        harmony: Sequence[dict[str, Any]] = (),
+        summary: str | None = None,
     ) -> OperationResult:
-        """Create an empty project from musical parameters (no tracks yet)."""
+        """Create a project from musical parameters (optionally with a track/form scaffold)."""
         if bars < 1:
             raise InvalidOperation("bars must be >= 1")
         numerator, denominator = meter
@@ -161,15 +165,88 @@ class CompositionService:
             sound_profile=SoundProfile(
                 profile_id=profile_id, bank_id=bank_id, bank_sha256=bank_sha256
             ),
+            tracks=[self._build(Track, **t) for t in tracks],
+            sections=[self._build(Section, **x) for x in sections],
+            harmony=[self._build(HarmonyEvent, **h) for h in harmony],
         )
         result = self.store.create_project(
             score,
             brief or Brief(),
-            summary=f"Created project {title!r}",
+            summary=summary or f"Created project {title!r}",
             author=author,
             operation_id=operation_id,
         )
         return self._result(result, None)
+
+    def create_from_template(
+        self,
+        *,
+        template_id: str,
+        title: str,
+        tonic: str | None = None,
+        mode: str | None = None,
+        tempo_bpm: float | None = None,
+        meter: tuple[int, int] | None = None,
+        bars: int | None = None,
+        project_id: str | None = None,
+        usage: str | None = None,
+        tags: Sequence[str] = (),
+        bank_id: str = DEFAULT_BANK_ID,
+        bank_sha256: str | None = None,
+        brief_overrides: dict[str, Any] | None = None,
+        author: Author = "agent",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Create a project scaffolded from a composition template (one revision):
+        tracks with roles, part limits, sections and a bar-by-bar chord chart."""
+        from midimcp.music.theory import parse_key
+        from midimcp.templates import build_scaffold, get_template, resolve_key
+
+        template = get_template(template_id)
+        tonic_name, mode_name = resolve_key(template, tonic, mode)
+        meter = meter or template.meter
+        bars = bars or template.form_bars
+        if bars < 1:
+            raise InvalidOperation("bars must be >= 1")
+        scaffold = build_scaffold(
+            template,
+            tonic_pc=parse_key(tonic_name, mode_name).tonic_pitch_class,
+            mode=mode_name,
+            meter=meter,
+            bars=bars,
+        )
+        brief_data: dict[str, Any] = {
+            "percussionAllowed": template.percussion_allowed,
+            "partLimits": scaffold.part_limits,
+            "mood": template.mood,
+            "setting": template.setting,
+            "templateId": template.id,
+            "loopRequired": template.loop,
+            "chordPlan": [h["romanNumeral"] for h in scaffold.harmony],
+        }
+        for key, value in (brief_overrides or {}).items():
+            brief_data[_camel(key)] = value
+        return self.create_project(
+            title=title,
+            tempo_bpm=tempo_bpm or template.default_tempo,
+            meter=meter,
+            tonic=tonic_name,
+            mode=mode_name,
+            bars=bars,
+            project_id=project_id,
+            usage=usage,
+            tags=tags,
+            loop=template.loop,
+            bank_id=bank_id,
+            bank_sha256=bank_sha256,
+            brief=self._build(Brief, **brief_data),
+            author=author,
+            operation_id=operation_id,
+            tracks=scaffold.tracks,
+            sections=scaffold.sections,
+            harmony=scaffold.harmony,
+            summary=f"Created {title!r} from template {template.name!r}",
+        )
 
     def _free_project_id(
         self, base: str, operation_id: str | None
@@ -197,6 +274,7 @@ class CompositionService:
         is_percussion: bool = False,
         gain_db: float = 0.0,
         pan: float = 0.0,
+        role: str | None = None,
         author: Author = "agent",
         operation_id: str | None = None,
     ) -> OperationResult:
@@ -212,6 +290,7 @@ class CompositionService:
                 is_percussion=is_percussion,
                 gain_db=float(gain_db),
                 pan=float(pan),
+                role=role,
             )
             return _with(score, tracks=[*score.tracks, track]), brief, (new_id,)
 

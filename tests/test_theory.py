@@ -104,3 +104,35 @@ def test_mode_aliases_and_errors() -> None:
     assert normalize_mode("minor") == "aeolian"
     with pytest.raises(TheoryError):
         normalize_mode("bebop")
+
+
+@pytest.mark.parametrize(
+    ("numeral", "tonic", "mode", "symbol", "pcs"),
+    [
+        ("I", 8, "ionian", "Ab", (8, 0, 3)),
+        ("vi", 8, "ionian", "Fm", (5, 8, 0)),
+        ("V7", 8, "ionian", "Eb7", (3, 7, 10, 1)),
+        ("vii°", 0, "ionian", "Bdim", (11, 2, 5)),
+        ("Vsus4", 7, "ionian", "Dsus4", (2, 7, 9)),
+        ("bVII", 2, "dorian", "C", (0, 4, 7)),
+        ("IV", 2, "dorian", "G", (7, 11, 2)),
+        ("bII", 4, "phrygian", "F", (5, 9, 0)),
+        ("bIII", 9, "aeolian", "C", (0, 4, 7)),
+        ("V", 9, "aeolian", "E", (4, 8, 11)),
+        ("II", 5, "lydian", "G", (7, 11, 2)),
+    ],
+)
+def test_parse_roman(numeral: str, tonic: int, mode: str, symbol: str, pcs: tuple) -> None:
+    from midimcp.music.theory import parse_roman
+
+    chord = parse_roman(numeral, tonic, mode)
+    assert chord.symbol == symbol
+    assert chord.pitch_classes == pcs
+
+
+def test_parse_roman_rejects_garbage() -> None:
+    from midimcp.music.theory import parse_roman
+
+    for bad in ("VIII", "x", "", "I#"):
+        with pytest.raises(TheoryError):
+            parse_roman(bad, 0, "ionian")

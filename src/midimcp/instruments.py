@@ -165,3 +165,34 @@ def instrument_for_program(program: int, *, percussion: bool = False) -> str:
         if alias_program == program:
             return f"retro.{alias}"
     return f"gm.{program:03d}"
+
+
+# Practical playing ranges (MIDI pitch, inclusive) for the curated aliases. Notes outside
+# still sound in a SoundFont but stop sounding like the real instrument.
+INSTRUMENT_RANGES: Final[dict[str, tuple[int, int]]] = {
+    "wooden_flute": (60, 96), "recorder": (72, 98), "pan_flute": (60, 91), "piccolo": (74, 108),
+    "ocarina": (60, 86), "shakuhachi": (60, 86), "whistle": (74, 98), "oboe": (58, 91),
+    "english_horn": (52, 81), "clarinet": (50, 91), "bassoon": (34, 75), "bagpipe": (55, 79),
+    "french_horn": (41, 77), "trumpet": (54, 84), "trombone": (40, 72), "tuba": (28, 58),
+    "lute": (40, 81), "harp": (24, 103), "dulcimer": (48, 88), "banjo": (48, 86),
+    "koto": (48, 91), "sitar": (48, 84), "pizzicato": (28, 96), "harpsichord": (29, 89),
+    "piano": (21, 108), "church_organ": (24, 96), "reed_organ": (36, 96), "accordion": (41, 89),
+    "celesta": (60, 108), "glockenspiel": (79, 108), "music_box": (60, 96), "kalimba": (60, 84),
+    "tubular_bells": (60, 77), "violin": (55, 103), "fiddle": (55, 96), "viola": (48, 88),
+    "cello": (36, 76), "contrabass": (28, 60), "strings": (28, 96), "warm_strings": (28, 96),
+    "tremolo_strings": (28, 96), "choir": (48, 79), "voice_oohs": (48, 79), "warm_pad": (36, 96),
+    "timpani": (40, 55), "acoustic_bass": (28, 55),
+}  # fmt: skip
+
+
+def instrument_range(instrument_id: str) -> tuple[int, int] | None:
+    if instrument_id.startswith("retro."):
+        return INSTRUMENT_RANGES.get(instrument_id.removeprefix("retro."))
+    return None
+
+
+def instrument_family(instrument_id: str) -> str | None:
+    try:
+        return resolve_instrument(instrument_id).family
+    except UnknownInstrument:
+        return None

@@ -84,8 +84,9 @@ Preview WAV may be inspected by audio-capable hosts; never promise AI listening 
 ## Implemented server (feature 9)
 
 - Module `midimcp.mcp_server` (MCP Python SDK 2.x `MCPServer`), served by `python -m midimcp serve` at `/mcp` (Streamable HTTP, `Authorization: Bearer $MIDIMCP_TOKEN`) or `python -m midimcp stdio` for local development.
-- Tools: `list_capabilities`, `list_soundbanks`, `list_instruments`, `list_projects`, `get_project` (track/bar filters, historic revision), `list_revisions`, `create_project`, `set_arrangement`, `update_brief`, `add_track`, `update_track`, `remove_track`, `replace_notes`, `edit_notes`, `restore_revision`, `validate_project` (incl. soundbank checks), `render_preview`, `get_render_status`, `export_project` (`midi` / `wav` / `json`).
-- Resources: `midimcp://guide` (composer guide), `midimcp://schema/score`, `midimcp://schema/brief`.
+- Tools: `list_templates`, `get_template`, `list_capabilities`, `list_soundbanks`, `list_instruments`, `list_projects`, `get_project` (track/bar filters, historic revision), `list_revisions`, `create_project`, `set_arrangement`, `update_brief`, `add_track`, `update_track`, `remove_track`, `replace_notes`, `edit_notes`, `restore_revision`, `validate_project` (incl. soundbank checks), `render_preview`, `get_render_status`, `export_project` (`midi` / `wav` / `json`).
+- `create_project(template_id=...)` scaffolds tracks (with roles and pitch limits), sections and a bar-by-bar chord chart in revision 1; tempo/meter/key/bars become optional overrides.
+- Resources: `midimcp://guide` (composer guide), `midimcp://templates`, `midimcp://schema/score`, `midimcp://schema/brief`.
 - Ranges can be given in **bars** (`start_bar`/`end_bar`, 1-based inclusive) or ticks.
 - Errors return `isError` with a JSON body `{"code": ..., "message": ..., ...}` (e.g. `REVISION_CONFLICT` with `currentRevision`, `LOCKED` with `lockIds`, `VALIDATION_FAILED` with the report).
 - Not exposed to agents: lock/unlock, soundbank install/import/removal, deleting projects, arbitrary files.

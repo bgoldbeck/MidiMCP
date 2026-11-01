@@ -376,6 +376,26 @@
           "minimum": -1.0,
           "title": "Pan",
           "type": "number"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "melody",
+                "countermelody",
+                "accompaniment",
+                "bass",
+                "pad",
+                "percussion"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
         }
       },
       "required": [
