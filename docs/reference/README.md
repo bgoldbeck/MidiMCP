@@ -10,5 +10,6 @@ Distilled from the original design conversation. Authoritative for implementatio
 | [04-mcp-tools.md](04-mcp-tools.md) | MCP tool contract, mutation checks, hosts, demo prompt, music guidance |
 | [05-ui-design.md](05-ui-design.md) | Layout, beginner/advanced modes, playback vs mutation controls |
 | [06-acceptance-tests.md](06-acceptance-tests.md) | Acceptance matrix, v1 definition of done, implementer rules, links |
+| [07-deployment-docker-truenas.md](07-deployment-docker-truenas.md) | **Current platform:** Docker on TrueNAS, web UI, HTTP MCP, data volume, exports, security |
 
 Build order lives in [../ROADMAP.md](../ROADMAP.md).

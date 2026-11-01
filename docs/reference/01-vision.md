@@ -34,6 +34,10 @@ Early UO music was General MIDI, so its character came from the synth playing it
 
 **Prioritize authentic 1990s General MIDI character** over realistic medieval samples. Bank-switching stays possible but is not the v1 focus.
 
+## Platform decision
+
+Deploy as a **Docker container on TrueNAS SCALE** with a **web interface**; songs live on the NAS and can be exported/downloaded on request. See [07-deployment-docker-truenas.md](07-deployment-docker-truenas.md).
+
 ## Legal/originality guardrails
 
 - Compose original music; never copy recognizable melodies.
