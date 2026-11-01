@@ -11,11 +11,12 @@ For every feature or change, the agent handles the full cycle without asking:
 
 1. Start from latest `main`: `git fetch origin main && git checkout -B <branch> origin/main`.
 2. Branch name describes the feature: `feature/<descriptive-kebab-name>`, `fix/...`, or `docs/...` (use the name listed in `docs/ROADMAP.md` when one exists).
-3. Commit with clear messages; run tests/lint before pushing.
-4. `git push -u origin <branch>`.
-5. Open a PR into `main` with a full description (summary, what changed, how tested, roadmap item).
-6. Merge the PR once checks pass, then delete the remote branch.
-7. Update the feature's status in `docs/ROADMAP.md` (⬜ → ✅) as part of the feature PR.
+3. **Start commit before any work.** First commit on the branch marks the feature as started — set its `docs/ROADMAP.md` status to 🟨 (or, for work not on the roadmap, an empty commit `git commit --allow-empty -m "Start: <feature>"`) — and push it immediately so the branch is visible on GitHub as in progress.
+4. Commit work with clear messages; run tests/lint before pushing.
+5. `git push -u origin <branch>`.
+6. Open a PR into `main` with a full description (summary, what changed, how tested, roadmap item).
+7. Merge the PR once checks pass, then delete the remote branch.
+8. Set the feature's status in `docs/ROADMAP.md` to ✅ as part of the feature PR.
 
 ## Engineering rules
 
