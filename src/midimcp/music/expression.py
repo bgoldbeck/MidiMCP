@@ -235,7 +235,7 @@ class ExpressionSettings:
     base: int = 96  # CC11 at phrase starts (127 = full volume)
     peak: int = 120  # CC11 at each phrase's high point
     swell: int = 10  # extra rise and fall inside held notes
-    long_note_ticks: int = 960  # notes at least this long swell and get vibrato
+    long_note_ticks: int = 1440  # notes at least this long swell and get vibrato
     vibrato_depth: int = 40  # CC1 reached on held notes; 0 = leave vibrato alone
     vibrato_delay_ticks: int = 240  # straight tone before vibrato starts
     resolution_ticks: int = 60  # spacing of ramp steps
