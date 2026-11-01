@@ -4,11 +4,12 @@ Routes:
 
 * ``GET  /healthz``                          — public liveness/readiness
 * ``POST /mcp``                              — MCP Streamable HTTP endpoint
-* ``GET  /api/renders/<key>.wav``            — rendered previews
-* ``GET  /api/projects/<id>/exports/<file>`` — exported files
+* ``/api/...``                               — web API + downloads (see midimcp.web_api)
+* ``WS   /api/events``                        — live project/render events
 
 All routes except ``/healthz`` require ``Authorization: Bearer <MIDIMCP_TOKEN>``
-(``?token=`` is also accepted on GET downloads so links work in a browser).
+(``?token=`` is also accepted on GET requests and WebSockets, which browsers cannot
+give headers to).
 """
 
 from __future__ import annotations
@@ -20,14 +21,15 @@ import sys
 from typing import Any
 
 from mcp.server.transport_security import TransportSecuritySettings
-from starlette.requests import Request
-from starlette.responses import FileResponse, JSONResponse, Response
+from starlette.requests import HTTPConnection, Request
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from midimcp import __version__
 from midimcp.config import ConfigError, Settings
 from midimcp.context import AppContext
 from midimcp.mcp_server import build_mcp_server
+from midimcp.web_api import EventsDispatcher, register_api
 
 log = logging.getLogger("midimcp")
 
@@ -48,12 +50,13 @@ class BearerAuthMiddleware:
         if scope["path"] in PUBLIC_PATHS:
             await self.app(scope, receive, send)
             return
-        request = Request(scope)
+        request = HTTPConnection(scope)
         supplied = None
         header = request.headers.get("authorization", "")
         if header.lower().startswith("bearer "):
             supplied = header[7:].strip()
-        elif scope["type"] == "http" and request.method == "GET":
+        elif scope["type"] == "websocket" or scope.get("method") == "GET":
+            # Browsers cannot set headers on WebSockets, <audio> or download links.
             supplied = request.query_params.get("token")
         if supplied is None or not hmac.compare_digest(supplied.encode(), self.token.encode()):
             response = JSONResponse(
@@ -81,24 +84,7 @@ def build_app(settings: Settings, ctx: AppContext | None = None) -> ASGIApp:
             }
         )
 
-    @server.custom_route("/api/renders/{name}", methods=["GET"])
-    async def render_download(request: Request) -> Response:
-        path = ctx.render_file(request.path_params["name"])
-        if path is None:
-            return JSONResponse({"code": "NOT_FOUND"}, status_code=404)
-        return FileResponse(path, media_type="audio/wav")
-
-    @server.custom_route("/api/projects/{project_id}/exports/{name}", methods=["GET"])
-    async def export_download(request: Request) -> Response:
-        path = ctx.export_file(request.path_params["project_id"], request.path_params["name"])
-        if path is None:
-            return JSONResponse({"code": "NOT_FOUND"}, status_code=404)
-        media = {
-            ".mid": "audio/midi",
-            ".wav": "audio/wav",
-            ".json": "application/json",
-        }.get(path.suffix, "application/octet-stream")
-        return FileResponse(path, media_type=media, filename=path.name)
+    register_api(server, ctx)
 
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=bool(settings.allowed_hosts),
@@ -109,6 +95,7 @@ def build_app(settings: Settings, ctx: AppContext | None = None) -> ASGIApp:
     app = server.streamable_http_app(
         streamable_http_path="/mcp", transport_security=security, host=settings.host
     )
+    app = EventsDispatcher(app, ctx, settings.allowed_hosts)
     return BearerAuthMiddleware(app, settings.token)
 
 

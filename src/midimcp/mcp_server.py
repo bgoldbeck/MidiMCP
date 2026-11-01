@@ -21,16 +21,18 @@ from pydantic import BaseModel, Field
 from midimcp import __version__
 from midimcp.context import AppContext
 from midimcp.instruments import UnknownInstrument
-from midimcp.midi import MidiExportError, export_midi_bytes
+from midimcp.midi import MidiExportError
 from midimcp.model.brief import Brief
 from midimcp.model.schema import brief_json_schema, score_json_schema
 from midimcp.model.score import Score
 from midimcp.music.theory import TheoryError
-from midimcp.music.timing import bar_range, tempo_us_to_bpm, ticks_per_bar, ticks_to_seconds
+from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
 from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError, sound_profile_issues
 from midimcp.store.errors import StoreError
 from midimcp.validation import MAX_DURATION_SECONDS, MAX_NOTES, MAX_TRACKS, validate_score
+from midimcp.views import export_project as export_project_files
+from midimcp.views import timing
 
 INSTRUCTIONS = """\
 MidiMCP composes original 1990s General-MIDI-style fantasy RPG music. Read the
@@ -94,18 +96,7 @@ def _tool_errors(func: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
-def _timing(score: Score) -> dict[str, Any]:
-    t = score.timeline
-    per_bar = ticks_per_bar(t.ppq, t.meter.numerator, t.meter.denominator)
-    return {
-        "ppq": t.ppq,
-        "ticksPerBar": per_bar,
-        "bars": t.total_ticks / per_bar,
-        "totalTicks": t.total_ticks,
-        "quarterNoteBpm": round(tempo_us_to_bpm(t.tempo_us_per_quarter), 3),
-        "meter": f"{t.meter.numerator}/{t.meter.denominator}",
-        "durationSeconds": round(ticks_to_seconds(t.total_ticks, t.ppq, t.tempo_us_per_quarter), 3),
-    }
+_timing = timing
 
 
 def _range(score: Score, start_bar, end_bar, start_tick, end_tick) -> tuple[int, int]:
@@ -569,34 +560,6 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
     ) -> dict[str, Any]:
         """Write an export into the project's exports folder; the user downloads it from the
         web UI (downloadPath). json = score + brief."""
-        snap = (
-            ctx.store.load_revision(project_id, revision)
-            if revision is not None
-            else service.get_project(project_id)
-        )
-        base = _EXPORT_NAME.sub("-", snap.score.metadata.title.lower()).strip("-") or "song"
-        stem = f"{base[:60]}-r{snap.revision}"
-        exports = ctx.store.project_dir(project_id) / "exports"
-        exports.mkdir(exist_ok=True)
-        if format == "midi":
-            path = exports / f"{stem}.mid"
-            path.write_bytes(export_midi_bytes(snap.score))
-        elif format == "json":
-            path = exports / f"{stem}.json"
-            payload = {"score": snap.score.to_json_dict(), "brief": snap.brief.to_json_dict()}
-            path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        else:
-            result = ctx.renderer.render(snap.score, speed=speed)
-            suffix = "" if speed == 1.0 else f"-x{speed:g}"
-            path = exports / f"{stem}{suffix}.wav"
-            path.write_bytes(result.path.read_bytes())
-        return {
-            "projectId": project_id,
-            "revision": snap.revision,
-            "format": format,
-            "file": path.name,
-            "sizeBytes": path.stat().st_size,
-            "downloadPath": f"/api/projects/{project_id}/exports/{path.name}",
-        }
+        return export_project_files(ctx, project_id, format, revision=revision, speed=speed)
 
     return server
