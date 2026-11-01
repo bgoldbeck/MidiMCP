@@ -1,21 +1,13 @@
 // Help page: add a Copy button to every prompt recipe.
+import { copyText, flashCopyResult } from "./clipboard.js";
+
 for (const recipe of document.querySelectorAll(".recipe")) {
-  const text = recipe.querySelector("pre").textContent;
+  const pre = recipe.querySelector("pre");
   const button = document.createElement("button");
   button.className = "secondary small copy";
   button.textContent = "Copy";
   button.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      button.textContent = "Copied";
-    } catch {
-      const range = document.createRange();
-      range.selectNodeContents(recipe.querySelector("pre"));
-      getSelection().removeAllRanges();
-      getSelection().addRange(range);
-      button.textContent = "Selected – press Ctrl+C";
-    }
-    setTimeout(() => { button.textContent = "Copy"; }, 2500);
+    flashCopyResult(button, await copyText(pre.textContent, pre), "Copy");
   });
   recipe.append(button);
 }

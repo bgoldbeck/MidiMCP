@@ -1,5 +1,6 @@
 // Templates page: browse built-in and custom templates; duplicate, edit (JSON) and delete custom ones.
 import { ApiError } from "./api.js";
+import { copyText, flashCopyResult } from "./clipboard.js";
 
 const NOTE_NAMES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
 const noteName = (pitch) => `${NOTE_NAMES[pitch % 12]}${Math.floor(pitch / 12) - 1}`;
@@ -72,7 +73,7 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
       el("div", { class: "prompt-box", id: "template-prompt", text: prompt }),
       el("div", { class: "buttons" }, el("button", {
         class: "secondary small",
-        onclick: (e) => navigator.clipboard?.writeText(prompt).then(() => { e.target.textContent = "Copied"; }),
+        onclick: async (e) => flashCopyResult(e.target, await copyText(prompt, document.getElementById("template-prompt")), "Copy prompt"),
       }, "Copy prompt"))));
   }
 

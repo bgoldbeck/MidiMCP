@@ -467,26 +467,58 @@ async function deleteSong() {
 
 // ------------------------------------------------------------------ exports
 
+const FORMAT_LABELS = { mp3: "MP3", wav: "WAV", midi: "MIDI", json: "Project JSON" };
+
 async function refreshExports() {
   const { exports } = await state.api.exports(state.view.projectId);
+  $("export-list-title").hidden = exports.length === 0;
   $("export-list").replaceChildren(...exports.slice(0, 10).map((file) =>
     el("li", {},
-      el("a", { href: state.api.url(file.downloadPath), download: file.file, text: file.file }),
-      ` · ${(file.sizeBytes / 1024).toFixed(file.sizeBytes > 10240 ? 0 : 1)} KB`)));
+      el("a", { class: "download-link", href: state.api.url(file.downloadPath), download: file.file, text: `⬇ ${file.file}` }),
+      el("span", { class: "hint", text: ` ${formatSize(file.sizeBytes)}` }))));
 }
 
-async function createExport(format) {
-  const status = $("export-status");
-  status.textContent = format === "wav" || format === "mp3" ? "rendering…" : "exporting…";
+function formatSize(bytes) {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(bytes > 10240 ? 0 : 1)} KB`;
+}
+
+/** Save a finished export to the user's computer (the server sends it as an attachment). */
+function saveToComputer(result) {
+  const link = el("a", { href: state.api.url(result.downloadPath), download: result.file, hidden: true });
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+/** Create an export of the current revision and download it. Returns the export, or null. */
+async function createExport(format, { bitrate, statusId = "export-status" } = {}) {
+  const status = $(statusId);
+  const label = FORMAT_LABELS[format] || format;
+  status.textContent = format === "wav" || format === "mp3" ? `preparing ${label} (rendering audio)…` : `preparing ${label}…`;
   try {
     const options = { revision: state.view.revision };
-    if (format === "mp3") options.bitrate = Number($("mp3-bitrate").value);
+    if (format === "mp3") options.bitrate = bitrate || Number($("mp3-bitrate").value);
     const result = await state.api.createExport(state.view.projectId, format, options);
-    status.textContent = `ready: ${result.file}`;
+    saveToComputer(result);
+    status.textContent = `downloaded: ${result.file}`;
     await refreshExports();
+    return result;
   } catch (error) {
     status.textContent = "";
     showError(error);
+    return null;
+  }
+}
+
+async function downloadSong() {
+  const button = $("download-song");
+  const [format, bitrate] = $("download-format").value.split(":");
+  button.disabled = true;
+  try {
+    await createExport(format, { bitrate: bitrate ? Number(bitrate) : undefined, statusId: "download-status" });
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -544,6 +576,14 @@ async function enterApp(status) {
     notice: state.pendingUpdate ? `Updated to revision ${state.pendingUpdate.revision}: ${state.pendingUpdate.summary}` : "",
   }).catch(showError);
   $("delete-song").onclick = () => deleteSong();
+  $("download-song").onclick = () => downloadSong();
+  try {
+    const saved = localStorage.getItem("midimcp.downloadFormat");
+    if (saved && [...$("download-format").options].some((o) => o.value === saved)) $("download-format").value = saved;
+  } catch { /* storage unavailable: keep the default */ }
+  $("download-format").onchange = () => {
+    try { localStorage.setItem("midimcp.downloadFormat", $("download-format").value); } catch { /* ignore */ }
+  };
   for (const button of document.querySelectorAll("[data-export]")) {
     button.onclick = () => createExport(button.dataset.export);
   }

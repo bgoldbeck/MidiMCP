@@ -152,3 +152,20 @@ a.tab { text-decoration: none; display: inline-flex; align-items: center; border
 .recipe .copy { position: absolute; top: 8px; right: 8px; }
 .steps { padding-left: 20px; }
 .steps li { margin-bottom: 4px; }
+
+.download-group { display: flex; gap: 6px; align-items: stretch; }
+button.download { font-size: 15px; padding: 9px 16px; }
+.download-group select { max-width: 210px; }
+#download-status { max-width: 320px; text-align: right; }
+#export-list-title { margin: 14px 0 4px; font-weight: 600; }
+.exports a.download-link { display: inline-block; padding: 3px 8px; border: 1px solid var(--line); border-radius: 5px; text-decoration: none; }
+.exports a.download-link:hover { border-color: var(--accent); }
+@media (max-width: 600px) {
+  .song-head { flex-direction: column; }
+  .head-actions { align-items: stretch; width: 100%; }
+  .download-group { flex-wrap: wrap; }
+  #download-status { text-align: left; }
+  .head-actions .pill { align-self: start; }
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .topbar .subtitle { display: none; }
+}
