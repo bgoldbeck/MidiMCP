@@ -55,6 +55,6 @@ Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile 
 - Overview: mini piano roll per track with sections, loop region and moving playhead; click to seek.
 - Tracks: instrument, volume (dB), mute — each saved as a new revision; locked tracks shown and not editable.
 - Checks: validation errors and advisory warnings.
-- Export: MIDI / WAV / JSON into the project's exports folder with download links.
+- Export: MIDI / WAV / MP3 (128–320 kbps) / JSON into the project's exports folder with download links.
 - Live updates: an agent edit reloads the song (or offers "Load new version" while playing).
 - Not yet: revision history panel / A-B / undo (feature 14), piano-roll editing and lock controls (feature 16).

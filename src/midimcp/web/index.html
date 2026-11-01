@@ -109,6 +109,13 @@
           <div class="buttons">
             <button class="secondary" data-export="midi">MIDI (.mid)</button>
             <button class="secondary" data-export="wav">WAV audio</button>
+            <button class="secondary" data-export="mp3">MP3</button>
+            <select id="mp3-bitrate" aria-label="MP3 quality">
+              <option value="128">128 kbps</option>
+              <option value="192" selected>192 kbps</option>
+              <option value="256">256 kbps</option>
+              <option value="320">320 kbps</option>
+            </select>
             <button class="secondary" data-export="json">Project JSON</button>
             <span id="export-status" class="hint"></span>
           </div>

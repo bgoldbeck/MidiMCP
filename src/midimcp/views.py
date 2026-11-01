@@ -6,6 +6,7 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
+from midimcp.encode import DEFAULT_MP3_BITRATE, MP3_BITRATES, encode_mp3
 from midimcp.midi import export_midi_bytes
 from midimcp.model.score import Score
 from midimcp.music.timing import tempo_us_to_bpm, ticks_per_bar, ticks_to_seconds
@@ -15,9 +16,14 @@ from midimcp.validation import validate_score
 if TYPE_CHECKING:
     from midimcp.context import AppContext
 
-EXPORT_FORMATS = ("midi", "wav", "json")
+EXPORT_FORMATS = ("midi", "wav", "mp3", "json")
 _EXPORT_NAME = re.compile(r"[^a-z0-9-]+")
-_MEDIA_TYPES = {".mid": "audio/midi", ".wav": "audio/wav", ".json": "application/json"}
+_MEDIA_TYPES = {
+    ".mid": "audio/midi",
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".json": "application/json",
+}
 
 
 def timing(score: Score) -> dict[str, Any]:
@@ -62,6 +68,7 @@ def export_project(
     *,
     revision: int | None = None,
     speed: float = 1.0,
+    bitrate: int = DEFAULT_MP3_BITRATE,
 ) -> dict[str, Any]:
     """Write an export into the project's exports folder and describe it."""
     if fmt not in EXPORT_FORMATS:
@@ -83,10 +90,21 @@ def export_project(
         payload = {"score": snap.score.to_json_dict(), "brief": snap.brief.to_json_dict()}
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     else:
+        if fmt == "mp3" and bitrate not in MP3_BITRATES:
+            raise ValueError(f"bitrate must be one of {', '.join(map(str, MP3_BITRATES))}")
         result = ctx.renderer.render(snap.score, speed=speed)
         suffix = "" if speed == 1.0 else f"-x{speed:g}"
-        path = exports / f"{stem}{suffix}.wav"
-        path.write_bytes(result.path.read_bytes())
+        if fmt == "wav":
+            path = exports / f"{stem}{suffix}.wav"
+            path.write_bytes(result.path.read_bytes())
+        else:
+            path = encode_mp3(
+                result.path,
+                exports / f"{stem}{suffix}-{bitrate}k.mp3",
+                bitrate=bitrate,
+                title=snap.score.metadata.title,
+                comment=f"revision {snap.revision}",
+            )
     return export_entry(project_id, path, revision=snap.revision, fmt=fmt)
 
 

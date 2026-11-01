@@ -42,6 +42,12 @@ Second change: the **composition service** (single mutation authority with locks
 | 14 | ⬜ Revision history + AI change review | `feature/revision-history-ai-change-summary-and-ab` | History panel, change summaries, A/B audition, undo last AI change | Undo restores prior notes as new head revision |
 | 15 | ⬜ Loops, OGG, export metadata, bundle import | `feature/loop-export-ogg-metadata-and-bundle-import` | Straight + tail-aware loop, OGG encode, export metadata JSON, project bundle `.zip` import | Clean loop with exact sample metadata; bundle round-trips |
 
+## Added on request
+
+| # | Feature | Branch | Delivers |
+|---|---|---|---|
+| 24 | ✅ MP3 export | `feature/mp3-export` | MP3 download (LAME, 128-320 kbps, ID3 title tags) from the web UI, web API and MCP |
+
 ## Phase 4 — Editing depth and quality
 
 | # | Feature | Branch | Delivers |

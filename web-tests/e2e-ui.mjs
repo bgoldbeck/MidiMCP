@@ -94,6 +94,14 @@ try {
   if (new TextDecoder().decode(midi.slice(0, 4)) !== "MThd") throw new Error("MIDI download broken");
   step(`MIDI export downloadable (${midi.byteLength} bytes)`);
 
+  await page.selectOption("#mp3-bitrate", "128");
+  await page.click("[data-export=mp3]");
+  await waitText("#export-status", "128k.mp3");
+  const mp3Href = await page.getAttribute("#export-list a[href*='.mp3']", "href");
+  const mp3 = new Uint8Array(await (await fetch(new URL(mp3Href, base))).arrayBuffer());
+  if (String.fromCharCode(...mp3.slice(0, 3)) !== "ID3") throw new Error("MP3 download broken");
+  step(`MP3 export downloadable (${mp3.byteLength} bytes)`);
+
   // Song only allows flute + recorder: picking Harp asks first; Cancel keeps everything.
   await waitText("#allowed-instruments", "Wooden Flute, Recorder");
   const flute = page.locator("tr[data-track=flute] select");

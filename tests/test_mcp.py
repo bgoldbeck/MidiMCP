@@ -492,3 +492,21 @@ def test_templates_via_mcp(ctx: AppContext) -> None:
             assert "peaceful-town" in resource.contents[0].text
 
     run(go())
+
+
+@pytest.mark.skipif(not (HAS_AUDIO and shutil.which("lame")), reason="fluidsynth + lame required")
+def test_mp3_export_via_mcp(ctx: AppContext) -> None:
+    async def go() -> None:
+        async with Client(build_mcp_server(ctx)) as client:
+            await build_song(client)
+            mp3 = await call(
+                client,
+                "export_project",
+                project_id="lanterns-of-the-vale",
+                format="mp3",
+                bitrate=128,
+            )
+            assert mp3["file"] == "lanterns-of-the-vale-r5-128k.mp3"
+            assert mp3["mediaType"] == "audio/mpeg"
+
+    run(go())

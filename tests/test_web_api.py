@@ -167,7 +167,7 @@ def test_exports_list_and_download(client: TestClient) -> None:
     assert download.status_code == 200 and download.content.startswith(b"MThd")
     assert (
         client.post(
-            f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "mp3"}
+            f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "flac"}
         ).status_code
         == 400
     )
@@ -279,3 +279,22 @@ def test_delete_project(client: TestClient, ctx: AppContext) -> None:
     assert client.get("/api/projects", headers=AUTH).json()["projects"] == []
     assert client.delete(f"/api/projects/{PID}", headers=AUTH).status_code == 404
     assert any((ctx.data_dir / "trash").iterdir())
+
+
+@pytest.mark.skipif(not (HAS_AUDIO and shutil.which("lame")), reason="fluidsynth + lame required")
+def test_mp3_export(client: TestClient) -> None:
+    status = client.get("/api/status", headers=AUTH).json()
+    assert status["encoders"]["mp3"] is True and status["mp3Bitrates"] == [128, 192, 256, 320]
+    made = client.post(
+        f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "mp3", "bitrate": 256}
+    )
+    assert made.status_code == 200, made.text
+    entry = made.json()
+    assert entry["file"] == "lanterns-r3-256k.mp3" and entry["mediaType"] == "audio/mpeg"
+    audio = client.get(entry["downloadPath"], params={"token": TOKEN})
+    assert audio.status_code == 200 and audio.content[:3] == b"ID3"
+    assert audio.headers["content-type"] == "audio/mpeg"
+    bad = client.post(
+        f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "mp3", "bitrate": 100}
+    )
+    assert bad.status_code == 400

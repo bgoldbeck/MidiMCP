@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from midimcp import __version__
 from midimcp.context import AppContext
+from midimcp.encode import EncodeError
 from midimcp.instruments import UnknownInstrument
 from midimcp.midi import MidiExportError
 from midimcp.model.brief import Brief
@@ -90,7 +91,7 @@ def _tool_errors(func: F) -> F:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return func(*args, **kwargs)
-        except (StoreError, SoundbankError, RenderError, MidiExportError) as exc:
+        except (StoreError, SoundbankError, RenderError, MidiExportError, EncodeError) as exc:
             raise ToolError(json.dumps(exc.to_dict())) from exc
         except (UnknownInstrument, TheoryError, ValueError) as exc:
             code = getattr(exc, "code", "INVALID_ARGUMENT")
@@ -179,7 +180,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             "meterDenominators": [1, 2, 4, 8, 16, 32],
             "defaultBankId": DEFAULT_BANK_ID,
             "audio": ctx.renderer.status(),
-            "exportFormats": ["midi", "wav", "json"],
+            "exportFormats": ["midi", "wav", "mp3", "json"],
         }
 
     @server.tool()
@@ -637,12 +638,17 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
     @_tool_errors
     def export_project(
         project_id: str,
-        format: Literal["midi", "wav", "json"],
+        format: Literal["midi", "wav", "mp3", "json"],
         revision: int | None = None,
         speed: Annotated[float, Field(ge=0.25, le=4.0)] = 1.0,
+        bitrate: Annotated[
+            Literal[128, 192, 256, 320], Field(description="MP3 kbps (mp3 only)")
+        ] = 192,
     ) -> dict[str, Any]:
         """Write an export into the project's exports folder; the user downloads it from the
-        web UI (downloadPath). json = score + brief."""
-        return export_project_files(ctx, project_id, format, revision=revision, speed=speed)
+        web UI (downloadPath). json = score + brief; mp3 = rendered audio encoded with LAME."""
+        return export_project_files(
+            ctx, project_id, format, revision=revision, speed=speed, bitrate=bitrate
+        )
 
     return server
