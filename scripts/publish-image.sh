@@ -27,9 +27,17 @@ docker build --pull --platform linux/amd64 \
   -t "${IMAGE}:${VERSION}" -t "${IMAGE}:${COMMIT}" -t "${IMAGE}:latest" .
 
 if [ -z "${GHCR_TOKEN:-}" ]; then
+  echo "Paste the token and press Enter (input is hidden; in a browser shell use Ctrl+Shift+V or right-click > Paste)."
   read -r -s -p "GitHub token with write:packages for ${OWNER}: " GHCR_TOKEN
   echo
 fi
+GHCR_TOKEN="$(printf '%s' "${GHCR_TOKEN}" | tr -d '[:space:]')"
+if [ -z "${GHCR_TOKEN}" ]; then
+  echo "error: no token received (the paste did not arrive). Run again and paste with Ctrl+Shift+V or right-click > Paste." >&2
+  echo "       The image is already built and cached, so the rerun is quick." >&2
+  exit 1
+fi
+echo "Token received (${#GHCR_TOKEN} characters). Logging in to ghcr.io..."
 printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${OWNER}" --password-stdin
 trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
 

@@ -228,7 +228,9 @@ if (-not $token) {
     try { $token = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
 }
-if (-not $token) { Stop-WithError "No token entered." "Run again and paste a token with the write:packages scope." }
+if ($token) { $token = $token.Trim() }
+if (-not $token) { Stop-WithError "No token received (the paste did not arrive)." "Run again and paste with Ctrl+V or right-click; the image is already built, so the rerun is quick." }
+Write-Info ("token received ({0} characters)" -f $token.Length)
 
 $previous = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
