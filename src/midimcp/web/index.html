@@ -166,9 +166,22 @@
         </section>
       </div>
 
-      <section class="card" aria-label="AI connection">
+      <section class="card" aria-label="AI connection" id="connect">
         <h3>Connect an AI client</h3>
-        <p class="hint">MCP endpoint: <code id="mcp-url"></code> with header <code>Authorization: Bearer &lt;token&gt;</code>. Setup for Claude Code, Codex and Antigravity: <a href="setup.html#clients">Setup → Connect AI clients</a>.</p>
+        <p class="hint">MCP endpoint: <code id="mcp-url"></code> with header <code>Authorization: Bearer &lt;token&gt;</code>. Download a ready-made config (your NAS address and token are already filled in):</p>
+        <div class="buttons">
+          <a id="config-antigravity" class="button" download="mcp_config.json">⬇ Antigravity (mcp_config.json)</a>
+          <a id="config-claude" class="button secondary" download=".mcp.json">⬇ Claude Code (.mcp.json)</a>
+          <button id="copy-claude-command" class="secondary">Copy Claude Code command</button>
+          <a id="config-codex" class="button secondary" download="config.toml">⬇ Codex (config.toml)</a>
+          <a id="config-tools" class="button secondary" download="midimcp-tools.json">⬇ Tool list with schemas (JSON)</a>
+        </div>
+        <ul class="hint connect-steps">
+          <li><strong>Antigravity:</strong> Agent panel → … → MCP Servers → Manage MCP Servers → View raw config, and paste the file's contents (or save it as <code>~/.gemini/antigravity/mcp_config.json</code>). Already have other servers? Copy only the <code>"midimcp"</code> entry into your <code>"mcpServers"</code>. Then refresh the server list.</li>
+          <li><strong>Claude Code:</strong> run the copied command once, or put <code>.mcp.json</code> in a project folder.</li>
+          <li><strong>Codex:</strong> add the file's lines to <code>~/.codex/config.toml</code> and set <code>MIDIMCP_TOKEN</code> as its first comment shows.</li>
+          <li>These files contain your access token: don't share them. More: <a href="setup.html#clients">Setup → Connect AI clients</a>.</li>
+        </ul>
         <p id="engine" class="hint"></p>
       </section>
 

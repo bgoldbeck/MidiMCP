@@ -2,6 +2,7 @@
 // All text from songs is inserted with textContent / DOM nodes, never as HTML.
 import { Api, ApiError, getToken, setToken } from "./api.js";
 import { Player, SPEEDS, formatTime } from "./player.js";
+import { copyText, flashCopyResult } from "./clipboard.js";
 import { setupTemplates } from "./templates-view.js";
 
 const $ = (id) => document.getElementById(id);
@@ -746,6 +747,18 @@ async function enterApp(status) {
   $("app").hidden = false;
   $("logout").hidden = false;
   $("mcp-url").textContent = `${location.origin}${status.mcpPath}`;
+  for (const client of ["antigravity", "claude", "codex"]) {
+    $(`config-${client}`).href = state.api.url(`/api/mcp-config?client=${client}`);
+  }
+  $("config-tools").href = state.api.url("/api/mcp-tools?download=1");
+  $("copy-claude-command").onclick = async (event) => {
+    try {
+      const { claudeCommand } = await state.api.request("GET", "/api/mcp-connect");
+      flashCopyResult(event.target, await copyText(claudeCommand), "Copy Claude Code command");
+    } catch (error) {
+      showError(error);
+    }
+  };
   const audio = status.audio;
   $("engine").textContent = audio.available ? `Audio engine: ${audio.engine}` : `Audio engine unavailable: ${audio.error}`;
   setupPlayer();

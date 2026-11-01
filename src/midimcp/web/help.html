@@ -43,6 +43,15 @@
       <h2>How it works</h2>
       <p>You describe music to your AI client (Claude Code, Codex, Antigravity). It uses the <code>midimcp</code> tools to write notes into a song stored on your NAS. This site plays, adjusts and exports those songs. Every change is saved as a new <em>revision</em>, so nothing is ever lost.</p>
       <p>Installing on TrueNAS or Docker, connecting AI clients, updating, or building and publishing the image yourself: see <a href="setup.html">Setup</a>.</p>
+      <p><strong>Connect your AI client:</strong> download its ready-made config (NAS address and token filled in; keep it private). Antigravity uses <code>mcp_config.json</code>; see <a href="setup.html#clients">Setup → Connect AI clients</a> for where each file goes.</p>
+      <div class="buttons config-downloads">
+        <a class="button" data-mcp-config="antigravity" download="mcp_config.json">⬇ Antigravity (mcp_config.json)</a>
+        <a class="button secondary" data-mcp-config="claude" download=".mcp.json">⬇ Claude Code (.mcp.json)</a>
+        <a class="button secondary" data-mcp-config="codex" download="config.toml">⬇ Codex (config.toml)</a>
+        <a class="button secondary" data-mcp-config="tools" download="midimcp-tools.json">⬇ Tool list with schemas (JSON)</a>
+      </div>
+      <p class="hint" data-needs-login>These buttons work after you log in once on the <a href="./">Songs page</a> in this browser.</p>
+
       <p>Each recipe below has a <strong>Copy</strong> button. Paste it into your AI client and change the words in <code>[brackets]</code>.</p>
     </section>
 

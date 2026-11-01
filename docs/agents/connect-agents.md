@@ -4,6 +4,19 @@ MidiMCP speaks **MCP over Streamable HTTP** at `http://<nas>:8765/mcp` and requi
 
 > Client configuration formats change between releases. The snippets below follow each client's documented HTTP-server format at the time of writing; if your version differs, check its MCP docs (links at the end). The server side was verified with the official MCP Python client over HTTP.
 
+## Easiest: download a ready-made config
+
+Open the web UI, log in, and use the **Connect an AI client** card on the Songs page (or *Setup → Connect AI clients*): it downloads a config with your NAS address and token already filled in.
+
+| Button | File | Endpoint |
+|---|---|---|
+| Antigravity | `mcp_config.json` | `GET /api/mcp-config?client=antigravity` |
+| Claude Code | `.mcp.json` (+ a *Copy command* button) | `GET /api/mcp-config?client=claude` |
+| Codex | `config.toml` lines | `GET /api/mcp-config?client=codex` |
+| Tool list with schemas | `midimcp-tools.json`: every tool's JSON input schema | `GET /api/mcp-tools?download=1` |
+
+The files contain your token: keep them private. The endpoints need the token too (`?token=` works for downloads).
+
 ## Claude Code
 
 ```bash
@@ -32,7 +45,7 @@ Older Codex releases needed `experimental_use_rmcp_client = true` at the top lev
 
 ## Google Antigravity
 
-Agent panel → **…** → **MCP Servers** → **Manage MCP Servers** → **View raw config**, then add to `mcp_config.json`:
+Agent panel → **…** → **MCP Servers** → **Manage MCP Servers** → **View raw config**, then add to `mcp_config.json` (or download it, see above; the file usually lives at `~/.gemini/antigravity/mcp_config.json`). Antigravity requires `serverUrl` (not `url`) for remote servers; if you already have servers, merge only the `midimcp` entry into `mcpServers`:
 
 ```json
 {

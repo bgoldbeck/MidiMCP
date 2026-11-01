@@ -7,6 +7,9 @@ Mutations go through :class:`CompositionService` with ``author="user"`` and need
 Routes::
 
     GET   /api/status
+    GET   /api/mcp-connect                     (MCP URL + Claude Code command for this server)
+    GET   /api/mcp-config?client=antigravity|claude|codex|generic  (download a ready client config)
+    GET   /api/mcp-tools?download=1            (every MCP tool with its JSON input schema)
     GET   /api/instruments?bankId=&search=
     GET   /api/templates                          (built-in + custom)
     GET|PUT|DELETE /api/templates/{id}          (PUT/DELETE: custom templates only)
@@ -47,6 +50,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from midimcp import __version__
+from midimcp.client_configs import CLIENTS, UnknownClient, claude_command, client_config
 from midimcp.context import AppContext
 from midimcp.encode import DEFAULT_MP3_BITRATE, MP3_BITRATES, EncodeError, encoder_status
 from midimcp.instruments import UnknownInstrument, resolve_instrument
@@ -89,6 +93,7 @@ _STATUS_BY_CODE = {
     "INVALID_TEMPLATE": 422,
     "COLLECTION_NOT_FOUND": 404,
     "INVALID_COLLECTION": 422,
+    "UNKNOWN_CLIENT": 400,
     "NOT_FOUND": 404,
     "REVISION_CONFLICT": 409,
     "PROJECT_EXISTS": 409,
@@ -193,6 +198,62 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             }
 
         return await _call(build)
+
+    def presented_token(request: Request) -> str | None:
+        """The token this request authenticated with (header, or ?token= on GET)."""
+        header = request.headers.get("authorization", "")
+        if header.lower().startswith("bearer "):
+            return header[7:].strip()
+        return request.query_params.get("token")
+
+    def mcp_url(request: Request) -> str:
+        host = request.headers.get("host") or f"{request.url.hostname}:{request.url.port}"
+        return f"{request.url.scheme}://{host}/mcp"
+
+    @route("/api/mcp-connect", ["GET"])
+    async def mcp_connect(request: Request) -> Response:
+        url, token = mcp_url(request), presented_token(request)
+        return JSONResponse(
+            {
+                "url": url,
+                "clients": list(CLIENTS),
+                "claudeCommand": claude_command(url, token),
+            }
+        )
+
+    @route("/api/mcp-config", ["GET"])
+    async def mcp_config(request: Request) -> Response:
+        client = request.query_params.get("client", "antigravity")
+        try:
+            filename, media, content = client_config(
+                client, mcp_url(request), presented_token(request)
+            )
+        except UnknownClient as exc:
+            return _error_response(exc)
+        return Response(
+            content,
+            media_type=media,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    @route("/api/mcp-tools", ["GET"])
+    async def mcp_tools(request: Request) -> Response:
+        tools = await server.list_tools()
+        body = {
+            "server": "midimcp",
+            "version": __version__,
+            "transport": "streamable-http",
+            "url": mcp_url(request),
+            "auth": "Authorization: Bearer <token>",
+            "tools": [t.model_dump(mode="json", by_alias=True, exclude_none=True) for t in tools],
+        }
+        headers = {}
+        if request.query_params.get("download"):
+            headers["Content-Disposition"] = 'attachment; filename="midimcp-tools.json"'
+        return JSONResponse(body, headers=headers)
 
     @route("/api/instruments", ["GET"])
     async def instruments(request: Request) -> Response:
