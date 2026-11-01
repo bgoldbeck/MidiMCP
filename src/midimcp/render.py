@@ -274,11 +274,17 @@ class Renderer:
             raw_path = work_dir / "full.wav"
             midi_path.write_bytes(midi_bytes)
             command = [
-                binary, "-ni", "-q", "-F", str(raw_path),
-                "-r", str(self.profile.sample_rate),
+                binary,
+                "-ni",
+                "-q",
+                "-F",
+                str(raw_path),
+                "-r",
+                str(self.profile.sample_rate),
                 *self.profile.fluidsynth_settings(),
-                str(bank_path), str(midi_path),
-            ]  # fmt: skip
+                str(bank_path),
+                str(midi_path),
+            ]
             completed = subprocess.run(
                 command,
                 capture_output=True,

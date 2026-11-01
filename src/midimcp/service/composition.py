@@ -123,6 +123,7 @@ class CompositionService:
         loop: bool = True,
         profile_id: str = DEFAULT_PROFILE_ID,
         bank_id: str = DEFAULT_BANK_ID,
+        bank_sha256: str | None = None,
         brief: Brief | None = None,
         author: Author = "agent",
         operation_id: str | None = None,
@@ -157,7 +158,9 @@ class CompositionService:
                 loop=LoopRegion(enabled=loop, start_tick=0, end_tick=total if loop else 0),
             ),
             tonality=make_tonality(tonic, mode),
-            sound_profile=SoundProfile(profile_id=profile_id, bank_id=bank_id),
+            sound_profile=SoundProfile(
+                profile_id=profile_id, bank_id=bank_id, bank_sha256=bank_sha256
+            ),
         )
         result = self.store.create_project(
             score,
