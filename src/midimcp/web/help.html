@@ -27,6 +27,8 @@
       <a href="#first">Your first song</a>
       <a href="#templates">Songs from templates</a>
       <a href="#complex">Building a richer song step by step</a>
+      <a href="#human">Making it sound human</a>
+      <a href="#styles">Retro and Old Realm styles</a>
       <a href="#edit">Editing parts of a song</a>
       <a href="#loops">Making loops sound good</a>
       <a href="#variations">Variations for your game</a>
@@ -50,7 +52,7 @@
     <section class="card" id="templates">
       <h2>Songs from templates</h2>
       <p>Templates give the AI a plan: which instruments play which role, their pitch ranges, the song form (A / B / A′…) and a chord for every bar. Browse them on the <a href="./#templates">Templates</a> tab, where each one also has a ready-made prompt.</p>
-      <p>Built-in templates: <code>peaceful-town</code>, <code>forest-exploration</code>, <code>ruined-crypt</code>, <code>tavern</code>, <code>sea-voyage</code>, <code>tense-borderlands</code>.</p>
+      <p>Built-in templates: <code>peaceful-town</code>, <code>forest-exploration</code>, <code>ruined-crypt</code>, <code>tavern</code>, <code>sea-voyage</code>, <code>tense-borderlands</code>, plus the <a href="#styles">Old Realm and retro game families</a>.</p>
       <div class="recipe"><pre>Using midimcp, create a song from the "[peaceful-town]" template titled "[Lanterns of the Vale]" in [G#]. Fill every section of every track following the chord chart and the template guidance. Then validate, fix the warnings that make sense, and render a preview.</pre></div>
       <p>Override anything the template sets:</p>
       <div class="recipe"><pre>Using midimcp, create a song from the "[forest-exploration]" template titled "[Mossway]", but in [E] [aeolian], at [72] BPM, [48] bars long. Keep the template's instruments and form. Fill every section, validate, render a preview.</pre></div>
@@ -69,6 +71,32 @@
         <li><div class="recipe"><pre>Give the melody more life: vary velocities to shape each phrase (softer at phrase starts, peak in the middle), add one or two passing notes per phrase. Don't change the accompaniment.</pre></div></li>
       </ol>
       <p class="hint">Tip: tell the AI what you heard. "The flute is too busy in bars 5-6" works better than "make it better".</p>
+    </section>
+
+    <section class="card" id="human">
+      <h2>Making it sound human</h2>
+      <p>A melody typed exactly on the beat, every note equally loud and with nothing happening inside held notes sounds robotic. Checks warns <code>MECHANICAL_MELODY</code> when that happens. Three tools fix it. They never change pitches, and they are repeatable: the same request gives the same result.</p>
+      <ul>
+        <li><strong>Humanize</strong>: tiny timing pushes (bar downbeats stay exact), phrase-shaped loudness, accents, smooth or detached notes, breaths.</li>
+        <li><strong>Expression</strong>: the volume swells across each phrase and inside long notes; a gentle vibrato fades in on held notes. Best for flute, recorder, oboe, strings, horn and voices; plucked and struck instruments don't need it.</li>
+        <li><strong>Automation</strong>: hand-made gestures such as a fade-in, a slide into a note, or a vibrato swell on the last note.</li>
+      </ul>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", make the [flute] sound played instead of typed: humanize it (legato 0.92, breaths of about 180 ticks between phrases, subtle timing), then shape its expression with phrase swells and a gentle delayed vibrato on held notes. Humanize the [lute] lightly (timing only). Leave pitches unchanged, validate and render bars 1-8.</pre></div>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", before humanizing, give the [flute] melody more life as a composer would: shape velocities per phrase, add a grace note or mordent on 2-3 long notes per phrase and a short trill before each cadence. Keep the tune recognisable.</pre></div>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", fade the [strings] in over the first 2 bars (expression 40 to 110, ramped) and add a slow vibrato swell on the [flute]'s final note.</pre></div>
+      <p class="hint">Run humanize once, after the notes are final. Not right? Ask for "the same with seed 2" for a different take, or "less timing variation".</p>
+    </section>
+
+    <section class="card" id="styles">
+      <h2>Retro and Old Realm styles</h2>
+      <p>The templates describe a style (instruments, tempo, form, chords, playing patterns), never a melody, and every one tells the AI not to copy existing games. Use them for music <em>in the spirit of</em> an era.</p>
+      <ul>
+        <li><strong>Old Realm</strong>, in the spirit of late-90s online fantasy RPGs: <code>old-realm-title</code> (login screen), <code>old-realm-town</code>, <code>old-realm-forest</code>, <code>old-realm-sailing</code>, <code>old-realm-dungeon</code>, <code>old-realm-battle</code>, <code>old-realm-castle</code>, <code>old-realm-shrine</code>, <code>old-realm-wilderness</code>.</li>
+        <li><strong>Retro games</strong>: <code>retro-8bit-overworld</code>, <code>retro-8bit-dungeon</code> (chip-style: every part one note at a time), <code>retro-16bit-jrpg-town</code>, <code>retro-16bit-jrpg-battle</code>, <code>retro-16bit-boss</code>, <code>retro-16bit-world-map</code>, <code>retro-platformer-stage</code>, <code>retro-puzzle-game</code>, <code>retro-space-shooter</code>, <code>retro-gothic-castle</code>, <code>retro-pc-adventure</code> (early PC sound-card style), <code>retro-victory-fanfare</code> (short jingle, no loop).</li>
+      </ul>
+      <div class="recipe"><pre>Using midimcp, compose a set of original themes for my game in the Old Realm style: a login theme ("old-realm-title"), a town ("old-realm-town"), a forest ("old-realm-forest") and a sailing theme ("old-realm-sailing"), all in [D] so they feel related. For each: fill every section following the chord chart, follow the template's Expression advice, validate and render a preview. Original melodies only.</pre></div>
+      <div class="recipe"><pre>Using midimcp, create an original 8-bit overworld theme from "retro-8bit-overworld" titled "[Pixel Meadow]": catchy 2-bar hook, every part one note at a time like real chip hardware, fast arpeggios on the second square channel. Validate and render.</pre></div>
+      <div class="recipe"><pre>Using midimcp, write a "retro-16bit-jrpg-battle" theme titled "[Clash at the Ford]" and a matching "retro-victory-fanfare" that ends the battle, both in [D] [aeolian] / [D] major. Validate and render both.</pre></div>
     </section>
 
     <section class="card" id="edit">

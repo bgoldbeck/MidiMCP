@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import itertools
 from pathlib import Path
 
 import mido
@@ -156,6 +157,15 @@ def test_humanize_is_deterministic_and_keeps_pitches_and_downbeats() -> None:
     assert any(n.start_tick % 240 for n in first)  # no longer all on the grid
     chord = [n for n in first if n.id in {"n1", f"n{len(notes) - 1}"}]
     assert chord[0].start_tick == chord[1].start_tick  # chord tones move together
+
+
+@pytest.mark.parametrize("seed", range(1, 30))
+def test_humanize_keeps_a_monophonic_line_monophonic(seed: int) -> None:
+    line = [n for n in model_notes() if n.pitch != 55]
+    out = sorted(run_humanize(line, seed=seed, timing_ticks=40), key=lambda n: n.start_tick)
+    for a, b in itertools.pairwise(out):
+        assert a.end_tick <= b.start_tick, (a, b)
+        assert a.duration_ticks >= 1
 
 
 def test_humanize_respects_range_legato_and_breath() -> None:

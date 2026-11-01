@@ -175,7 +175,9 @@ def humanize(
 
     # Timing per onset; keeps onsets in order and never past the note end.
     moved: dict[int, int] = {}
-    previous = -1
+    # Never push the first onset into a note before the range that had ended by then.
+    before = [n.end_tick for n in notes if n.id not in target_ids and n.end_tick <= onsets[0]]
+    previous = max(before, default=0) - 1
     shortest: dict[int, int] = {}
     for n in targets:
         shortest[n.start_tick] = min(shortest.get(n.start_tick, n.end_tick), n.end_tick)
@@ -213,6 +215,10 @@ def humanize(
             floor = new_start + max(ppq // 8, (new_end - new_start) // 2)
             if new_end > limit:
                 new_end = max(limit, floor)
+        if following is not None and note.end_tick <= onsets[index + 1]:
+            # It ended before the next note: keep it that way, so a monophonic line stays
+            # monophonic when the next note is pushed early.
+            new_end = min(new_end, following)
         jitter = settings.velocity_variation * noise(seed, note.id, "velocity")
         velocity = _clamp(note.velocity + offset.get(onset, 0) + jitter, 1, 127)
         result.append(

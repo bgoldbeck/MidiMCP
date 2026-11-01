@@ -27,11 +27,11 @@ Store: tonic pitch class (0–11), mode ID, requested spelling, practical displa
 - Mode ≠ progression. Progressions stored separately, e.g. I–vi–IV–V = A♭ / Fm / D♭ / E♭.
 - Out-of-key notes are not structural errors; reported as advisory or strict-mode errors per brief.
 
-## Document shape (schema 1.0.0)
+## Document shape (schema 1.1.0)
 
 ```json
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "projectId": "example-project",
   "revision": 4,
   "metadata": { "title": "Lanterns of the Vale", "usage": "sparkfall.town.day", "originality": "original" },
@@ -50,7 +50,12 @@ Store: tonic pitch class (0–11), mode ID, requested spelling, practical displa
       "gainDb": -3.0, "pan": 0.0, "mute": false,
       "notes": [
         { "id": "n1", "pitch": 68, "startTick": 0, "durationTicks": 720, "velocity": 80 }
-      ]
+      ],
+      "automation": {
+        "expression": [ { "tick": 0, "value": 96 }, { "tick": 360, "value": 112 } ],
+        "modulation": [ { "tick": 0, "value": 0 }, { "tick": 480, "value": 30 } ],
+        "pitchBend": []
+      }
     }
   ],
   "sections": [ { "id": "section-a", "label": "A", "startTick": 0, "endTick": 23040 } ],
@@ -58,7 +63,21 @@ Store: tonic pitch class (0–11), mode ID, requested spelling, practical displa
 }
 ```
 
-Future fields (reserve, don't build yet): articulation, controller automation, program changes, tempo map, track roles, humanization seed, regeneration metadata, adaptive stems.
+### Automation (schema 1.1.0)
+
+Each track has three controller lanes. A point's value holds until the lane's next point; ticks strictly increase; points must lie inside the timeline.
+
+| Lane | MIDI | Values | Resting value |
+|---|---|---|---|
+| `expression` | CC11 | 0–127 (127 = full) | 127 |
+| `modulation` | CC1 (vibrato depth) | 0–127 | 0 |
+| `pitchBend` | pitch wheel | −8192…8191 (±2 semitones) | 0 |
+
+Ramps are stored as dense points (the `shape_expression` / `set_automation` tools generate them), so playback, export and render are exact. In MIDI files, controller events at a tick come after note-offs and before note-ons. A track with no automation exports exactly the same bytes as under schema 1.0.0. Schema 1.0.0 documents load unchanged (empty automation) and are written as 1.1.0 on their next change. Locks cover automation: whole-track locks freeze every lane, range locks freeze the points inside the range.
+
+Humanizing (`humanize_notes`) changes notes, not a stored setting: its "randomness" is derived from SHA-256 of (seed, note, purpose), so the same call always gives the same notes.
+
+Future fields (reserve, don't build yet): program changes, tempo map, regeneration metadata, adaptive stems.
 
 ## Brief (`brief.json`) — intent, constraints, locks
 
@@ -104,9 +123,9 @@ New bank or engine version ⇒ new render profile. Never silently change a proje
 
 ### Implemented validation codes (`midimcp.validation`)
 
-Errors: `TRACK_ID_DUPLICATE`, `NOTE_ID_DUPLICATE` (note IDs are project-wide), `SECTION_ID_DUPLICATE`, `TOO_MANY_TRACKS` (12), `BRIEF_MAX_TRACKS_EXCEEDED`, `TOO_MANY_NOTES` (20,000), `SONG_TOO_LONG` (8 min), `DURATION_OUT_OF_RANGE`, `LOOP_INVALID`, `LOOP_REQUIRED`, `SECTION_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `HARMONY_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `NOTE_OUTSIDE_TIMELINE`, `PERCUSSION_FORBIDDEN`, `INSTRUMENT_NOT_ALLOWED`, `UNKNOWN_INSTRUMENT`, `PERCUSSION_INSTRUMENT_MISMATCH`, `NOTE_OUT_OF_KEY` (strict only).
+Errors: `TRACK_ID_DUPLICATE`, `NOTE_ID_DUPLICATE` (note IDs are project-wide), `SECTION_ID_DUPLICATE`, `TOO_MANY_TRACKS` (12), `BRIEF_MAX_TRACKS_EXCEEDED`, `TOO_MANY_NOTES` (20,000), `SONG_TOO_LONG` (8 min), `DURATION_OUT_OF_RANGE`, `LOOP_INVALID`, `LOOP_REQUIRED`, `SECTION_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `HARMONY_INVALID` / `_OUTSIDE_TIMELINE` / `_OVERLAP`, `NOTE_OUTSIDE_TIMELINE`, `PERCUSSION_FORBIDDEN`, `INSTRUMENT_NOT_ALLOWED`, `UNKNOWN_INSTRUMENT`, `PERCUSSION_INSTRUMENT_MISMATCH`, `NOTE_OUT_OF_KEY` (strict only), `AUTOMATION_OUTSIDE_TIMELINE`.
 
-Warnings: `NOTE_OUT_OF_KEY` (advisory), `NOTE_OUTSIDE_INSTRUMENT_RANGE`, `BREATH_LENGTH` (wind/brass phrase > 10 s without a rest), `LARGE_LEAP` (melody > octave), `MONOTONOUS_MELODY`, `UNIFORM_RHYTHM`, `FLAT_DYNAMICS`, `MELODY_MASKED` (other parts above the melody > 30 % of notes), `LOOP_NOTE_CUT`, `LOOP_MELODY_JUMP` (> a fifth across the seam), `LOOP_ENERGY_JUMP` (first vs last loop bar density), `NOTE_BELOW_REGISTER`, `NOTE_ABOVE_REGISTER`, `POLYPHONY_EXCEEDED`, `HIGH_POLYPHONY` (> 8 without part limit), `UNISON_OVERLAP`, `WIDE_RANGE` (> 36 semitones), `EXCESSIVE_REPETITION` (same bar ≥ 4× in a row), `LOOP_HARMONY_UNRESOLVED`, `TIMELINE_NOT_BAR_ALIGNED`, `EMPTY_TRACK`, `PART_LIMITS_UNKNOWN_TRACK`, `LOCK_UNKNOWN_TRACK`, `LOCK_OUTSIDE_TIMELINE`.
+Warnings: `NOTE_OUT_OF_KEY` (advisory), `NOTE_OUTSIDE_INSTRUMENT_RANGE`, `BREATH_LENGTH` (wind/brass phrase > 10 s without a rest), `LARGE_LEAP` (melody > octave), `MONOTONOUS_MELODY`, `UNIFORM_RHYTHM`, `FLAT_DYNAMICS`, `MELODY_MASKED` (other parts above the melody > 30 % of notes), `LOOP_NOTE_CUT`, `LOOP_MELODY_JUMP` (> a fifth across the seam), `LOOP_ENERGY_JUMP` (first vs last loop bar density), `NOTE_BELOW_REGISTER`, `NOTE_ABOVE_REGISTER`, `POLYPHONY_EXCEEDED`, `HIGH_POLYPHONY` (> 8 without part limit), `UNISON_OVERLAP`, `WIDE_RANGE` (> 36 semitones), `EXCESSIVE_REPETITION` (same bar ≥ 4× in a row), `LOOP_HARMONY_UNRESOLVED`, `TIMELINE_NOT_BAR_ALIGNED`, `MECHANICAL_MELODY` (≥ 16 melody notes, ≥ 95 % on the 16th grid, velocity spread ≤ 6, no automation), `EMPTY_TRACK`, `PART_LIMITS_UNKNOWN_TRACK`, `LOCK_UNKNOWN_TRACK`, `LOCK_OUTSIDE_TIMELINE`.
 
 Soundbank problems are reported by `sound_profile_issues` (feature 7). Melody checks use the track with `role: "melody"`, or the highest part when no roles are set.
 
