@@ -8,6 +8,10 @@
   <script type="module" src="app.js"></script>
 </head>
 <body>
+  <div id="toast" class="toast" role="alert" hidden>
+    <span id="toast-text"></span>
+    <button id="toast-close" class="link" aria-label="Dismiss">✕</button>
+  </div>
   <header class="topbar">
     <h1>MidiMCP</h1>
     <span class="subtitle">retro RPG composer</span>
@@ -84,6 +88,7 @@
             <h3>Tracks</h3>
             <span class="hint">changes are saved as new revisions</span>
           </div>
+          <p id="allowed-instruments" class="hint" hidden></p>
           <table class="tracks">
             <thead><tr><th>Track</th><th>Instrument</th><th>Volume</th><th>Mute</th><th>Notes</th></tr></thead>
             <tbody id="track-rows"></tbody>
@@ -113,7 +118,6 @@
         <p id="engine" class="hint"></p>
       </section>
 
-      <p id="error" class="error" role="alert" hidden></p>
     </main>
   </div>
   <audio id="audio" preload="auto"></audio>

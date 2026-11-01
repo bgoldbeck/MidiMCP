@@ -11,7 +11,7 @@ Routes::
     GET   /api/projects?search=
     GET   /api/projects/{id}?revision=
     GET   /api/projects/{id}/revisions
-    PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, gainDb?, pan?, mute?}
+    PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
     POST  /api/projects/{id}/restore            {expectedRevision, revision}
     POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?}
     GET   /api/jobs/{jobId}
@@ -229,7 +229,7 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
         return await _call(
             lambda: service.update_track(
                 project_id, expected_revision=expected, track_id=track_id, changes=changes,
-                author="user",
+                allow_instrument=bool(data.get("allowInstrument", False)), author="user",
             ).to_dict()
         )  # fmt: skip
 

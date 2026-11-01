@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from midimcp.model import Brief
 from midimcp.service import CompositionService
 from midimcp.store import ProjectStore
 from tests.test_mcp import free_port
@@ -43,6 +44,7 @@ def test_js_unit_tests() -> None:
 def seed_song(data_dir: Path) -> None:
     service = CompositionService(ProjectStore(data_dir))
     service.create_project(
+        brief=Brief(allowed_instrument_ids=["retro.wooden_flute", "retro.recorder"]),
         title="Browser Test Song",
         tempo_bpm=96,
         meter=(3, 4),

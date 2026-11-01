@@ -451,3 +451,39 @@ def test_validate_reports(song: CompositionService) -> None:
     report = song.validate(PID)
     assert report.ok
     assert report.summary["noteCount"] == 128
+
+
+def test_allow_instrument_extends_brief_in_one_revision(service: CompositionService) -> None:
+    service.create_project(
+        title="Narrow",
+        tempo_bpm=90,
+        meter=(4, 4),
+        tonic="C",
+        bars=2,
+        project_id="narrow",
+        brief=Brief(allowed_instrument_ids=["retro.wooden_flute"]),
+    )
+    service.add_track(
+        "narrow",
+        expected_revision=1,
+        instrument_id="retro.wooden_flute",
+        name="Flute",
+        track_id="flute",
+    )
+    with pytest.raises(ValidationFailed) as caught:
+        service.update_track(
+            "narrow", expected_revision=2, track_id="flute", changes={"instrument_id": "retro.harp"}
+        )
+    assert "INSTRUMENT_NOT_ALLOWED" in caught.value.report.codes()
+    result = service.update_track(
+        "narrow",
+        expected_revision=2,
+        track_id="flute",
+        changes={"instrument_id": "retro.harp"},
+        allow_instrument=True,
+        author="user",
+    )
+    assert result.revision == 3
+    snap = service.get_project("narrow")
+    assert snap.score.track("flute").instrument_id == "retro.harp"
+    assert snap.brief.allowed_instrument_ids == ["retro.wooden_flute", "retro.harp"]

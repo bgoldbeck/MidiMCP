@@ -241,3 +241,23 @@ def test_render_job_and_events(client: TestClient, ctx: AppContext) -> None:
     status = client.get(f"/api/jobs/{job['jobId']}", headers=AUTH).json()
     audio = client.get(status["downloadPath"], params={"token": TOKEN})
     assert audio.status_code == 200 and audio.content[:4] == b"RIFF"
+
+
+def test_update_track_allow_instrument(client: TestClient, ctx: AppContext) -> None:
+    CompositionService(ctx.store).update_brief(
+        PID, expected_revision=3, changes={"allowedInstrumentIds": ["retro.wooden_flute"]}
+    )
+    refused = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 4, "instrumentId": "retro.harp"},
+    )
+    assert refused.status_code == 422
+    assert refused.json()["validation"]["errors"][0]["code"] == "INSTRUMENT_NOT_ALLOWED"
+    ok = client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 4, "instrumentId": "retro.harp", "allowInstrument": True},
+    )
+    assert ok.status_code == 200 and ok.json()["revision"] == 5
+    assert ctx.store.load(PID).brief.allowed_instrument_ids == ["retro.wooden_flute", "retro.harp"]
