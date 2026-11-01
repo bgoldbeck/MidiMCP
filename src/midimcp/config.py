@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import secrets
+from dataclasses import dataclass, replace
 from pathlib import Path
+
+TOKEN_FILE_NAME = "token.txt"
 
 
 class ConfigError(RuntimeError):
@@ -41,12 +44,38 @@ class Settings:
             log_level=env.get("MIDIMCP_LOG_LEVEL", "INFO").upper(),
         )
 
-    def require_auth_config(self) -> None:
-        """The HTTP server is reachable on the LAN: refuse to start without a token."""
-        if self.token is None and not self.allow_no_auth:
+    @property
+    def token_file(self) -> Path:
+        return self.data_dir / TOKEN_FILE_NAME
+
+    def resolve_token(self) -> tuple[Settings, str]:
+        """Settle authentication before serving. Returns (settings, how).
+
+        ``how`` is ``"env"`` (MIDIMCP_TOKEN), ``"file"`` (existing ``<data>/token.txt``),
+        ``"generated"`` (new random token written to ``<data>/token.txt``) or
+        ``"disabled"`` (MIDIMCP_ALLOW_NO_AUTH=1). The server never runs open by accident.
+        """
+        if self.token is not None:
+            if len(self.token) < 16:
+                raise ConfigError("MIDIMCP_TOKEN must be at least 16 characters")
+            return self, "env"
+        if self.allow_no_auth:
+            return self, "disabled"
+        path = self.token_file
+        try:
+            if path.is_file():
+                stored = path.read_text(encoding="utf-8").strip()
+                if len(stored) < 16:
+                    raise ConfigError(f"{path} must contain a token of at least 16 characters")
+                return replace(self, token=stored), "file"
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            generated = secrets.token_hex(32)
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(generated + "\n")
+            return replace(self, token=generated), "generated"
+        except OSError as exc:
             raise ConfigError(
-                "MIDIMCP_TOKEN is not set. Set a long random token (e.g. `openssl rand -hex 32`), "
-                "or set MIDIMCP_ALLOW_NO_AUTH=1 to run without authentication (not recommended)."
-            )
-        if self.token is not None and len(self.token) < 16:
-            raise ConfigError("MIDIMCP_TOKEN must be at least 16 characters")
+                f"cannot read or create {path} ({exc}); set MIDIMCP_TOKEN or fix permissions "
+                "on the data folder (it must be writable by the container user, UID 568)"
+            ) from exc

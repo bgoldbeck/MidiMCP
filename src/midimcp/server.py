@@ -129,12 +129,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        settings.require_auth_config()
+        settings, how = settings.resolve_token()
     except ConfigError as exc:
         print(f"midimcp: {exc}", file=sys.stderr)
         return 2
-    if settings.token is None:
+    if how == "disabled":
         log.warning("authentication DISABLED (MIDIMCP_ALLOW_NO_AUTH=1)")
+    elif how == "generated":
+        banner = "=" * 72
+        log.warning(
+            "\n%s\nGenerated access token (saved to %s):\n\n    %s\n\n"
+            "Give this token to your MCP clients (see docs/agents/connect-agents.md).\n%s",
+            banner,
+            settings.token_file,
+            settings.token,
+            banner,
+        )
+    elif how == "file":
+        log.info("using access token from %s", settings.token_file)
 
     import uvicorn
 

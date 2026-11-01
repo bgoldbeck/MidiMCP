@@ -1,6 +1,6 @@
 # Connect Claude Code, Codex, or Antigravity
 
-MidiMCP speaks **MCP over Streamable HTTP** at `http://<nas>:8765/mcp` and requires the header `Authorization: Bearer <MIDIMCP_TOKEN>`. Replace `truenas.local` and `YOUR_TOKEN` below.
+MidiMCP speaks **MCP over Streamable HTTP** at `http://<nas>:8765/mcp` and requires the header `Authorization: Bearer <MIDIMCP_TOKEN>`. Replace `truenas.local` and `YOUR_TOKEN` below (the token is in the app logs or `token.txt` in the dataset).
 
 > Client configuration formats change between releases. The snippets below follow each client's documented HTTP-server format at the time of writing; if your version differs, check its MCP docs (links at the end). The server side was verified with the official MCP Python client over HTTP.
 
