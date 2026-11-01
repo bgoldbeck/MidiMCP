@@ -11,5 +11,6 @@ Distilled from the original design conversation. Authoritative for implementatio
 | [05-ui-design.md](05-ui-design.md) | Layout, beginner/advanced modes, playback vs mutation controls |
 | [06-acceptance-tests.md](06-acceptance-tests.md) | Acceptance matrix, v1 definition of done, implementer rules, links |
 | [07-deployment-docker-truenas.md](07-deployment-docker-truenas.md) | **Current platform:** Docker on TrueNAS, web UI, HTTP MCP, data volume, exports, security |
+| [08-soundbanks.md](08-soundbanks.md) | Default bank license audit, candidate banks, registry rules |
 
 Build order lives in [../ROADMAP.md](../ROADMAP.md).
