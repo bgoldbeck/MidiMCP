@@ -13,6 +13,7 @@
 #   APP_NAME         TrueNAS app to redeploy (default: midimcp)
 #   STATE_DIR        where the log and last-published marker live (default: <checkout>/..)
 #   FORCE=1          publish even if the commit was already published
+#   REFRESH_BASE=1   pull the latest Ubuntu base (security updates; uploads every layer)
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"

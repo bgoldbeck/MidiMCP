@@ -52,6 +52,7 @@ The first run publishes (a few minutes) and redeploys the app. A second run shou
 - Last published commit: `/mnt/POOL/midimcp/last-published-commit`.
 - Force a rebuild of the same commit: `sudo FORCE=1 bash /mnt/POOL/midimcp/src/scripts/auto-update.sh`.
 - Runs never overlap (lock file); a slow build simply makes the next run skip.
+- Upload size: a normal nightly update pushes only the changed code layer (about 1 MB); see *Upload size* in [truenas.md](truenas.md). To also take Ubuntu security updates (full ~300 MB upload, e.g. a few times a year): `sudo REFRESH_BASE=1 FORCE=1 bash /mnt/POOL/midimcp/src/scripts/auto-update.sh`.
 
 ## Safety rules built in
 
