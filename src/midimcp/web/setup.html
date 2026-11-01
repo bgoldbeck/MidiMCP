@@ -242,6 +242,7 @@ sudo chmod 600 /mnt/YOUR_POOL/midimcp/ghcr-token</pre></div>
         <li><strong><code>"audio": false</code> in <code>/healthz</code></strong>: the image lacks FluidSynth or the soundfont; republish it or use the build-from-GitHub YAML.</li>
         <li><strong>Publish fails</strong>: read the end of the log (<code>sudo tail -n 30 /mnt/YOUR_POOL/midimcp/auto-update.log</code>). Common causes: expired token, token without <code>write:packages</code>, no internet, disk full on the NAS.</li>
         <li><strong>Token file "must be mode 600"</strong>: <code>sudo chmod 600 /mnt/YOUR_POOL/midimcp/ghcr-token</code>.</li>
+        <li><strong>Antigravity says a tool "is not enabled" or invents tool names</strong> (<code>song_create</code>, <code>/tools</code>…): it didn't get MidiMCP's tool list. In <em>Manage MCP Servers</em> check that <code>midimcp</code> shows its ~26 tools without an error, enable all of them and press Refresh; then start a <strong>new conversation</strong> and say "use the midimcp MCP tools". Make sure the NAS runs the latest version (older versions advertised tool schemas Antigravity rejects).</li>
         <li><strong>AI client can't connect</strong>: check <code>curl http://NAS_IP:8765/healthz</code> from the same PC, the token, and that the URL ends in <code>/mcp</code>.</li>
         <li><strong>Copy buttons</strong> on plain <code>http://</code> addresses fall back to selecting the text: press Ctrl+C.</li>
       </ul>
