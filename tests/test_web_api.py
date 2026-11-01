@@ -13,6 +13,7 @@ from midimcp.context import AppContext
 from midimcp.server import build_app
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
+from midimcp.templates import TEMPLATES
 from tests.sf2 import full_gm_presets, write_fake_sf2
 
 TOKEN = "web-api-test-token-0123456789"
@@ -344,7 +345,7 @@ def test_loop_render_endpoint(client: TestClient) -> None:
 
 def test_template_routes(client: TestClient) -> None:
     listed = client.get("/api/templates", headers=AUTH).json()["templates"]
-    assert len(listed) == 6 and all(t["builtIn"] for t in listed)
+    assert len(listed) == len(TEMPLATES) and all(t["builtIn"] for t in listed)
     town = client.get("/api/templates/peaceful-town", headers=AUTH).json()
     assert town["chart"][0]["chords"][:4] == ["G", "Em", "C", "D"]
     assert client.get("/api/templates/disco", headers=AUTH).status_code == 404

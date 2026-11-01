@@ -25,6 +25,11 @@ from pydantic import ValidationError
 
 from midimcp.model.brief import Brief, Lock
 from midimcp.model.score import (
+    AUTOMATION_LANES,
+    LANE_FIELDS,
+    SCORE_SCHEMA_VERSION,
+    Automation,
+    ControlPoint,
     HarmonyEvent,
     LoopRegion,
     Metadata,
@@ -37,6 +42,13 @@ from midimcp.model.score import (
     Track,
     is_valid_identifier,
     make_tonality,
+)
+from midimcp.music.expression import (
+    ExpressionSettings,
+    HumanizeSettings,
+    expression_curves,
+    humanize,
+    interpolate,
 )
 from midimcp.music.timing import DEFAULT_PPQ, bpm_to_tempo_us, ticks_per_bar
 from midimcp.service.diff import ChangeSummary, check_locks, summarize_changes
@@ -543,6 +555,153 @@ class CompositionService:
             f"Edited notes ({len(operations)} operations)",
         )
 
+    # ------------------------------------------------------------- expression
+
+    def humanize_notes(
+        self,
+        project_id: str,
+        *,
+        expected_revision: int,
+        track_id: str,
+        start_tick: int = 0,
+        end_tick: int | None = None,
+        settings: HumanizeSettings | None = None,
+        author: Author = "agent",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Make notes starting in ``[start_tick, end_tick)`` sound performed, not typed.
+
+        Seeded and deterministic (see :mod:`midimcp.music.expression`): small timing
+        pushes, phrase-shaped velocities with metric accents, optional legato and
+        breaths. Pitches never change.
+        """
+        settings = settings or HumanizeSettings()
+        _check_settings(settings)
+
+        def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
+            track = _require_track(score, track_id)
+            lo, hi = _bounded_range(score, start_tick, end_tick)
+            t = score.timeline
+            notes = humanize(
+                track.notes,
+                ppq=t.ppq,
+                bar_ticks=ticks_per_bar(t.ppq, t.meter.numerator, t.meter.denominator),
+                beat_ticks=_beat_ticks(score),
+                start=lo,
+                end=hi,
+                settings=settings,
+            )
+            return _replace_track(score, _with(track, notes=_sorted(notes))), brief, ()
+
+        return self._mutate(
+            project_id,
+            expected_revision,
+            change,
+            author,
+            operation_id,
+            f"Humanized {track_id!r}",
+        )
+
+    def shape_expression(
+        self,
+        project_id: str,
+        *,
+        expected_revision: int,
+        track_id: str,
+        start_tick: int = 0,
+        end_tick: int | None = None,
+        settings: ExpressionSettings | None = None,
+        author: Author = "agent",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Write phrase swells (expression) and delayed vibrato on held notes (modulation).
+
+        Replaces the track's expression points, and its modulation points unless
+        ``vibrato_depth`` is 0, inside ``[start_tick, end_tick)``.
+        """
+        settings = settings or ExpressionSettings()
+        _check_settings(settings)
+
+        def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
+            track = _require_track(score, track_id)
+            lo, hi = _bounded_range(score, start_tick, end_tick)
+            curves = expression_curves(
+                track.notes, ppq=score.timeline.ppq, start=lo, end=hi, settings=settings
+            )
+            automation = track.automation
+            for lane, points in curves.items():
+                automation = _replace_lane(automation, lane, lo, hi, points)
+            return _replace_track(score, _with(track, automation=automation)), brief, ()
+
+        return self._mutate(
+            project_id,
+            expected_revision,
+            change,
+            author,
+            operation_id,
+            f"Shaped expression of {track_id!r}",
+        )
+
+    def set_automation(
+        self,
+        project_id: str,
+        *,
+        expected_revision: int,
+        track_id: str,
+        lane: str,
+        start_tick: int,
+        end_tick: int,
+        points: Sequence[dict[str, Any]],
+        interpolate_ramps: bool = False,
+        resolution_ticks: int = 60,
+        author: Author = "agent",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Replace one lane's points inside ``[start_tick, end_tick)``.
+
+        ``points`` are ``{"tick", "value"}``; an empty list clears the range. With
+        ``interpolate_ramps`` the points are joined by straight ramps.
+        """
+        if lane not in AUTOMATION_LANES:
+            raise InvalidOperation(f"lane must be one of {', '.join(AUTOMATION_LANES)}")
+        if start_tick < 0 or end_tick <= start_tick:
+            raise InvalidRange("range must satisfy 0 <= startTick < endTick")
+        pairs = []
+        for index, raw in enumerate(points):
+            tick, value = raw.get("tick"), raw.get("value")
+            extra = set(raw) - {"tick", "value"}
+            if not isinstance(tick, int) or not isinstance(value, int) or extra:
+                raise InvalidOperation(f"point {index}: needs integer 'tick' and 'value' only")
+            if not start_tick <= tick < end_tick:
+                raise InvalidRange(
+                    f"point {index}: tick {tick} is outside [{start_tick}, {end_tick})"
+                )
+            pairs.append((tick, value))
+        if len({t for t, _ in pairs}) != len(pairs):
+            raise InvalidOperation("two points share a tick")
+        if interpolate_ramps:
+            if not 10 <= resolution_ticks <= 480:
+                raise InvalidOperation("resolutionTicks must be 10-480")
+            pairs = interpolate(pairs, resolution_ticks)
+        else:
+            pairs = sorted(pairs)
+
+        def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
+            track = _require_track(score, track_id)
+            if end_tick > score.timeline.total_ticks:
+                raise InvalidRange(f"endTick {end_tick} is past totalTicks")
+            automation = _replace_lane(track.automation, lane, start_tick, end_tick, pairs)
+            return _replace_track(score, _with(track, automation=automation)), brief, ()
+
+        return self._mutate(
+            project_id,
+            expected_revision,
+            change,
+            author,
+            operation_id,
+            f"Set {lane} of {track_id!r} [{start_tick}, {end_tick})",
+        )
+
     # ------------------------------------------------------------- structure
 
     def set_arrangement(
@@ -727,6 +886,8 @@ class CompositionService:
         if expected_revision != current.revision:
             raise RevisionConflict(project_id, expected_revision, current.revision)
         score, brief, created = change(current.score, current.brief)
+        if score.schema_version != SCORE_SCHEMA_VERSION:
+            score = _with(score, schema_version=SCORE_SCHEMA_VERSION)
         check_locks(current.score, score, current.brief)
         summary = summarize_changes(current.score, score)
         text = summary.text if summary.text != "No changes" else default_summary
@@ -818,6 +979,45 @@ def _with(model: Any, **updates: Any) -> Any:
 
 def _sorted(notes: list[Note]) -> list[Note]:
     return sorted(notes, key=lambda n: (n.start_tick, n.pitch, n.id))
+
+
+def _check_settings(settings: HumanizeSettings | ExpressionSettings) -> None:
+    try:
+        settings.check()
+    except ValueError as exc:
+        raise InvalidOperation(str(exc)) from exc
+
+
+def _bounded_range(score: Score, start_tick: int, end_tick: int | None) -> tuple[int, int]:
+    total = score.timeline.total_ticks
+    end = total if end_tick is None else end_tick
+    if start_tick < 0 or end <= start_tick or end > total:
+        raise InvalidRange(f"range must satisfy 0 <= startTick < endTick <= {total}")
+    return start_tick, end
+
+
+def _beat_ticks(score: Score) -> int:
+    """Felt beat: a quarter in 4/4, a dotted quarter in 6/8, 9/8 and 12/8."""
+    t = score.timeline
+    unit = t.ppq * 4 // t.meter.denominator
+    if t.meter.denominator == 8 and t.meter.numerator % 3 == 0 and t.meter.numerator > 3:
+        return unit * 3
+    return unit
+
+
+def _replace_lane(
+    automation: Automation, lane: str, start: int, end: int, points: Sequence[tuple[int, int]]
+) -> Automation:
+    field = LANE_FIELDS[lane]
+    kept = [p for p in getattr(automation, field) if not start <= p.tick < end]
+    added = [ControlPoint(tick=t, value=v) for t, v in points]
+    merged = sorted(kept + added, key=lambda p: p.tick)
+    try:
+        return Automation.model_validate(
+            {**automation.model_dump(), field: [p.model_dump() for p in merged]}
+        )
+    except ValidationError as exc:
+        raise InvalidOperation(_validation_message(exc)) from exc
 
 
 def _require_track(score: Score, track_id: str) -> Track:

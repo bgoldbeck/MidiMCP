@@ -114,6 +114,7 @@ def validate_score(
     issues += _check_timeline(score, brief)
     issues += _check_brief_references(score, brief)
     issues += _check_tracks(score, brief, strict_key)
+    issues += _check_automation(score)
     issues += _check_loop_harmony(score)
     issues += _check_loop_seam(score)
     issues += _check_musicality(score)
@@ -403,6 +404,24 @@ def _check_tracks(score: Score, brief: Brief, strict_key: bool) -> list[Issue]:
     return issues
 
 
+def _check_automation(score: Score) -> list[Issue]:
+    total = score.timeline.total_ticks
+    issues = []
+    for track in score.tracks:
+        for lane, points in track.automation.lanes().items():
+            late = [p for p in points if p.tick >= total]
+            if late:
+                issues.append(
+                    _error(
+                        "AUTOMATION_OUTSIDE_TIMELINE",
+                        f"{lane} point at tick {late[0].tick} is past totalTicks {total}",
+                        track_id=track.id,
+                        tick=late[0].tick,
+                    )
+                )
+    return issues
+
+
 def max_polyphony(notes: Iterable[Note]) -> tuple[int, int]:
     """Peak simultaneous notes and the first tick it occurs (note-offs sort first)."""
     events = []
@@ -535,6 +554,7 @@ def _summary(score: Score) -> dict:
 BREATH_SECONDS: Final = 10.0
 LARGE_LEAP_SEMITONES: Final = 12
 MASKED_SHARE: Final = 0.3
+MECHANICAL_VELOCITY_SPREAD: Final = 6
 
 
 def _melody_track(score: Score) -> Track | None:
@@ -653,6 +673,7 @@ def _check_melody(score: Score, melody: Track) -> list[Issue]:
                 track_id=melody.id,
             )
         )
+    issues += _check_mechanical(score, melody, tops)
     others = [
         t
         for t in score.tracks
@@ -678,6 +699,27 @@ def _check_melody(score: Score, melody: Track) -> list[Issue]:
                 )
             )
     return issues
+
+
+def _check_mechanical(score: Score, melody: Track, tops: list[Note]) -> list[Issue]:
+    """Melody typed in on the grid: identical-ish velocities, every onset on a 16th,
+    and no expression curve. It plays back stiff, like a sequencer demo."""
+    if len(tops) < 16 or not melody.automation.is_empty:
+        return []
+    grid = max(1, score.timeline.ppq // 4)
+    on_grid = sum(1 for n in tops if n.start_tick % grid == 0) / len(tops)
+    spread = max(n.velocity for n in tops) - min(n.velocity for n in tops)
+    if on_grid < 0.95 or spread > MECHANICAL_VELOCITY_SPREAD:
+        return []
+    return [
+        _warning(
+            "MECHANICAL_MELODY",
+            "the melody sits exactly on the grid with near-identical velocities and no "
+            "expression, so it sounds robotic; run humanize_notes and shape_expression "
+            "on it (or vary timing by a few ticks and shape velocities per phrase)",
+            track_id=melody.id,
+        )
+    ]
 
 
 # ---------------------------------------------------------------- loop seam

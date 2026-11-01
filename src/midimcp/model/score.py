@@ -1,4 +1,4 @@
-"""Canonical score document (schema 1.0.0).
+"""Canonical score document (schema 1.1.0; 1.0.0 documents load unchanged).
 
 The score is the project's source of truth. Field names serialize as camelCase
 to match ``docs/reference/03-score-format.md``. Models enforce per-field
@@ -8,6 +8,7 @@ constraints) live in :mod:`midimcp.validation`.
 
 from __future__ import annotations
 
+import itertools
 import re
 from typing import Annotated, Final, Literal
 
@@ -16,8 +17,9 @@ from pydantic.alias_generators import to_camel
 
 from midimcp.music.theory import MODES, normalize_mode, parse_note_name
 
-SCORE_SCHEMA_VERSION: Final = "1.0.0"
-SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({SCORE_SCHEMA_VERSION})
+# 1.1.0 added per-track ``automation`` (expression / vibrato / pitch-bend curves).
+SCORE_SCHEMA_VERSION: Final = "1.1.0"
+SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({"1.0.0", SCORE_SCHEMA_VERSION})
 
 ID_PATTERN: Final = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 TRACK_ROLES: Final = (
@@ -67,6 +69,59 @@ class Note(ScoreModel):
         return self.start_tick + self.duration_ticks
 
 
+# Automation lanes: JSON name -> (MIDI meaning, lowest value, highest value, resting value).
+AUTOMATION_LANES: Final[dict[str, tuple[str, int, int, int]]] = {
+    "expression": ("CC11 expression (127 = full volume)", 0, 127, 127),
+    "modulation": ("CC1 modulation (vibrato depth, 0 = none)", 0, 127, 0),
+    "pitchBend": ("pitch bend (8191 = +2 semitones, -8192 = -2)", -8192, 8191, 0),
+}
+
+
+class ControlPoint(ScoreModel):
+    """A controller value that holds from ``tick`` until the next point of its lane."""
+
+    tick: NonNegativeTick
+    value: Annotated[int, Field(ge=-8192, le=8191)]
+
+
+class Automation(ScoreModel):
+    """Per-track controller curves (step points; tools add ramps as dense points)."""
+
+    expression: list[ControlPoint] = Field(default_factory=list)
+    modulation: list[ControlPoint] = Field(default_factory=list)
+    pitch_bend: list[ControlPoint] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ordered_and_in_range(self) -> Automation:
+        for lane, points in self.lanes().items():
+            _, low, high, _ = AUTOMATION_LANES[lane]
+            for point in points:
+                if not low <= point.value <= high:
+                    raise ValueError(f"{lane} value {point.value} must be {low}..{high}")
+            for a, b in itertools.pairwise(points):
+                if b.tick <= a.tick:
+                    raise ValueError(f"{lane} points must have strictly increasing ticks")
+        return self
+
+    def lanes(self) -> dict[str, list[ControlPoint]]:
+        return {
+            "expression": self.expression,
+            "modulation": self.modulation,
+            "pitchBend": self.pitch_bend,
+        }
+
+    @property
+    def is_empty(self) -> bool:
+        return not (self.expression or self.modulation or self.pitch_bend)
+
+
+LANE_FIELDS: Final = {
+    "expression": "expression",
+    "modulation": "modulation",
+    "pitchBend": "pitch_bend",
+}
+
+
 class Track(ScoreModel):
     id: Identifier
     name: Annotated[str, Field(min_length=1, max_length=100)]
@@ -77,6 +132,7 @@ class Track(ScoreModel):
     mute: bool = False
     role: Literal[TRACK_ROLES] | None = None  # type: ignore[valid-type]
     notes: list[Note] = Field(default_factory=list)
+    automation: Automation = Field(default_factory=Automation)
 
 
 class Meter(ScoreModel):

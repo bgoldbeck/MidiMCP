@@ -19,7 +19,22 @@ def _note_key(note: Note) -> NoteKey:
 def _track_props(track: Track) -> dict:
     data = track.to_json_dict()
     data.pop("notes")
+    data.pop("automation")
     return data
+
+
+def _lanes_touching(track: Track | None, start: int, end: int) -> dict[str, list[tuple[int, int]]]:
+    if track is None:
+        return {}
+    return {
+        lane: [(p.tick, p.value) for p in points if start <= p.tick < end]
+        for lane, points in track.automation.lanes().items()
+    }
+
+
+def _changed_lanes(old: Track, new: Track) -> list[str]:
+    before, after = old.automation.lanes(), new.automation.lanes()
+    return [f"{lane} curve" for lane in before if before[lane] != after[lane]]
 
 
 def _notes_touching(track: Track | None, start: int, end: int) -> set[NoteKey]:
@@ -31,10 +46,10 @@ def _notes_touching(track: Track | None, start: int, end: int) -> set[NoteKey]:
 def check_locks(before: Score, after: Score, brief: Brief) -> None:
     """Raise LockViolation if ``after`` changes anything protected by ``brief.locks``.
 
-    Whole-track lock: the track (properties and every note) must be identical and
-    must not be removed. Range lock: the set of notes sounding anywhere inside the
-    range must be identical. This is checked on the resulting document, so it
-    holds for every kind of operation.
+    Whole-track lock: the track (properties, every note and every automation point)
+    must be identical and must not be removed. Range lock: the set of notes sounding
+    anywhere inside the range, and the automation points inside it, must be identical.
+    This is checked on the resulting document, so it holds for every kind of operation.
     """
     violated: list[str] = []
     for lock in brief.locks:
@@ -53,12 +68,15 @@ def _lock_broken(lock: Lock, old: Track, new: Track | None) -> bool:
     if new is None:
         return True
     if lock.whole_track:
-        return _track_props(old) != _track_props(new) or {_note_key(n) for n in old.notes} != {
-            _note_key(n) for n in new.notes
-        }
+        return (
+            _track_props(old) != _track_props(new)
+            or old.automation != new.automation
+            or {_note_key(n) for n in old.notes} != {_note_key(n) for n in new.notes}
+        )
     assert lock.start_tick is not None and lock.end_tick is not None
-    return _notes_touching(old, lock.start_tick, lock.end_tick) != _notes_touching(
-        new, lock.start_tick, lock.end_tick
+    start, end = lock.start_tick, lock.end_tick
+    return _notes_touching(old, start, end) != _notes_touching(new, start, end) or (
+        _lanes_touching(old, start, end) != _lanes_touching(new, start, end)
     )
 
 
@@ -179,6 +197,7 @@ def summarize_changes(before: Score, after: Score) -> ChangeSummary:
         else:
             old_props, new_props = _track_props(old), _track_props(new)
             change.properties = sorted(k for k in new_props if old_props.get(k) != new_props[k])
+            change.properties += _changed_lanes(old, new)
         if touched:
             change.first_bar = tick_to_bar_position(min(touched), t.ppq, *_meter(after))[0]
             change.last_bar = tick_to_bar_position(max(touched), t.ppq, *_meter(after))[0]

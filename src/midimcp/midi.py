@@ -8,8 +8,12 @@ Export layout:
   percussion tracks, nothing is ever written to channel 10.
 * Program (and bank select when non-zero), volume (CC7, from gainDb), pan
   (CC10), expression (CC11) precede the notes.
-* At equal ticks, note-offs come before note-ons; ties break by note ID, so the
-  output bytes are deterministic.
+* Automation: expression points become CC11, modulation CC1 (vibrato) and
+  pitchBend pitch-wheel messages. Tracks without automation produce exactly the
+  bytes they did before automation existed.
+* At equal ticks: note-offs, then controller changes, then note-ons (so a swell
+  or bend applies to the note starting there); ties break by note ID / lane, so
+  the output bytes are deterministic.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import io
 import math
 from collections import deque
 from dataclasses import dataclass
+from typing import Final
 
 import mido
 
@@ -27,6 +32,9 @@ from midimcp.instruments import (
     resolve_instrument,
 )
 from midimcp.model.score import (
+    AUTOMATION_LANES,
+    LANE_FIELDS,
+    Automation,
     LoopRegion,
     Metadata,
     Meter,
@@ -184,13 +192,17 @@ def score_to_midi(
             ),
             (0, mido.Message("control_change", channel=channel, control=11, value=127)),
         ]
-        # (tick, order, note id) — order 0 = note-off sorts before note-on (1).
+        # (tick, order, key): note-off (0) < controller (1) < note-on (2).
         note_events: list[tuple[int, int, str, mido.Message]] = []
+        for lane, points in track.automation.lanes().items():
+            for point in points:
+                message = _automation_message(lane, channel, point.value)
+                note_events.append((point.tick, 1, lane, message))
         for note in track.notes:
             note_events.append(
                 (
                     note.start_tick,
-                    1,
+                    2,
                     note.id,
                     mido.Message(
                         "note_on", channel=channel, note=note.pitch, velocity=note.velocity
@@ -211,6 +223,15 @@ def score_to_midi(
         events.append((last, mido.MetaMessage("end_of_track")))
         midi.tracks.append(_absolute_to_delta(events))
     return midi
+
+
+_LANE_CC: Final = {"expression": 11, "modulation": 1}
+
+
+def _automation_message(lane: str, channel: int, value: int) -> mido.Message:
+    if lane == "pitchBend":
+        return mido.Message("pitchwheel", channel=channel, pitch=value)
+    return mido.Message("control_change", channel=channel, control=_LANE_CC[lane], value=value)
 
 
 def export_midi_bytes(score: Score, *, include_muted: bool = False, tail_ticks: int = 0) -> bytes:
@@ -258,13 +279,16 @@ def import_midi_bytes(
     key_name: str | None = None
     song_title = title
     markers: list[tuple[int, str]] = []
-    built: list[tuple[_TrackState, list[tuple[int, int, int, int]]]] = []
+    built: list[
+        tuple[_TrackState, list[tuple[int, int, int, int]], dict[str, list[tuple[int, int]]]]
+    ] = []
     last_tick = 0
 
     for index, midi_track in enumerate(midi.tracks):
         state = _TrackState()
         open_notes: dict[tuple[int, int], deque[tuple[int, int]]] = {}
         per_channel: dict[int, list[tuple[int, int, int, int]]] = {}
+        curves: dict[int, dict[str, list[tuple[int, int]]]] = {}
         tick = 0
         for message in midi_track:
             tick += message.time
@@ -292,6 +316,15 @@ def import_midi_bytes(
                 state.volume = message.value
             elif kind == "control_change" and message.control == 10:
                 state.pan = message.value
+            elif kind == "control_change" and message.control in (1, 11):
+                lane = "expression" if message.control == 11 else "modulation"
+                curves.setdefault(message.channel, {}).setdefault(lane, []).append(
+                    (tick, message.value)
+                )
+            elif kind == "pitchwheel":
+                curves.setdefault(message.channel, {}).setdefault("pitchBend", []).append(
+                    (tick, message.pitch)
+                )
             elif kind == "note_on" and message.velocity > 0:
                 open_notes.setdefault((message.channel, message.note), deque()).append(
                     (tick, message.velocity)
@@ -312,19 +345,19 @@ def import_midi_bytes(
                 volume=state.volume,
                 pan=state.pan,
             )
-            built.append((channel_state, notes))
+            built.append((channel_state, notes, curves.get(channel, {})))
 
     tempo = tempo or bpm_to_tempo_us(120)
     numerator, denominator = meter
     if denominator not in (1, 2, 4, 8, 16, 32):
         raise MidiImportError(f"unsupported time signature {numerator}/{denominator}")
     bar = ticks_per_bar(midi.ticks_per_beat, numerator, denominator)
-    note_end = max((s + d for _, notes in built for _, s, d, _ in notes), default=0)
+    note_end = max((s + d for _, notes, _ in built for _, s, d, _ in notes), default=0)
     total = max(bar, math.ceil(max(note_end, last_tick) / bar) * bar)
 
     tracks = []
     counter = 0
-    for number, (state, notes) in enumerate(built, start=1):
+    for number, (state, notes, lanes) in enumerate(built, start=1):
         percussion = state.channel == PERCUSSION_CHANNEL
         model_notes = []
         for pitch, start, duration, velocity in sorted(notes, key=lambda n: (n[1], n[0])):
@@ -347,6 +380,7 @@ def import_midi_bytes(
                 gain_db=cc7_to_gain_db(state.volume) if state.volume is not None else 0.0,
                 pan=cc10_to_pan(state.pan) if state.pan is not None else 0.0,
                 notes=model_notes,
+                automation=_automation_from_curves(lanes, total),
             )
         )
 
@@ -380,6 +414,25 @@ def import_midi_bytes(
         tracks=tracks,
         sections=sections,
     )
+
+
+def _automation_from_curves(lanes: dict[str, list[tuple[int, int]]], total: int) -> Automation:
+    """Keep only real changes: drop values that repeat the previous (or resting) value,
+    so the CC11=127 every exporter writes at tick 0 does not become a curve."""
+    data: dict[str, list[dict[str, int]]] = {}
+    for lane, events in lanes.items():
+        current = AUTOMATION_LANES[lane][3]
+        by_tick: dict[int, int] = {}
+        for tick, value in events:
+            if tick < total:
+                by_tick[tick] = value
+        points = []
+        for tick in sorted(by_tick):
+            if by_tick[tick] != current:
+                points.append({"tick": tick, "value": by_tick[tick]})
+                current = by_tick[tick]
+        data[LANE_FIELDS[lane]] = points
+    return Automation.model_validate(data)
 
 
 def _tonality_from_key(key_name: str | None) -> Tonality:

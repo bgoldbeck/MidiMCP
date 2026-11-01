@@ -47,6 +47,7 @@ Second change: the **composition service** (single mutation authority with locks
 | # | Feature | Branch | Delivers |
 |---|---|---|---|
 | 24 | ✅ MP3 export | `feature/mp3-export` | MP3 download (LAME, 128-320 kbps, ID3 title tags) from the web UI, web API and MCP |
+| 25 | ✅ Expression + humanize + style templates | `feature/expression-and-humanize` | Score schema 1.1.0 automation (CC11 expression, CC1 vibrato, pitch bend) with MIDI export/import and lock protection; MCP `humanize_notes` (seeded), `shape_expression`, `set_automation`; `MECHANICAL_MELODY` advisory; 9 `old-realm-*` templates (late-90s online fantasy RPG spirit: title/login, town, forest, sailing, dungeon, battle, castle, shrine, wilderness) and 12 `retro-*` game-era templates; per-template expression guidance; help page section |
 
 ## Phase 4 — Editing depth and quality
 
@@ -64,7 +65,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 20 | ⬜ Instrument stems export | `feature/instrument-stem-export` |
 | 21 | ⬜ Linked mood variations (day / night / danger) | `feature/linked-mood-variations` |
 | 22 | ⬜ Unity import presets + bar-quantized transitions | `feature/unity-import-and-adaptive-transitions` |
-| 23 | ⬜ Tempo map, articulation, humanization seed | `feature/tempo-map-articulation-humanization` |
+| 23 | ⬜ Tempo map (articulation + humanization done in 25) | `feature/tempo-map-articulation-humanization` |
 
 ## Open decisions (owner input welcome, safe defaults used meanwhile)
 

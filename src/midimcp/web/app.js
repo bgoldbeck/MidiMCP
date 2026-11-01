@@ -316,9 +316,10 @@ const FAMILY_LABELS = [
   ["keyboard", "Keyboards & organs"],
   ["mallet", "Bells & mallets"],
   ["voice", "Voices"],
+  ["synth", "Synth leads (chiptune)"],
   ["pad", "Pads"],
   ["bass", "Bass"],
-  ["percussion-melodic", "Timpani"],
+  ["percussion-melodic", "Timpani & tuned drums"],
   ["drums", "Drums"],
   ["gm", "Other General MIDI"],
 ];

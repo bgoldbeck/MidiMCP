@@ -26,6 +26,7 @@ from midimcp.midi import MidiExportError
 from midimcp.model.brief import Brief
 from midimcp.model.schema import brief_json_schema, score_json_schema
 from midimcp.model.score import Score
+from midimcp.music.expression import ExpressionSettings, HumanizeSettings
 from midimcp.music.theory import TheoryError
 from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
@@ -39,7 +40,8 @@ INSTRUCTIONS = """\
 MidiMCP composes original 1990s General-MIDI-style fantasy RPG music. Read the
 resource midimcp://guide first. Workflow: list_templates -> create_project with
 template_id (gives tracks, sections and a chord chart) -> replace_notes (by bar
-range, following the chords) -> validate_project -> render_preview. Every
+range, following the chords) -> humanize_notes + shape_expression on the melody
+(so it sounds played, not typed) -> validate_project -> render_preview. Every
 mutation needs expected_revision (the latest revision you received). Locked
 material is protected: never try to bypass LOCKED errors.
 """
@@ -66,6 +68,20 @@ class NoteEdit(BaseModel):
     startTick: int | None = None
     durationTicks: int | None = None
     velocity: int | None = None
+
+
+class PointIn(BaseModel):
+    tick: Annotated[
+        int, Field(ge=0, description="Absolute tick; the value holds until the next point")
+    ]
+    value: Annotated[
+        int,
+        Field(
+            ge=-8192,
+            le=8191,
+            description="expression/modulation 0-127; pitchBend -8192..8191 (+-2 semitones)",
+        ),
+    ]
 
 
 class SectionIn(BaseModel):
@@ -568,6 +584,179 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             project_id,
             expected_revision=expected_revision,
             operations=ops,
+            author="agent",
+            operation_id=operation_id,
+        ).to_dict()
+
+    def _optional_range(project_id, start_bar, end_bar, start_tick, end_tick):
+        if start_bar is None and end_bar is None and start_tick is None and end_tick is None:
+            return 0, None
+        return _range(
+            service.get_project(project_id).score, start_bar, end_bar, start_tick, end_tick
+        )
+
+    @server.tool()
+    @_tool_errors
+    def humanize_notes(
+        project_id: str,
+        expected_revision: int,
+        track_id: str,
+        start_bar: Annotated[
+            int | None, Field(description="1-based, inclusive; omit = whole song")
+        ] = None,
+        end_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
+        start_tick: int | None = None,
+        end_tick: int | None = None,
+        seed: Annotated[
+            int, Field(description="Same seed = same result; change it for a different take")
+        ] = 1,
+        timing_ticks: Annotated[
+            int, Field(ge=0, le=240, description="Max late push (960 = quarter); 8-20 is subtle")
+        ] = 12,
+        velocity_variation: Annotated[int, Field(ge=0, le=30, description="+- per note")] = 5,
+        phrase_dynamics: Annotated[
+            int, Field(ge=0, le=40, description="Velocity rise toward each phrase's high note")
+        ] = 10,
+        accent_downbeats: bool = True,
+        keep_downbeats: Annotated[
+            bool, Field(description="Notes on a bar line stay exactly on it")
+        ] = True,
+        legato: Annotated[
+            float | None,
+            Field(
+                ge=0.3,
+                le=1.0,
+                description="Inner notes last this share of the gap to the next note "
+                "(0.95 smooth, 0.6 detached); omit = keep lengths",
+            ),
+        ] = None,
+        breath_ticks: Annotated[
+            int, Field(ge=0, le=1920, description="Silence before each new phrase (winds: 120-240)")
+        ] = 0,
+        operation_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Make a track sound performed instead of typed in: tiny timing pushes, phrase-shaped
+        velocities with downbeat accents, optional legato/detached articulation and breaths.
+        Pitches never change. Deterministic: the same arguments always give the same result.
+        Run it once after the notes are final (running it again adds more variation)."""
+        lo, hi = _optional_range(project_id, start_bar, end_bar, start_tick, end_tick)
+        return service.humanize_notes(
+            project_id,
+            expected_revision=expected_revision,
+            track_id=track_id,
+            start_tick=lo,
+            end_tick=hi,
+            settings=HumanizeSettings(
+                seed=seed,
+                timing_ticks=timing_ticks,
+                velocity_variation=velocity_variation,
+                phrase_dynamics=phrase_dynamics,
+                accent_downbeats=accent_downbeats,
+                keep_downbeats=keep_downbeats,
+                legato=legato,
+                breath_ticks=breath_ticks,
+            ),
+            author="agent",
+            operation_id=operation_id,
+        ).to_dict()
+
+    @server.tool()
+    @_tool_errors
+    def shape_expression(
+        project_id: str,
+        expected_revision: int,
+        track_id: str,
+        start_bar: Annotated[
+            int | None, Field(description="1-based, inclusive; omit = whole song")
+        ] = None,
+        end_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
+        start_tick: int | None = None,
+        end_tick: int | None = None,
+        base: Annotated[int, Field(ge=0, le=127, description="Expression at phrase starts")] = 96,
+        peak: Annotated[
+            int, Field(ge=0, le=127, description="Expression at each phrase's high point")
+        ] = 120,
+        swell: Annotated[
+            int, Field(ge=0, le=40, description="Extra rise/fall inside held notes")
+        ] = 10,
+        long_note_ticks: Annotated[
+            int,
+            Field(
+                ge=1, description="Notes this long swell and get vibrato (1440 = dotted quarter)"
+            ),
+        ] = 1440,
+        vibrato_depth: Annotated[
+            int,
+            Field(
+                ge=0,
+                le=127,
+                description="Vibrato (CC1) on held notes; 0 = leave vibrato alone. 25-50 natural",
+            ),
+        ] = 40,
+        vibrato_delay_ticks: Annotated[
+            int, Field(ge=0, description="Straight tone before vibrato starts")
+        ] = 240,
+        resolution_ticks: Annotated[int, Field(ge=10, le=480)] = 60,
+        operation_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Give a melody life inside its notes: volume swells across each phrase and within held
+        notes (CC11 expression) and a delayed vibrato that fades in on held notes (CC1). Replaces
+        the track's expression (and vibrato) curves in the range. Best for flutes, strings,
+        brass, voices; skip plucked or struck instruments (lute, harp, piano)."""
+        lo, hi = _optional_range(project_id, start_bar, end_bar, start_tick, end_tick)
+        return service.shape_expression(
+            project_id,
+            expected_revision=expected_revision,
+            track_id=track_id,
+            start_tick=lo,
+            end_tick=hi,
+            settings=ExpressionSettings(
+                base=base,
+                peak=peak,
+                swell=swell,
+                long_note_ticks=long_note_ticks,
+                vibrato_depth=vibrato_depth,
+                vibrato_delay_ticks=vibrato_delay_ticks,
+                resolution_ticks=resolution_ticks,
+            ),
+            author="agent",
+            operation_id=operation_id,
+        ).to_dict()
+
+    @server.tool()
+    @_tool_errors
+    def set_automation(
+        project_id: str,
+        expected_revision: int,
+        track_id: str,
+        lane: Literal["expression", "modulation", "pitchBend"],
+        points: list[PointIn],
+        start_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
+        end_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
+        start_tick: int | None = None,
+        end_tick: int | None = None,
+        interpolate: Annotated[
+            bool, Field(description="Join the points with straight ramps")
+        ] = False,
+        resolution_ticks: Annotated[int, Field(ge=10, le=480)] = 60,
+        operation_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Hand-draw one controller curve of a track in a bar/tick range (replaces the points
+        there; empty list clears). expression = CC11 volume inside the track (fade in/out,
+        swells); modulation = CC1 vibrato depth; pitchBend = slides (+-8191 = +-2 semitones;
+        return to 0 before the next note)."""
+        snap = service.get_project(project_id)
+        lo, hi = _range(snap.score, start_bar, end_bar, start_tick, end_tick)
+        return service.set_automation(
+            project_id,
+            expected_revision=expected_revision,
+            track_id=track_id,
+            lane=lane,
+            start_tick=lo,
+            end_tick=hi,
+            points=[p.model_dump() for p in points],
+            interpolate_ramps=interpolate,
+            resolution_ticks=resolution_ticks,
             author="agent",
             operation_id=operation_id,
         ).to_dict()

@@ -67,6 +67,8 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
       el("h3", { text: "Accompaniment" }), el("p", { text: t.accompaniment }),
       Object.keys(t.patterns).length ? el("h3", { text: "Patterns" }) : null,
       Object.keys(t.patterns).length ? list(Object.entries(t.patterns).map(([k, v]) => `${k}: ${v}`)) : null,
+      t.expression ? el("h3", { text: "Expression (sound played, not typed)" }) : null,
+      t.expression ? el("p", { text: t.expression }) : null,
       el("h3", { text: "Do" }), list(t.dos),
       el("h3", { text: "Don't" }), list(t.donts),
       el("h3", { text: "Prompt to use it" }),
