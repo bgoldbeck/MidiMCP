@@ -154,6 +154,16 @@ try {
   await page.click("#tabs .tab[data-view=templates]");
   await page.click("#template-list li:has-text('Peaceful Town')");
   await waitText("#template-detail", "G  Em  C  D");
+  // Copy prompt must work on plain-HTTP LAN addresses, where navigator.clipboard is missing.
+  await page.evaluate(() => {
+    Object.defineProperty(window, "isSecureContext", { value: false });
+    Object.defineProperty(Navigator.prototype, "clipboard", { get: () => undefined });
+    document.addEventListener("copy", () => { window.copiedText = document.activeElement.value; });
+  });
+  await page.click("#template-detail button:has-text('Copy prompt')");
+  await waitText("#template-detail", "Copied");
+  const copied = await page.evaluate(() => window.copiedText || "");
+  if (!copied.includes('"peaceful-town" template')) throw new Error(`copy prompt copied ${JSON.stringify(copied)}`);
   dialogs.answer = true;
   dialogs.promptText = "Lantern Town";
   await page.click("#template-detail button:has-text('Duplicate')");
@@ -166,7 +176,7 @@ try {
   await page.click("#template-detail button:has-text('Delete')");
   await page.waitForFunction(() => !document.querySelector("#template-list").textContent.includes("Lantern Town"));
   dialogs.answer = null;
-  step("templates: view chart, duplicate, edit tempo, delete");
+  step("templates: view chart, copy prompt over plain HTTP, duplicate, edit tempo, delete");
   await page.click("#tabs .tab[data-view=songs]");
 
   // Help page: reachable from the header, recipes have Copy buttons, links back work.
