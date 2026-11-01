@@ -106,6 +106,18 @@ export class Player extends EventTarget {
     }
   }
 
+  /** Stop and forget the current song (e.g. after it was deleted). */
+  unload() {
+    this._loadToken++;
+    this.audio.pause();
+    this._stopFrames();
+    this.audio.removeAttribute("src");
+    if (typeof this.audio.load === "function") this.audio.load();
+    this.view = null;
+    this.map = null;
+    this._setState("empty");
+  }
+
   get tick() {
     return this.map ? this.map.secondsToTick(this.audio.currentTime) : 0;
   }

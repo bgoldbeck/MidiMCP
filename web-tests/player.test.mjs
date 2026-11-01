@@ -35,6 +35,8 @@ class FakeAudio extends EventTarget {
     });
   }
   get src() { return this._src; }
+  removeAttribute(name) { if (name === "src") this._src = ""; }
+  load() {}
   async play() { this.paused = false; }
   pause() { this.paused = true; }
 }
@@ -199,4 +201,14 @@ test("Api sends bearer token, parses errors, builds token URLs, polls jobs", asy
   assert.equal(calls[2].init.method, "PATCH");
   assert.equal(JSON.parse(calls[2].init.body).mute, true);
   assert.equal(api.url("/api/renders/a.wav"), "/api/renders/a.wav?token=secret");
+});
+
+test("unload stops playback and forgets the song", async () => {
+  const { player, audio } = makePlayer();
+  await player.load(view());
+  await player.play();
+  player.unload();
+  assert.equal(player.state, "empty");
+  assert.equal(player.view, null);
+  assert.equal(audio.paused, true);
 });

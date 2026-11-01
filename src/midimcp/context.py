@@ -116,6 +116,11 @@ class AppContext:
         self.events = EventBus()
         self.jobs = RenderJobs(self.renderer, on_event=self.events.publish)
         self.store.add_listener(self._on_commit)
+        self.store.add_delete_listener(
+            lambda project_id: self.events.publish(
+                {"type": "project.deleted", "projectId": project_id}
+            )
+        )
 
     def _on_commit(self, result: CommitResult) -> None:
         info = result.snapshot.info

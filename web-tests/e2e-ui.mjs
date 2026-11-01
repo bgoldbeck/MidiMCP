@@ -121,6 +121,19 @@ try {
   await page.click("#overview svg", { position: { x: 600, y: 30 } });
   step(`overview click seeks to bar ${await text("#bar")}`);
 
+  // Delete: Cancel keeps the song, OK removes it from the library (moved to trash).
+  dialogs.answer = false;
+  dialogs.seen.length = 0;
+  await page.click("#delete-song");
+  if (!(await page.isVisible("#song"))) throw new Error("cancelled delete closed the song");
+  dialogs.answer = true;
+  await page.click("#delete-song");
+  await page.waitForSelector("#welcome-note:not([hidden])");
+  await page.waitForFunction(() => ![...document.querySelectorAll("#project-list li")].some((li) => li.textContent.includes("Browser Test Song")));
+  if (dialogs.seen.length !== 2 || !dialogs.seen[0].includes("trash")) throw new Error(`delete dialogs: ${dialogs.seen}`);
+  dialogs.answer = null;
+  step(`delete: cancel keeps, OK removes -> ${await text("#welcome-note")}`);
+
   if (shot) await page.screenshot({ path: shot, fullPage: true });
   await page.reload();
   await page.waitForSelector("#app:not([hidden])");
