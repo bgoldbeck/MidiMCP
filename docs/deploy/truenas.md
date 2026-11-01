@@ -53,7 +53,11 @@ python scripts/smoke_test.py --url http://<nas-ip>:8765 --token YOUR_TOKEN
 
 ## Where the image comes from
 
-`ghcr.io/bgoldbeck/midimcp` is published by hand with [`scripts/publish-image.sh`](../../scripts/publish-image.sh) — no paid GitHub services. Run it on any machine with Docker and git, e.g. the TrueNAS shell:
+`ghcr.io/bgoldbeck/midimcp` is published by hand — no paid GitHub services.
+
+**Windows PC** (Docker Desktop + Git for Windows): double-click [`scripts/publish-image.cmd`](../../scripts/publish-image.cmd) in your clone. It checks Docker, your checkout (offers `git pull` if behind), builds with live colored output (errors in red, saved to `publish-image.log`), asks for your GitHub token (hidden), pushes, and logs out. `scripts\publish-image.cmd -NoPush` only builds.
+
+**Linux / the TrueNAS shell:** [`scripts/publish-image.sh`](../../scripts/publish-image.sh):
 
 ```bash
 git clone https://github.com/bgoldbeck/MidiMCP.git && cd MidiMCP && sudo bash scripts/publish-image.sh

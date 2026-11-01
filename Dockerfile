@@ -17,8 +17,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     MIDIMCP_HOST=0.0.0.0 \
     MIDIMCP_PORT=8765
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
+# apt-get update is retried: Ubuntu mirrors briefly serve mismatched indexes while syncing.
+RUN for attempt in 1 2 3 4 5; do \
+      apt-get -o Acquire::Retries=3 update && break; \
+      echo "apt-get update failed (attempt $attempt/5), retrying in 30s..." >&2; \
+      rm -rf /var/lib/apt/lists/*; sleep 30; \
+    done \
+ && apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
       python3 python3-venv fluidsynth fluid-soundfont-gm tini \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/venv
