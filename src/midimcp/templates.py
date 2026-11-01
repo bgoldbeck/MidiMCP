@@ -79,6 +79,7 @@ class Template:
     dos: tuple[str, ...]
     donts: tuple[str, ...]
     patterns: dict[str, str] = field(default_factory=dict)
+    expression: str = ""  # how to humanize / shape the parts (humanize_notes, shape_expression)
 
     @property
     def form_bars(self) -> int:
@@ -233,6 +234,7 @@ TEMPLATES: Final[dict[str, Template]] = {
             patterns={
                 "lute 6/8 arpeggio (ticks from bar start)": "0:root, 480:5th, 960:octave, 1440:3rd(+8), 1920:5th, 2400:octave — each 480 long"
             },
+            expression="humanize_notes on flute (legato 0.92, breath_ticks 180, timing_ticks 12) and lightly on the lute (timing_ticks 8, phrase_dynamics 6). shape_expression on flute and strings (vibrato_depth 35); not on the lute.",
         ),
         Template(
             id="forest-exploration",
@@ -325,12 +327,14 @@ TEMPLATES: Final[dict[str, Template]] = {
                 "Let notes ring (long durations)",
             ),
             donts=(
+                "Don't copy melodies from existing games",
                 "No drums",
                 "Avoid strong V-I cadences; modal colour comes from i-IV and bVII-i",
             ),
             patterns={
                 "harp 3/4 ripple (ticks)": "0,480,960,1440,1920,2400: root,5th,octave,10th,octave,5th — each 480 long"
             },
+            expression="Pan flute: humanize (legato 0.95, breath_ticks 200), shape_expression with slow swells (swell 14, vibrato_depth 30, vibrato_delay_ticks 360). Harp: humanize timing only (timing_ticks 10, phrase_dynamics 4). Voice pad: a slow expression fade-in over the first 2 bars with set_automation.",
         ),
         Template(
             id="ruined-crypt",
@@ -414,8 +418,13 @@ TEMPLATES: Final[dict[str, Template]] = {
             melody="Less is more: at most one motif statement every 2 bars; let silence carry tension.",
             accompaniment="Drones and swells, no rhythm section.",
             dos=("Keep velocities low (35-70)", "Use the b2 (phrygian) half step for dread"),
-            donts=("No percussion grooves", "No bright major cadences"),
+            donts=(
+                "Don't copy melodies from existing games",
+                "No percussion grooves",
+                "No bright major cadences",
+            ),
             patterns={},
+            expression="Keep it cold: humanize the music box with small timing (8) and low phrase_dynamics (6). shape_expression on the choir with base 70, peak 100, swell 18 and little vibrato (15) for eerie swells; fade the organ and tremolo strings in and out with set_automation.",
         ),
         Template(
             id="tavern",
@@ -513,10 +522,15 @@ TEMPLATES: Final[dict[str, Template]] = {
                 "Strong downbeats (velocity 90-105), lighter offbeats",
                 "Repeat the A tune exactly once",
             ),
-            donts=("Don't slow down", "Avoid long held notes in the fiddle"),
+            donts=(
+                "Don't copy melodies from existing games",
+                "Don't slow down",
+                "Avoid long held notes in the fiddle",
+            ),
             patterns={
                 "lute 6/8 strum (ticks)": "0 and 1440: full chord, 400 long, velocity 85 then 75"
             },
+            expression="Dance feel: humanize with legato 0.65 (detached), timing_ticks 10, accent_downbeats on. Fiddle: shape_expression with short swells (swell 6, vibrato_depth 25, long_note_ticks 960).",
         ),
         Template(
             id="sea-voyage",
@@ -620,8 +634,12 @@ TEMPLATES: Final[dict[str, Template]] = {
             melody="Few, long notes; the shape of the line matters more than speed.",
             accompaniment="Harp keeps motion; strings breathe in 2-bar swells.",
             dos=("Use II (lydian) for wonder in the alternative mode",),
-            donts=("No percussion",),
+            donts=(
+                "Don't copy melodies from existing games",
+                "No percussion",
+            ),
             patterns={},
+            expression="Swaying lines: humanize the horn and flute with legato 0.95, timing_ticks 14, breath_ticks 160. shape_expression on horn, flute and strings with broad swells (swell 14, vibrato_depth 35) like waves.",
         ),
         Template(
             id="tense-borderlands",
@@ -728,13 +746,23 @@ TEMPLATES: Final[dict[str, Template]] = {
             melody="Rhythmic, short motifs; leave gaps; harmonic minor V (major) for tension.",
             accompaniment="The ostinato never stops; everything else enters and exits.",
             dos=("Crescendo across B (velocities up 15-20)",),
-            donts=("No sweet lyrical lines",),
+            donts=(
+                "Don't copy melodies from existing games",
+                "No sweet lyrical lines",
+            ),
             patterns={
                 "strings 4/4 ostinato (ticks)": "every 480: root,root,5th,root,... 420 long; accent 0 and 1920"
             },
+            expression="Calls should bite: humanize trumpet with legato 0.7, timing_ticks 6, keep_downbeats. Strings ostinato: humanize timing_ticks 4 only (stay tight). shape_expression on trombone with base 80, peak 115 for crescendos into B.",
         ),
     )
 }
+
+
+# Style families live in their own module (they import Template from here).
+from midimcp.template_styles import OLD_REALM, RETRO_GAMES  # noqa: E402
+
+TEMPLATES.update({t.id: t for t in (*OLD_REALM, *RETRO_GAMES)})
 
 
 def list_templates() -> list[dict[str, Any]]:
@@ -877,6 +905,7 @@ _TEMPLATE_FIELDS = (
     "dos",
     "donts",
     "patterns",
+    "expression",
 )
 _ID_TEXT = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 
@@ -1028,6 +1057,9 @@ def template_from_dict(data: Any) -> Template:
         isinstance(k, str) and isinstance(v, str) for k, v in patterns.items()
     ):
         errors.append("template: patterns must map names to text")
+    expression = data.get("expression", "")
+    if not isinstance(expression, str):
+        errors.append("template: 'expression' must be text")
     if errors:
         raise TemplateValidationError("; ".join(errors[:12]))
     return Template(
@@ -1051,6 +1083,7 @@ def template_from_dict(data: Any) -> Template:
         dos=tuple(str(d) for d in dos),
         donts=tuple(str(d) for d in donts),
         patterns=dict(patterns),
+        expression=expression,
     )
 
 

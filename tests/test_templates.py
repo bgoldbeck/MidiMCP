@@ -22,9 +22,9 @@ def service(tmp_path: Path) -> CompositionService:
     return CompositionService(ProjectStore(tmp_path))
 
 
-def test_six_original_templates_listed() -> None:
+def test_builtin_templates_listed() -> None:
     ids = [t["id"] for t in list_templates()]
-    assert ids == [
+    assert ids[:6] == [
         "peaceful-town",
         "forest-exploration",
         "ruined-crypt",
@@ -32,6 +32,13 @@ def test_six_original_templates_listed() -> None:
         "sea-voyage",
         "tense-borderlands",
     ]
+    old_realm = [i for i in ids if i.startswith("old-realm-")]
+    retro = [i for i in ids if i.startswith("retro-")]
+    assert len(old_realm) == 9 and len(retro) == 12
+    assert {"old-realm-title", "old-realm-town", "old-realm-sailing", "old-realm-forest"} <= set(
+        old_realm
+    )
+    assert len(ids) == len(set(ids)) == 6 + 9 + 12
     with pytest.raises(TemplateError):
         get_template("disco")
 
@@ -39,6 +46,8 @@ def test_six_original_templates_listed() -> None:
 @pytest.mark.parametrize("template_id", list(TEMPLATES))
 def test_template_is_internally_consistent(template_id: str) -> None:
     template = TEMPLATES[template_id]
+    assert template.expression  # every built-in says how to make it sound played
+    assert any("copy" in d.lower() for d in template.donts), "must forbid copying melodies"
     low, high = template.tempo_range
     assert low <= template.default_tempo <= high
     assert [p.role for p in template.parts].count("melody") == 1

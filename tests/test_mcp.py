@@ -19,6 +19,7 @@ from midimcp.context import AppContext
 from midimcp.mcp_server import build_mcp_server
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
+from midimcp.templates import TEMPLATES
 from tests.sf2 import full_gm_presets, write_fake_sf2
 
 HAS_AUDIO = (
@@ -469,7 +470,7 @@ def test_templates_via_mcp(ctx: AppContext) -> None:
     async def go() -> None:
         async with Client(build_mcp_server(ctx)) as client:
             listed = await call(client, "list_templates")
-            assert len(listed["templates"]) == 6
+            assert len(listed["templates"]) == len(TEMPLATES)
             detail = await call(client, "get_template", template_id="tavern")
             assert detail["form"][0]["progression"][1] == "bVII"
             created = await call(

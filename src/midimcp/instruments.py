@@ -104,6 +104,27 @@ RETRO_ALIASES: Final[dict[str, tuple[int, str, str]]] = {
     "warm_pad": (89, "Warm Pad", "pad"),
     "timpani": (47, "Timpani", "percussion-melodic"),
     "acoustic_bass": (32, "Acoustic Bass", "bass"),
+    "fretless_bass": (35, "Fretless Bass", "bass"),
+    "synth_bass": (38, "Synth Bass", "bass"),
+    "brass_section": (61, "Brass Section", "brass"),
+    "synth_brass": (62, "Synth Brass", "brass"),
+    "synth_strings": (50, "Synth Strings", "strings"),
+    "electric_piano": (4, "Electric Piano", "keyboard"),
+    "vibraphone": (11, "Vibraphone", "mallet"),
+    "marimba": (12, "Marimba", "mallet"),
+    "xylophone": (13, "Xylophone", "mallet"),
+    "overdrive_guitar": (29, "Overdrive Guitar", "plucked"),
+    "distortion_guitar": (30, "Distortion Guitar", "plucked"),
+    "square_lead": (80, "Square Lead (chiptune)", "synth"),
+    "saw_lead": (81, "Saw Lead", "synth"),
+    "calliope": (82, "Calliope Lead", "synth"),
+    "chiff_lead": (83, "Chiff Lead", "synth"),
+    "new_age_pad": (88, "New Age Pad", "pad"),
+    "halo_pad": (94, "Halo Pad", "pad"),
+    "orchestra_hit": (55, "Orchestra Hit", "percussion-melodic"),
+    "steel_drums": (114, "Steel Drums", "percussion-melodic"),
+    "taiko": (116, "Taiko Drum", "percussion-melodic"),
+    "synth_drum": (118, "Synth Drum", "percussion-melodic"),
 }
 
 _GM_ID = re.compile(r"^gm\.(\d{1,3})$")
@@ -182,6 +203,13 @@ INSTRUMENT_RANGES: Final[dict[str, tuple[int, int]]] = {
     "cello": (36, 76), "contrabass": (28, 60), "strings": (28, 96), "warm_strings": (28, 96),
     "tremolo_strings": (28, 96), "choir": (48, 79), "voice_oohs": (48, 79), "warm_pad": (36, 96),
     "timpani": (40, 55), "acoustic_bass": (28, 55),
+    "fretless_bass": (28, 60), "synth_bass": (24, 60), "brass_section": (41, 84),
+    "synth_brass": (36, 84), "synth_strings": (36, 96), "electric_piano": (28, 103),
+    "vibraphone": (53, 89), "marimba": (45, 96), "xylophone": (65, 108),
+    "overdrive_guitar": (40, 86), "distortion_guitar": (40, 86), "square_lead": (36, 96),
+    "saw_lead": (36, 96), "calliope": (48, 96), "chiff_lead": (48, 96), "new_age_pad": (36, 96),
+    "halo_pad": (36, 96), "orchestra_hit": (36, 84), "steel_drums": (52, 88), "taiko": (36, 60),
+    "synth_drum": (36, 72),
 }  # fmt: skip
 
 
