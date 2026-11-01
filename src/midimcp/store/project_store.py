@@ -245,6 +245,19 @@ class ProjectStore:
                 ProjectSnapshot(project_id, new_revision, score, brief, info), report
             )
 
+    def find_operation(self, project_id: str, operation_id: str) -> CommitResult | None:
+        """Return the commit made with ``operation_id``, if any (for idempotent retries)."""
+        project_dir = self._existing_dir(project_id)
+        with self._lock(project_id):
+            self._recover(project_dir)
+            for _, path in reversed(self._snapshot_files(project_dir)):
+                raw = self._read_snapshot_raw(path, project_id)
+                if raw["operationId"] == operation_id:
+                    snapshot = self._read_snapshot(path, project_id)
+                    report = validate_score(snapshot.score, snapshot.brief)
+                    return CommitResult(snapshot, report, replayed=True)
+        return None
+
     def load_revision(self, project_id: str, revision: int) -> ProjectSnapshot:
         project_dir = self._existing_dir(project_id)
         path = self._revision_path(project_dir, revision)
