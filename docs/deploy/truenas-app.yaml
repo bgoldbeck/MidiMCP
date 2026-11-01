@@ -1,0 +1,17 @@
+# TrueNAS SCALE: Apps -> Discover Apps -> (three-dot menu) -> Install via YAML.
+# Replace the placeholders:  /mnt/POOL/apps/midimcp/data  and  CHANGE_ME_TOKEN.
+# The image is built on the NAS first (see docs/deploy/truenas.md, step 3).
+services:
+  midimcp:
+    image: midimcp:latest
+    pull_policy: never
+    container_name: midimcp
+    restart: unless-stopped
+    user: "568:568"
+    ports:
+      - "8765:8765"
+    environment:
+      MIDIMCP_TOKEN: CHANGE_ME_TOKEN
+      MIDIMCP_DATA_DIR: /data
+    volumes:
+      - /mnt/POOL/apps/midimcp/data:/data
