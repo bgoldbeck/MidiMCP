@@ -95,3 +95,8 @@ input[type=range] { accent-color: var(--accent); }
 .swatch.c5 { background: #6ad9c4; }
 .swatch.c6 { background: #d9d06a; }
 .swatch.c7 { background: #d96ab0; }
+
+.toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10; max-width: min(720px, 92vw);
+  background: #3a1d17; color: #ffd9cf; border: 1px solid var(--danger); border-radius: 8px; padding: 10px 14px;
+  display: flex; gap: 14px; align-items: start; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+.toast .link { margin-left: 0; color: #ffd9cf; text-decoration: none; }

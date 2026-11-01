@@ -45,11 +45,30 @@ function svg(tag, attrs = {}) {
   return node;
 }
 
+const FRIENDLY = {
+  INSTRUMENT_NOT_ALLOWED: "That instrument is not on this song's allowed list.",
+  PERCUSSION_FORBIDDEN: "This song does not allow percussion.",
+  LOCKED: "That part of the song is locked. Unlock it first.",
+  REVISION_CONFLICT: "The song changed meanwhile. The latest version has been loaded; please try again.",
+  RENDER_BLOCKED: "The song cannot be rendered right now.",
+};
+
+function describeError(error) {
+  if (!(error instanceof ApiError)) return String(error?.message || error);
+  const codes = (error.body?.validation?.errors || []).map((i) => i.code);
+  const key = codes.find((c) => FRIENDLY[c]) || error.code;
+  const detail = (error.body?.validation?.errors || []).map((i) => i.message).join("; ") || error.message;
+  return FRIENDLY[key] ? `${FRIENDLY[key]} (${detail})` : `${error.code}: ${detail}`;
+}
+
+let toastTimer = null;
 function showError(error) {
-  const box = $("error");
-  if (!error) { box.hidden = true; return; }
-  box.textContent = error instanceof ApiError ? `${error.code}: ${error.message}` : String(error.message || error);
-  box.hidden = false;
+  const toast = $("toast");
+  clearTimeout(toastTimer);
+  if (!error) { toast.hidden = true; return; }
+  $("toast-text").textContent = describeError(error);
+  toast.hidden = false;
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 12000);
 }
 
 function relativeTime(iso) {
@@ -228,15 +247,23 @@ function renderTracks(view) {
   const locks = lockedTracks(view);
   const rows = view.score.tracks.map((track, index) => {
     const wholeLock = locks.get(track.id) === "locked";
+    const allowed = view.brief.allowedInstrumentIds; // null = any instrument
     const instrumentSelect = el("select", {
       disabled: wholeLock || track.isPercussion,
       "aria-label": `Instrument for ${track.name}`,
-      onchange: (e) => saveTrack(track.id, { instrumentId: e.target.value }),
+      onchange: (e) => changeInstrument(track, e.target.value, allowed),
     });
     const known = state.instruments.some((i) => i.id === track.instrumentId);
-    const options = known ? state.instruments : [{ id: track.instrumentId, name: track.instrumentId }, ...state.instruments];
-    for (const instrument of options.filter((i) => !i.isPercussion || track.isPercussion)) {
-      instrumentSelect.append(el("option", { value: instrument.id, selected: instrument.id === track.instrumentId, text: instrument.name }));
+    const options = (known ? state.instruments : [{ id: track.instrumentId, name: track.instrumentId }, ...state.instruments])
+      .filter((i) => !i.isPercussion || track.isPercussion);
+    const option = (i) => el("option", { value: i.id, selected: i.id === track.instrumentId, text: i.name });
+    if (allowed) {
+      const inList = options.filter((i) => allowed.includes(i.id) || i.id === track.instrumentId);
+      const others = options.filter((i) => !inList.includes(i));
+      instrumentSelect.append(el("optgroup", { label: "Allowed in this song" }, inList.map(option)));
+      if (others.length) instrumentSelect.append(el("optgroup", { label: "Other instruments (adds to the allowed list)" }, others.map(option)));
+    } else {
+      instrumentSelect.append(...options.map(option));
     }
     const db = el("span", { class: "db", text: `${track.gainDb} dB` });
     const volume = el("input", {
@@ -262,6 +289,20 @@ function renderTracks(view) {
   });
   if (!rows.length) rows.push(el("tr", {}, el("td", { colspan: 5, class: "hint", text: "No tracks yet." })));
   $("track-rows").replaceChildren(...rows);
+  const allowed = view.brief.allowedInstrumentIds;
+  const names = (allowed || []).map((id) => state.instruments.find((i) => i.id === id)?.name || id);
+  $("allowed-instruments").textContent = allowed ? `Allowed instruments for this song: ${names.join(", ")}` : "";
+  $("allowed-instruments").hidden = !allowed;
+}
+
+function changeInstrument(track, instrumentId, allowed) {
+  if (allowed && !allowed.includes(instrumentId)) {
+    const name = state.instruments.find((i) => i.id === instrumentId)?.name || instrumentId;
+    const ok = window.confirm(`This song only allows certain instruments. Add "${name}" to its allowed list and switch ${track.name} to it?`);
+    if (!ok) { renderTracks(state.view); return; }
+    return saveTrack(track.id, { instrumentId, allowInstrument: true });
+  }
+  return saveTrack(track.id, { instrumentId });
 }
 
 async function saveTrack(trackId, changes) {
@@ -391,6 +432,7 @@ async function start() {
     $("login-error").hidden = false;
   };
   $("logout").onclick = () => { setToken(""); location.reload(); };
+  $("toast-close").onclick = () => showError(null);
   const saved = getToken();
   const status = saved ? await connect(saved).catch(() => null) : null;
   if (status) return enterApp(status);

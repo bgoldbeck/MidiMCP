@@ -11,7 +11,12 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-page.on("dialog", (d) => { errors.push(`unexpected dialog: ${d.message()}`); d.dismiss(); });
+const dialogs = { answer: null, seen: [] };
+page.on("dialog", (d) => {
+  if (dialogs.answer === null) { errors.push(`unexpected dialog: ${d.message()}`); d.dismiss(); return; }
+  dialogs.seen.push(d.message());
+  return dialogs.answer ? d.accept() : d.dismiss();
+});
 const step = (msg) => console.log(`step: ${msg}`);
 const text = (sel) => page.textContent(sel);
 const waitText = (sel, expected, timeout = 60000) =>
@@ -88,6 +93,30 @@ try {
   const midi = await (await fetch(new URL(href, base))).arrayBuffer();
   if (new TextDecoder().decode(midi.slice(0, 4)) !== "MThd") throw new Error("MIDI download broken");
   step(`MIDI export downloadable (${midi.byteLength} bytes)`);
+
+  // Song only allows flute + recorder: picking Harp asks first; Cancel keeps everything.
+  await waitText("#allowed-instruments", "Wooden Flute, Recorder");
+  const flute = page.locator("tr[data-track=flute] select");
+  dialogs.answer = false;
+  await flute.selectOption({ label: "Harp" });
+  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select").selectedOptions[0].textContent === "Recorder");
+  if (!(await text("#revision")).includes("revision 6")) throw new Error("cancelled change was saved");
+  dialogs.answer = true;
+  await page.locator("tr[data-track=flute] select").selectOption({ label: "Harp" });
+  await waitText("#revision", "revision 7");
+  await waitText("#allowed-instruments", "Harp");
+  if (dialogs.seen.length !== 2 || !dialogs.seen[0].includes("Harp")) throw new Error(`dialogs: ${dialogs.seen}`);
+  dialogs.answer = null;
+  step("instrument outside the allowed list: cancel keeps, OK adds it (one revision)");
+
+  // A refused change shows a visible error at the top instead of silently resetting.
+  const refused = await fetch(`${base}/api/projects/browser-test-song/tracks/flute`, {
+    method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 7, instrumentId: "retro.lute" }),
+  });
+  if (refused.status !== 422) throw new Error(`expected 422, got ${refused.status}`);
+  await page.evaluate(() => { document.querySelector("#toast").hidden = true; });
+  step("server still refuses instruments outside the list without the opt-in");
 
   await page.click("#overview svg", { position: { x: 600, y: 30 } });
   step(`overview click seeks to bar ${await text("#bar")}`);

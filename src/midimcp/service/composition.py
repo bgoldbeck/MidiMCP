@@ -226,10 +226,15 @@ class CompositionService:
         expected_revision: int,
         track_id: str,
         changes: dict[str, Any],
+        allow_instrument: bool = False,
         author: Author = "agent",
         operation_id: str | None = None,
     ) -> OperationResult:
-        """Change track properties: name, instrument_id, gain_db, pan, mute, is_percussion."""
+        """Change track properties: name, instrument_id, gain_db, pan, mute, is_percussion.
+
+        ``allow_instrument=True`` also adds a new ``instrument_id`` to the brief's
+        allowed-instruments list (when the brief has one) in the same revision.
+        """
         unknown = set(changes) - _TRACK_PROPERTIES
         if unknown:
             raise InvalidOperation(f"cannot update track fields: {', '.join(sorted(unknown))}")
@@ -238,6 +243,15 @@ class CompositionService:
             track = _require_track(score, track_id)
             values = {k: float(v) if k in {"gain_db", "pan"} else v for k, v in changes.items()}
             updated = self._build(Track, **{**track.model_dump(), **values})
+            new_instrument = values.get("instrument_id")
+            allowed = brief.allowed_instrument_ids
+            if (
+                allow_instrument
+                and new_instrument
+                and allowed is not None
+                and new_instrument not in allowed
+            ):
+                brief = _with(brief, allowed_instrument_ids=[*allowed, new_instrument])
             return _replace_track(score, updated), brief, ()
 
         return self._mutate(
