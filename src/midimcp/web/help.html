@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MidiMCP – Help</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="help.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <img class="logo" src="icon.svg" alt="" width="30" height="30">
+    <h1>MidiMCP</h1>
+    <span class="subtitle">help</span>
+    <nav class="tabs">
+      <a class="tab" href="./">Songs</a>
+      <a class="tab" href="./#templates">Templates</a>
+      <a class="tab active" href="help.html">Help</a>
+    </nav>
+  </header>
+
+  <main class="help">
+    <nav class="card toc" aria-label="Contents">
+      <strong>On this page</strong>
+      <a href="#how">How it works</a>
+      <a href="#first">Your first song</a>
+      <a href="#templates">Songs from templates</a>
+      <a href="#complex">Building a richer song step by step</a>
+      <a href="#edit">Editing parts of a song</a>
+      <a href="#loops">Making loops sound good</a>
+      <a href="#variations">Variations for your game</a>
+      <a href="#export">Exporting</a>
+      <a href="#ui">Using this page</a>
+      <a href="#trouble">Troubleshooting</a>
+    </nav>
+
+    <section class="card" id="how">
+      <h2>How it works</h2>
+      <p>You describe music to your AI client (Claude Code, Codex, Antigravity). It uses the <code>midimcp</code> tools to write notes into a song stored on your NAS. This site plays, adjusts and exports those songs. Every change is saved as a new <em>revision</em>, so nothing is ever lost.</p>
+      <p>Each recipe below has a <strong>Copy</strong> button. Paste it into your AI client and change the words in <code>[brackets]</code>.</p>
+    </section>
+
+    <section class="card" id="first">
+      <h2>Your first song</h2>
+      <div class="recipe"><pre>Using the midimcp tools, read the midimcp://guide resource first. Then create an original 16-bar loopable [medieval town] theme in the character of late-1990s fantasy RPG MIDI music: [wooden flute] melody, [lute] accompaniment, no percussion, [G#] [Ionian], [84] BPM, [6/8]. Validate it and render a preview.</pre></div>
+      <p class="hint">Good for a quick sketch. For fuller arrangements, start from a template (next section).</p>
+    </section>
+
+    <section class="card" id="templates">
+      <h2>Songs from templates</h2>
+      <p>Templates give the AI a plan: which instruments play which role, their pitch ranges, the song form (A / B / A′…) and a chord for every bar. Browse them on the <a href="./#templates">Templates</a> tab, where each one also has a ready-made prompt.</p>
+      <p>Built-in templates: <code>peaceful-town</code>, <code>forest-exploration</code>, <code>ruined-crypt</code>, <code>tavern</code>, <code>sea-voyage</code>, <code>tense-borderlands</code>.</p>
+      <div class="recipe"><pre>Using midimcp, create a song from the "[peaceful-town]" template titled "[Lanterns of the Vale]" in [G#]. Fill every section of every track following the chord chart and the template guidance. Then validate, fix the warnings that make sense, and render a preview.</pre></div>
+      <p>Override anything the template sets:</p>
+      <div class="recipe"><pre>Using midimcp, create a song from the "[forest-exploration]" template titled "[Mossway]", but in [E] [aeolian], at [72] BPM, [48] bars long. Keep the template's instruments and form. Fill every section, validate, render a preview.</pre></div>
+      <p><strong>Your own templates:</strong> on the Templates tab, open a built-in one, click <em>Duplicate</em>, and edit the copy, e.g. swap the cello for a harp, change the chord progressions or the section lengths. Then ask for a song from your template's id.</p>
+    </section>
+
+    <section class="card" id="complex">
+      <h2>Building a richer song step by step</h2>
+      <p>AI agents usually write better music in several focused turns than in one giant request. A sequence that works well (send one message at a time, listen in between):</p>
+      <ol class="steps">
+        <li><div class="recipe"><pre>Using midimcp, create a song from the "[sea-voyage]" template titled "[Westward Sails]". Don't write notes yet: show me the tracks, sections and chord chart you got.</pre></div></li>
+        <li><div class="recipe"><pre>Write only the melody for section A (bars 1-8) following the chords: a memorable 2-bar motif, developed over two 4-bar phrases, breathing at bar 4 and 8. Render a preview of bars 1-8.</pre></div></li>
+        <li><div class="recipe"><pre>Now write the accompaniment and bass for section A following the template's patterns, keeping everything below the melody. Render bars 1-8 again.</pre></div></li>
+        <li><div class="recipe"><pre>Write section B as a contrast: melody higher with longer notes, the countermelody answering in the gaps, pad swelling. Keep section A unchanged. Render bars 9-16.</pre></div></li>
+        <li><div class="recipe"><pre>Write A' as a varied return of the A theme with a fuller accompaniment, then the last section so it leads smoothly back to bar 1. Validate the whole song and fix the musical warnings, especially loop warnings.</pre></div></li>
+        <li><div class="recipe"><pre>Give the melody more life: vary velocities to shape each phrase (softer at phrase starts, peak in the middle), add one or two passing notes per phrase. Don't change the accompaniment.</pre></div></li>
+      </ol>
+      <p class="hint">Tip: tell the AI what you heard. "The flute is too busy in bars 5-6" works better than "make it better".</p>
+    </section>
+
+    <section class="card" id="edit">
+      <h2>Editing parts of a song</h2>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", simplify the flute in bars [9-16]; leave every other track untouched.</pre></div>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", add a [harp] track playing gentle arpeggios in section B only, below the flute.</pre></div>
+      <div class="recipe"><pre>In "[Lanterns of the Vale]", restore revision [7], then redo only the B section melody with a calmer contour.</pre></div>
+      <p><strong>Protecting parts:</strong> a locked track or bar range can't be changed by the AI. Only you can set locks (on purpose, the AI can't lock or unlock); the lock controls arrive in the web UI with the piano-roll feature. Until then, say "don't touch the lute" in your prompt.</p>
+      <p><strong>Instruments, volume, mute:</strong> change them on the Songs page. Each change is a revision, and the ↺ button puts a setting back to its default.</p>
+    </section>
+
+    <section class="card" id="loops">
+      <h2>Making loops sound good</h2>
+      <p>Game music repeats, so the joint between the end and the start matters. Turn on <strong>Loop</strong> on the Songs page: it plays exactly the loop section back-to-back with no gap, as a game would.</p>
+      <ul>
+        <li><strong>Harmony:</strong> the last bar should lead back to the first chord (V→I, bVII→i). Templates already do this.</li>
+        <li><strong>Melody:</strong> the last note should be a step or small leap from the first note.</li>
+        <li><strong>No cut-offs:</strong> notes must end at the loop point, or they get chopped on the restart.</li>
+        <li><strong>Same energy:</strong> the last bar should be about as busy as the first; avoid a quiet "ending".</li>
+      </ul>
+      <div class="recipe"><pre>Check "[Lanterns of the Vale]" for loop problems (validate_project loop warnings) and fix them so the last bar flows seamlessly into bar 1, without changing bars 1-24.</pre></div>
+    </section>
+
+    <section class="card" id="variations">
+      <h2>Variations for your game</h2>
+      <div class="recipe"><pre>Create "[Lanterns of the Vale – Night]" from the same template and key: same melody as "[Lanterns of the Vale]" but at [72] BPM, softer velocities, harp instead of lute, no strings until section B.</pre></div>
+      <div class="recipe"><pre>Create "[Lanterns of the Vale – Danger]" from the "tense-borderlands" template in [Ab] [aeolian], quoting the first 2 bars of the town melody in the trumpet calls.</pre></div>
+    </section>
+
+    <section class="card" id="export">
+      <h2>Exporting</h2>
+      <p>On the Songs page use <strong>MIDI</strong>, <strong>WAV</strong>, <strong>MP3</strong> (pick 128–320 kbps) or <strong>Project JSON</strong>. Files stay on the NAS in the song's <code>exports</code> folder until you download them. You can also ask:</p>
+      <div class="recipe"><pre>Export "[Lanterns of the Vale]" as mp3 at 320 kbps and as MIDI, and give me the download paths.</pre></div>
+    </section>
+
+    <section class="card" id="ui">
+      <h2>Using this page</h2>
+      <ul>
+        <li><strong>Speed</strong> (50–150 %) is preview-only: the song is re-rendered at that tempo, pitch unchanged.</li>
+        <li><strong>Overview</strong>: click anywhere to jump there.</li>
+        <li><strong>Checks</strong> lists errors (must fix) and warnings (advice; your call).</li>
+        <li><strong>Delete song</strong> moves it to <code>trash/</code> on the NAS; move the folder back into <code>projects/</code> to restore it.</li>
+        <li>Edits made by the AI appear live; while playing you get a "Load new version" button instead.</li>
+      </ul>
+    </section>
+
+    <section class="card" id="trouble">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>"That instrument is not on this song's allowed list"</strong>: the song was created with a fixed instrument list. Pick the instrument from "Other instruments" and confirm, which adds it.</li>
+        <li><strong>REVISION_CONFLICT</strong>: someone (you or the AI) changed the song meanwhile; the page reloads the latest version, so try again.</li>
+        <li><strong>The AI asks for permission for every tool</strong>: in Claude Code allow all with the permission rule <code>mcp__midimcp</code>; in Codex choose "allow for this session".</li>
+        <li><strong>Nothing to render</strong>: the song (or every unmuted track) has no notes yet.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

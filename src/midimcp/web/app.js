@@ -549,15 +549,17 @@ async function enterApp(status) {
   }
   const templates = setupTemplates({ api: state.api, el, showError, instrumentName });
   $("tabs").hidden = false;
-  for (const tab of document.querySelectorAll("#tabs .tab")) {
-    tab.onclick = () => {
-      const view = tab.dataset.view;
-      for (const t of document.querySelectorAll("#tabs .tab")) t.classList.toggle("active", t === tab);
-      $("app").hidden = view !== "songs";
-      $("templates-view").hidden = view !== "templates";
-      if (view === "templates") templates.refreshList().catch(showError);
-    };
+  const showView = (view) => {
+    for (const t of document.querySelectorAll("#tabs .tab[data-view]")) t.classList.toggle("active", t.dataset.view === view);
+    $("app").hidden = view !== "songs";
+    $("templates-view").hidden = view !== "templates";
+    if (view === "templates") templates.refreshList().catch(showError);
+    history.replaceState(null, "", view === "templates" ? "#templates" : location.pathname);
+  };
+  for (const tab of document.querySelectorAll("#tabs .tab[data-view]")) {
+    tab.onclick = () => showView(tab.dataset.view);
   }
+  if (location.hash === "#templates") showView("templates");
   openEvents();
   await refreshLibrary();
   const wanted = decodeURIComponent(location.hash.slice(1));

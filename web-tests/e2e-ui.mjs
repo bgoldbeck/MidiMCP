@@ -169,6 +169,16 @@ try {
   step("templates: view chart, duplicate, edit tempo, delete");
   await page.click("#tabs .tab[data-view=songs]");
 
+  // Help page: reachable from the header, recipes have Copy buttons, links back work.
+  await page.click("#tabs a.tab[href='help.html']");
+  await page.waitForURL(/help\.html$/);
+  const recipes = await page.locator(".recipe .copy").count();
+  if (recipes < 10) throw new Error(`help page shows only ${recipes} recipes`);
+  await page.click("a.tab[href='./#templates']");
+  await page.waitForSelector("#templates-view:not([hidden])");
+  await page.click("#tabs .tab[data-view=songs]");
+  step(`help page: ${recipes} copyable recipes, Templates link opens the templates tab`);
+
   if (shot) await page.screenshot({ path: shot, fullPage: true });
   await page.reload();
   await page.waitForSelector("#app:not([hidden])");

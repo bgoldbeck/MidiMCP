@@ -131,6 +131,9 @@ def test_ui_is_public_and_hardened(live_server) -> None:
     assert icon.status_code == 200 and icon.headers["content-type"] == "image/png"
     assert icon.content[:8] == b"\x89PNG\r\n\x1a\n"
     assert httpx.get(f"{base}/ui/icon.svg").headers["content-type"] == "image/svg+xml"
+    help_page = httpx.get(f"{base}/ui/help.html")  # public, no data in it
+    assert help_page.status_code == 200 and "peaceful-town" in help_page.text
+    assert "script-src 'self'" in help_page.headers["content-security-policy"]
     assert httpx.get(f"{base}/api/projects").status_code == 401  # data still needs the token
 
 
