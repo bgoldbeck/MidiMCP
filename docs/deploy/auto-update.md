@@ -13,7 +13,7 @@ Assumes the layout from [truenas.md](truenas.md): checkout at `/mnt/POOL/midimcp
 A classic token with only the `write:packages` scope. Paste with **Ctrl+Shift+V** (input is hidden), then Enter:
 
 ```bash
-sudo sh -c 'umask 077; read -r -s -p "GitHub token: " t; printf "%s\n" "$t" > /mnt/POOL/midimcp/ghcr-token; echo; wc -c < /mnt/POOL/midimcp/ghcr-token'
+sudo bash -c 'umask 077; read -r -s -p "GitHub token: " t; printf "%s\n" "$t" > /mnt/POOL/midimcp/ghcr-token; echo; wc -c < /mnt/POOL/midimcp/ghcr-token'
 ```
 
 It prints the character count (41 for a classic `ghp_` token). The file is readable by root only and lives outside the folder the container mounts.
