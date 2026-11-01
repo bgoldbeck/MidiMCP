@@ -70,6 +70,7 @@ export class Player extends EventTarget {
     this.loop = { enabled: false, startTick: 0, endTick: 0 };
     this._frame = null;
     this._loadToken = 0;
+    this._autoplayPending = false;
     audio.addEventListener("ended", () => this._onEnded());
   }
 
@@ -79,6 +80,9 @@ export class Player extends EventTarget {
    * browser repeats it gaplessly - what a game engine would do. Otherwise the whole song.
    */
   async load(view, { speed = this.speed, keepTick = null, autoplay = false, loop = null } = {}) {
+    // A load that replaces one still rendering keeps that one's wish to play.
+    autoplay = autoplay || (this.state === "loading" && this._autoplayPending);
+    this._autoplayPending = autoplay;
     const loadToken = ++this._loadToken;
     this.pause();
     const sameSong = this.view && this.view.projectId === view.projectId;
@@ -108,9 +112,11 @@ export class Player extends EventTarget {
       this._setState("ready");
       this._emit("loaded", { render: done.render });
       this._emitPosition();
+      this._autoplayPending = false;
       if (autoplay) await this.play();
     } catch (error) {
       if (loadToken !== this._loadToken) return;
+      this._autoplayPending = false;
       this._setState("empty");
       this._emit("error", { error });
       throw error;
@@ -127,6 +133,11 @@ export class Player extends EventTarget {
     this.view = null;
     this.map = null;
     this._setState("empty");
+  }
+
+  /** True while playing, or while re-rendering after a change made during playback. */
+  get wantsPlayback() {
+    return this.state === "playing" || (this.state === "loading" && this._autoplayPending);
   }
 
   get tick() {

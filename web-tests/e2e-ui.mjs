@@ -68,10 +68,16 @@ try {
   await waitText("#bar", "1");
   step("pause/stop");
 
+  // Changing an instrument while playing re-renders and keeps playing from the same spot.
+  await page.click("#play");
+  await waitText("#player-state", "playing");
   await page.locator("tr[data-track=flute] select").selectOption({ label: "Recorder" });
   await waitText("#revision", "revision 4");
   await waitText("#last-change", "instrumentId");
-  step(`instrument changed -> ${await text("#revision")}`);
+  await waitText("#player-state", "playing", 60000);
+  step(`instrument changed while playing -> ${await text("#revision")}, playback resumed`);
+  await page.click("#pause");
+  await waitText("#player-state", "paused");
 
   await page.locator("tr[data-track=flute] input[type=checkbox]").check();
   await waitText("#revision", "revision 5");

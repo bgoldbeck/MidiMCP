@@ -150,7 +150,9 @@ async function refreshLibrary() {
 
 async function openProject(projectId, { notice = "" } = {}) {
   showError(null);
-  const keepTick = state.view?.projectId === projectId ? state.player.tick : 0;
+  const sameSong = state.view?.projectId === projectId;
+  const keepTick = sameSong ? state.player.tick : 0;
+  const resume = sameSong && state.player.wantsPlayback; // e.g. instrument changed mid-song
   const view = await state.api.project(projectId);
   state.view = view;
   state.pendingUpdate = null;
@@ -166,7 +168,7 @@ async function openProject(projectId, { notice = "" } = {}) {
   for (const item of $("project-list").children) {
     item.classList.toggle("active", item.dataset.project === projectId);
   }
-  await state.player.load(view, { speed: Number($("speed").value), keepTick }).catch(() => {});
+  await state.player.load(view, { speed: Number($("speed").value), keepTick, autoplay: resume }).catch(() => {});
 }
 
 function renderHeader(view, notice) {
