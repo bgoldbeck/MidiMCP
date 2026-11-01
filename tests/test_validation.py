@@ -22,7 +22,7 @@ def note(nid: str, pitch: int, start: int, dur: int = 480, vel: int = 70) -> dic
 
 def add_track(score_dict: dict, tid: str, notes: list[dict], **extra: object) -> None:
     score_dict["tracks"].append(
-        {"id": tid, "name": tid, "instrumentId": "retro.harp", "notes": notes, **extra}
+        {"id": tid, "name": tid, "instrumentId": "retro.harp", "notes": notes} | extra
     )
 
 
@@ -83,7 +83,7 @@ def test_g_sharp_ionian_notes_pass_strict(score_dict: dict) -> None:
 
 
 def test_percussion_forbidden(score_dict: dict) -> None:
-    add_track(score_dict, "drums", [note("d1", 36, 0)], isPercussion=True)
+    add_track(score_dict, "drums", [note("d1", 36, 0)], isPercussion=True, instrumentId="gm.drums")
     score = build(score_dict)
     assert validate_score(score).ok
     report = validate_score(score, Brief(percussion_allowed=False))
@@ -91,7 +91,7 @@ def test_percussion_forbidden(score_dict: dict) -> None:
 
 
 def test_percussion_ignores_key(score_dict: dict) -> None:
-    add_track(score_dict, "drums", [note("d1", 37, 0)], isPercussion=True)
+    add_track(score_dict, "drums", [note("d1", 37, 0)], isPercussion=True, instrumentId="gm.drums")
     assert "NOTE_OUT_OF_KEY" not in validate_score(build(score_dict), strict=True).codes()
 
 
@@ -244,3 +244,10 @@ def test_lock_references(score_dict: dict) -> None:
     )
     codes = validate_score(build(score_dict), brief).codes(Severity.WARNING)
     assert {"LOCK_UNKNOWN_TRACK", "LOCK_OUTSIDE_TIMELINE"} <= codes
+
+
+def test_instrument_resolution(score_dict: dict) -> None:
+    score_dict["tracks"][0]["instrumentId"] = "retro.kazoo"
+    score_dict["tracks"][1]["instrumentId"] = "gm.drums"
+    codes = validate_score(build(score_dict)).codes(Severity.ERROR)
+    assert {"UNKNOWN_INSTRUMENT", "PERCUSSION_INSTRUMENT_MISMATCH"} <= codes
