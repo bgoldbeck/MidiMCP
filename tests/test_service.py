@@ -487,3 +487,80 @@ def test_allow_instrument_extends_brief_in_one_revision(service: CompositionServ
     snap = service.get_project("narrow")
     assert snap.score.track("flute").instrument_id == "retro.harp"
     assert snap.brief.allowed_instrument_ids == ["retro.wooden_flute", "retro.harp"]
+
+
+def test_track_defaults_and_reset(service: CompositionService) -> None:
+    created = service.create_from_template(
+        template_id="peaceful-town", title="Town", project_id="town"
+    )
+    defaults = service.track_defaults("town")
+    assert defaults["flute"]["instrumentId"] == "retro.wooden_flute"
+    assert defaults["flute"]["revision"] == created.revision == 1
+    rev = service.update_track(
+        "town",
+        expected_revision=1,
+        track_id="flute",
+        changes={"instrument_id": "retro.oboe", "gain_db": -12.0, "mute": True},
+    ).revision
+    rev = service.add_track(
+        "town",
+        expected_revision=rev,
+        instrument_id="retro.harp",
+        name="Harp",
+        track_id="harp",
+        gain_db=-5,
+    ).revision
+    rev = service.update_track(
+        "town", expected_revision=rev, track_id="harp", changes={"gain_db": -20.0}
+    ).revision
+    defaults = service.track_defaults("town")
+    assert defaults["harp"] == {
+        "revision": 3,
+        "instrumentId": "retro.harp",
+        "isPercussion": False,
+        "gainDb": -5.0,
+        "pan": 0.0,
+        "mute": False,
+    }
+    # Instrument only: volume and mute stay as edited.
+    rev = service.reset_track(
+        "town", expected_revision=rev, track_id="flute", fields=["instrument"]
+    ).revision
+    flute = service.get_project("town").score.track("flute")
+    assert (flute.instrument_id, flute.gain_db, flute.mute) == ("retro.wooden_flute", -12.0, True)
+    rev = service.reset_track("town", expected_revision=rev, track_id="flute").revision
+    flute = service.get_project("town").score.track("flute")
+    assert (flute.gain_db, flute.mute) == (-2.0, False)
+    service.reset_track("town", expected_revision=rev, track_id="harp", fields=["volume"])
+    assert service.get_project("town").score.track("harp").gain_db == -5.0
+    with pytest.raises(InvalidOperation):
+        service.reset_track("town", expected_revision=rev + 1, track_id="harp", fields=["notes"])
+    with pytest.raises(TrackNotFound):
+        service.reset_track("town", expected_revision=rev + 1, track_id="nope")
+
+
+def test_reset_instrument_respects_allowed_list(service: CompositionService) -> None:
+    service.create_project(
+        title="N",
+        tempo_bpm=90,
+        meter=(4, 4),
+        tonic="C",
+        bars=2,
+        project_id="n",
+        brief=Brief(allowed_instrument_ids=["retro.lute"]),
+    )
+    service.add_track(
+        "n", expected_revision=1, instrument_id="retro.lute", name="Lute", track_id="lute"
+    )
+    service.update_track(
+        "n",
+        expected_revision=2,
+        track_id="lute",
+        changes={"instrument_id": "retro.harp"},
+        allow_instrument=True,
+    )
+    service.update_brief("n", expected_revision=3, changes={"allowedInstrumentIds": ["retro.harp"]})
+    service.reset_track("n", expected_revision=4, track_id="lute", fields=["instrument"])
+    snap = service.get_project("n")
+    assert snap.score.track("lute").instrument_id == "retro.lute"
+    assert snap.brief.allowed_instrument_ids == ["retro.harp", "retro.lute"]

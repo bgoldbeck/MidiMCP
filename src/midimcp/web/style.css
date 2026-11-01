@@ -119,3 +119,5 @@ button.danger:hover { background: #3a1d17; }
 .overview .lane-swatch.c6 { fill: #d9d06a; }
 .overview .lane-swatch.c7 { fill: #d96ab0; }
 .topbar .logo { display: block; }
+button.icon-button { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 2px 7px; margin-left: 6px; font-size: 13px; }
+button.small { padding: 3px 9px; font-size: 12px; }

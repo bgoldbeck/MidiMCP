@@ -13,6 +13,7 @@ Routes::
     DELETE /api/projects/{id}                  (moves the song to <data>/trash)
     GET   /api/projects/{id}/revisions
     PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
+    POST  /api/projects/{id}/tracks/{trackId}/reset {expectedRevision, fields?: instrument|volume|pan|mute}
     POST  /api/projects/{id}/restore            {expectedRevision, revision}
     POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?}
     GET   /api/jobs/{jobId}
@@ -243,6 +244,25 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             lambda: service.update_track(
                 project_id, expected_revision=expected, track_id=track_id, changes=changes,
                 allow_instrument=bool(data.get("allowInstrument", False)), author="user",
+            ).to_dict()
+        )  # fmt: skip
+
+    @route("/api/projects/{project_id}/tracks/{track_id}/reset", ["POST"])
+    async def reset_track(request: Request) -> Response:
+        project_id = request.path_params["project_id"]
+        track_id = request.path_params["track_id"]
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            fields = data.get("fields") or ["instrument", "volume", "pan", "mute"]
+            if not isinstance(fields, list) or not all(isinstance(f, str) for f in fields):
+                raise ApiError("INVALID_FIELD", "fields must be a list of strings")
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.reset_track(
+                project_id, expected_revision=expected, track_id=track_id, fields=fields,
+                author="user",
             ).to_dict()
         )  # fmt: skip
 

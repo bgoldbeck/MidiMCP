@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from pydantic import ValidationError
 
@@ -340,6 +340,75 @@ class CompositionService:
             author,
             operation_id,
             f"Updated track {track_id!r}",
+        )
+
+    RESETTABLE: ClassVar[dict[str, str]] = {  # API field -> track attribute
+        "instrument": "instrument_id",
+        "volume": "gain_db",
+        "pan": "pan",
+        "mute": "mute",
+    }
+
+    def track_defaults(self, project_id: str) -> dict[str, dict[str, Any]]:
+        """Each current track's settings in the revision where it first appeared.
+
+        For a template song that is the template's choice. Revisions are immutable,
+        so the answer only grows as tracks are added.
+        """
+        wanted = {t.id for t in self.store.load(project_id).score.tracks}
+        defaults: dict[str, dict[str, Any]] = {}
+        for info in self.store.list_revisions(project_id):
+            if not wanted - defaults.keys():
+                break
+            score = self.store.load_revision(project_id, info.revision).score
+            for track in score.tracks:
+                if track.id in wanted and track.id not in defaults:
+                    defaults[track.id] = {
+                        "revision": info.revision,
+                        "instrumentId": track.instrument_id,
+                        "isPercussion": track.is_percussion,
+                        "gainDb": track.gain_db,
+                        "pan": track.pan,
+                        "mute": track.mute,
+                    }
+        return defaults
+
+    def reset_track(
+        self,
+        project_id: str,
+        *,
+        expected_revision: int,
+        track_id: str,
+        fields: Sequence[str] = ("instrument", "volume", "pan", "mute"),
+        author: Author = "user",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Put chosen track settings back to their defaults (see ``track_defaults``)."""
+        unknown = set(fields) - self.RESETTABLE.keys()
+        if unknown or not fields:
+            raise InvalidOperation(
+                f"fields must be some of {', '.join(self.RESETTABLE)}; got {sorted(fields)}"
+            )
+        default = self.track_defaults(project_id).get(track_id)
+        if default is None:
+            raise TrackNotFound(f"track {track_id!r} not found")
+        source = {
+            "instrument_id": default["instrumentId"],
+            "gain_db": default["gainDb"],
+            "pan": default["pan"],
+            "mute": default["mute"],
+        }
+        changes = {self.RESETTABLE[f]: source[self.RESETTABLE[f]] for f in fields}
+        if "instrument_id" in changes:
+            changes["is_percussion"] = default["isPercussion"]
+        return self.update_track(
+            project_id,
+            expected_revision=expected_revision,
+            track_id=track_id,
+            changes=changes,
+            allow_instrument=True,
+            author=author,
+            operation_id=operation_id,
         )
 
     def remove_track(

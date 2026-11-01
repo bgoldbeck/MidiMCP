@@ -298,3 +298,31 @@ def test_mp3_export(client: TestClient) -> None:
         f"/api/projects/{PID}/exports", headers=AUTH, json={"format": "mp3", "bitrate": 100}
     )
     assert bad.status_code == 400
+
+
+def test_reset_track_endpoint(client: TestClient) -> None:
+    view = client.get(f"/api/projects/{PID}", headers=AUTH).json()
+    assert view["trackDefaults"]["flute"]["instrumentId"] == "retro.wooden_flute"
+    client.patch(
+        f"/api/projects/{PID}/tracks/flute",
+        headers=AUTH,
+        json={"expectedRevision": 3, "instrumentId": "retro.oboe", "gainDb": -9},
+    )
+    reset = client.post(
+        f"/api/projects/{PID}/tracks/flute/reset",
+        headers=AUTH,
+        json={"expectedRevision": 4, "fields": ["instrument"]},
+    )
+    assert reset.status_code == 200, reset.text
+    track = client.get(f"/api/projects/{PID}", headers=AUTH).json()["score"]["tracks"][0]
+    assert (track["instrumentId"], track["gainDb"]) == ("retro.wooden_flute", -9.0)
+    bad = client.post(
+        f"/api/projects/{PID}/tracks/flute/reset",
+        headers=AUTH,
+        json={"expectedRevision": 5, "fields": ["tempo"]},
+    )
+    assert bad.status_code == 400
+    stale = client.post(
+        f"/api/projects/{PID}/tracks/flute/reset", headers=AUTH, json={"expectedRevision": 1}
+    )
+    assert stale.status_code == 409

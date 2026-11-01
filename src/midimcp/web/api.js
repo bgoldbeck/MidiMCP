@@ -81,6 +81,13 @@ export class Api {
       changes,
     );
   }
+  resetTrack(id, trackId, body) {
+    return this.request(
+      "POST",
+      `/api/projects/${encodeURIComponent(id)}/tracks/${encodeURIComponent(trackId)}/reset`,
+      body,
+    );
+  }
   restore(id, expectedRevision, revision) {
     return this.request("POST", `/api/projects/${encodeURIComponent(id)}/restore`, {
       expectedRevision,
