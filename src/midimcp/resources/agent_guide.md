@@ -61,3 +61,7 @@ A melody with every note on the grid, one velocity and no movement inside held n
 4. **`set_automation`** for hand-made gestures: a fade-in on the first bars (`expression` 40→110 with `interpolate`), a pitch-bend scoop into a note (`pitchBend` −1500→0 over ~120 ticks, back at 0 before the next note), a vibrato swell on a final note.
 
 Automation lives with the track: locks protect it, it is exported in MIDI (CC11 / CC1 / pitch wheel) and rendered in WAV/MP3.
+
+## The user's favorites and collections
+
+`list_projects` shows which songs the user starred (`favorite`) and which of their collections hold each song; `list_collections` lists the collections. When the user asks ("put it in my Town themes"), call `add_to_collection` with the collection's name. Only the user creates, renames or deletes collections and stars songs; if the collection does not exist, tell them to make it with **+ Collection** in the web UI.

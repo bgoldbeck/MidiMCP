@@ -14,6 +14,7 @@ from typing import Any
 
 from midimcp.events import EventBus
 from midimcp.model.score import Score
+from midimcp.organizer import SongOrganizer
 from midimcp.render import Renderer, RenderError, RenderResult
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
@@ -116,6 +117,11 @@ class AppContext:
         self.renderer = renderer or Renderer(self.registry, self.data_dir / "renders")
         self.events = EventBus()
         self.templates = TemplateLibrary(self.data_dir)
+        self.organizer = SongOrganizer(
+            self.data_dir,
+            song_exists=self.store.exists,
+            on_change=lambda: self.events.publish({"type": "library.organized"}),
+        )
         self.jobs = RenderJobs(self.renderer, on_event=self.events.publish)
         self.store.add_listener(self._on_commit)
         self.store.add_delete_listener(

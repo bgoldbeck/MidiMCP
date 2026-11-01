@@ -120,6 +120,45 @@ try {
   if (listed < 3 || await page.isHidden("#export-list-title")) throw new Error(`earlier downloads list shows ${listed}`);
   step(`Download song button saved ${songDownload.suggestedFilename()}; ${listed} earlier downloads listed`);
 
+  // Favorites and collections: star, make a collection, file the song, rename, filter, delete.
+  const songRow = "#project-list li[data-project=browser-test-song]";
+  await page.click("#favorite-song");
+  await waitText("#favorite-song", "★");
+  await waitText(`${songRow} .star`, "★");
+  await waitText("#library-filters [data-filter=favorites]", "1");
+  dialogs.answer = true;
+  dialogs.promptText = "Town themes";
+  await page.click("#new-collection");
+  await waitText("#library-filters .chip.active", "Town themes");
+  await waitText("#library-empty", "No songs in this collection yet");
+  await page.click("#song-collections summary");
+  await page.check("#song-collections-list input[data-collection=town-themes]");
+  await waitText("#song-collections-label", "Town themes");
+  await page.waitForSelector(`${songRow} .badge`);
+  if (await page.locator("#project-list li").count() !== 1) throw new Error("collection filter shows other songs");
+  dialogs.promptText = "Towns";
+  await page.click("#rename-collection");
+  await waitText("#library-filters .chip.active", "Towns");
+  await waitText("#song-collections-label", "Towns");
+  await page.click("#library-filters [data-filter=favorites]");
+  if (await page.locator("#project-list li").count() !== 1) throw new Error("favorites filter is wrong");
+  await page.click("#library-filters [data-filter=all]");
+  await page.waitForFunction(() => document.querySelectorAll("#project-list li").length === 2);
+  await page.selectOption("#library-sort", "title");
+  const firstTitle = await page.locator("#project-list li .title").first().textContent();
+  if (firstTitle !== "Browser Test Song") throw new Error(`title sort put ${firstTitle} first`);
+  await page.click("#library-filters [data-filter=town-themes]");
+  await page.click("#delete-collection");
+  await waitText("#library-filters .chip.active", "All songs");
+  await waitText("#song-collections-label", "none");
+  if (dialogs.seen.length !== 3) throw new Error(`collection dialogs: ${dialogs.seen}`);
+  dialogs.answer = null;
+  dialogs.seen = [];
+  if (await page.locator("#library-filters [data-filter=town-themes]").count()) throw new Error("collection not deleted");
+  await page.click("#favorite-song");
+  await waitText("#favorite-song", "☆");
+  step("favorites + collections: star, new collection, file song, rename, filter, sort, delete");
+
   // Song only allows flute + recorder: picking Harp asks first; Cancel keeps everything.
   await waitText("#allowed-instruments", "Wooden Flute, Recorder");
   const flute = page.locator("tr[data-track=flute] select");
