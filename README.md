@@ -1,3 +1,5 @@
+<img src="docs/icon.png" alt="MidiMCP icon" width="96" align="right">
+
 # MidiMCP
 
 AI-controlled retro MIDI composer for 1990s-style fantasy RPG music.

@@ -41,6 +41,10 @@ Your AI clients need it: [../agents/connect-agents.md](../agents/connect-agents.
 
 Browse to `http://<nas-ip>:8765/` and paste the access token once (the browser remembers it; **Forget token** clears it). You get the song library, playback with loop and speed, an overview, tracks (instrument, volume, mute), checks and exports. Edits made by your AI client appear live.
 
+## App icon (optional)
+
+MidiMCP serves its icon at `http://<nas-ip>:8765/ui/icon-512.png`. TrueNAS shows custom (YAML) apps with a generic icon; the community-documented way to change it is an `icon:` entry in the app's metadata file on the NAS (`/mnt/.ix-apps/app_configs/midimcp/metadata.yaml`), set to that URL. The file's layout differs between TrueNAS releases and TrueNAS may rewrite it on app updates, so inspect it first and keep a backup.
+
 ## 5. Check it
 
 From your PC:

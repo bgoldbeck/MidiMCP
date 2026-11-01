@@ -127,6 +127,10 @@ def test_ui_is_public_and_hardened(live_server) -> None:
     assert httpx.get(f"{base}/ui/../token.txt").status_code == 401  # normalised, not public
     assert httpx.get(f"{base}/ui/..%2Ftoken.txt").status_code == 404  # traversal refused
     assert httpx.get(f"{base}/ui/missing.js").status_code == 404
+    icon = httpx.get(f"{base}/ui/icon-512.png")  # public: TrueNAS loads it as the app icon
+    assert icon.status_code == 200 and icon.headers["content-type"] == "image/png"
+    assert icon.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert httpx.get(f"{base}/ui/icon.svg").headers["content-type"] == "image/svg+xml"
     assert httpx.get(f"{base}/api/projects").status_code == 401  # data still needs the token
 
 

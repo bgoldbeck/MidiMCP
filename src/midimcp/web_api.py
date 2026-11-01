@@ -58,6 +58,7 @@ _WEB_TYPES = {
     ".js": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".svg": "image/svg+xml",
+    ".png": "image/png",
 }
 SECURITY_HEADERS = {
     # Everything is served from this origin; the token must never leak via Referer.
