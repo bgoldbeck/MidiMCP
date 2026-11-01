@@ -24,6 +24,9 @@ exit "${PUBLISH_EXIT:-0}"
 
 STUB_MIDCLT = """#!/usr/bin/env bash
 echo "midclt $*" >> "$CALLS"
+# Emulate TrueNAS 25.10: only `call -j` is accepted.
+want="-j"; [ "${MIDCLT_OLD:-0}" = "1" ] && want="-job"
+[ "$2" = "$want" ] || exit 2
 exit "${MIDCLT_EXIT:-0}"
 """
 
@@ -86,7 +89,7 @@ def test_first_run_publishes_and_redeploys(setup) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert calls(calls_file) == [
         "publish called token_len=19",
-        "midclt call -job app.redeploy midimcp",
+        "midclt call -j app.redeploy midimcp",
     ]
     assert (base / "last-published-commit").read_text().strip() == git(
         checkout, "rev-parse", "HEAD"
@@ -149,3 +152,13 @@ def test_redeploy_failure_reported(setup) -> None:
     result = run(checkout, env, MIDCLT_EXIT="1")
     assert result.returncode == 1 and "redeploying app 'midimcp' failed" in result.stdout
     assert (base / "last-published-commit").exists()
+
+
+def test_older_truenas_job_flag_fallback(setup) -> None:
+    _, checkout, _, env, calls_file = setup
+    result = run(checkout, env, MIDCLT_OLD="1")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert calls(calls_file)[-2:] == [
+        "midclt call -j app.redeploy midimcp",
+        "midclt call -job app.redeploy midimcp",
+    ]

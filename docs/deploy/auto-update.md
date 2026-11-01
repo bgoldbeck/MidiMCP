@@ -3,7 +3,7 @@
 [`scripts/auto-update.sh`](../../scripts/auto-update.sh) keeps the NAS on the latest code with no GitHub Actions:
 
 1. `git pull` the newest `main` into the checkout on the NAS.
-2. If that commit was not published yet: build + push `ghcr.io/<owner>/midimcp` (via `publish-image.sh`), then redeploy the TrueNAS app so it pulls the new image (`midclt call -job app.redeploy midimcp`).
+2. If that commit was not published yet: build + push `ghcr.io/<owner>/midimcp` (via `publish-image.sh`), then redeploy the TrueNAS app so it pulls the new image (`midclt call -j app.redeploy midimcp`; falls back to `-job` on releases before 25.10).
 3. Otherwise: do nothing.
 
 Assumes the layout from [truenas.md](truenas.md): checkout at `/mnt/POOL/midimcp/src`, app named `midimcp` installed with `pull_policy: always`. Replace `POOL` below.
@@ -16,7 +16,13 @@ A classic token with only the `write:packages` scope. Paste with **Ctrl+Shift+V*
 sudo bash -c 'umask 077; read -r -s -p "GitHub token: " t; printf "%s\n" "$t" > /mnt/POOL/midimcp/ghcr-token; echo; wc -c < /mnt/POOL/midimcp/ghcr-token'
 ```
 
-It prints the character count (41 for a classic `ghp_` token). The file is readable by root only and lives outside the folder the container mounts.
+It prints the character count (41 for a classic `ghp_` token). Datasets with the *Apps* preset add group permissions regardless of `umask`, so lock it down explicitly:
+
+```bash
+sudo chmod 600 /mnt/POOL/midimcp/ghcr-token
+```
+
+The file is then readable by root only and lives outside the folder the container mounts.
 
 ## 2. Test it once by hand
 
