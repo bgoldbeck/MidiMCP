@@ -46,7 +46,7 @@ Second change: the **composition service** (single mutation authority with locks
 
 | # | Feature | Branch | Delivers |
 |---|---|---|---|
-| 24 | 🟨 MP3 export | `feature/mp3-export` | MP3 download (LAME, 128-320 kbps, ID3 title tags) from the web UI, web API and MCP |
+| 24 | ✅ MP3 export | `feature/mp3-export` | MP3 download (LAME, 128-320 kbps, ID3 title tags) from the web UI, web API and MCP |
 
 ## Phase 4 — Editing depth and quality
 

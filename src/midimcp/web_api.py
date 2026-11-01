@@ -17,7 +17,7 @@ Routes::
     POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?}
     GET   /api/jobs/{jobId}
     GET   /api/projects/{id}/exports
-    POST  /api/projects/{id}/exports            {format, revision?, speed?}
+    POST  /api/projects/{id}/exports            {format: midi|wav|mp3|json, revision?, speed?, bitrate?}
     GET   /api/projects/{id}/exports/{file}     (download)
     GET   /api/renders/{file}                   (download)
     WS    /api/events?token=                    (project.updated, render.queued, render.finished)
@@ -41,6 +41,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from midimcp import __version__
 from midimcp.context import AppContext
+from midimcp.encode import DEFAULT_MP3_BITRATE, MP3_BITRATES, EncodeError, encoder_status
 from midimcp.instruments import UnknownInstrument, resolve_instrument
 from midimcp.music.timing import bar_range
 from midimcp.render import MAX_SPEED, MIN_SPEED, RenderError
@@ -84,6 +85,7 @@ _STATUS_BY_CODE = {
     "VALIDATION_FAILED": 422,
     "RENDER_BLOCKED": 422,
     "RENDERER_UNAVAILABLE": 503,
+    "ENCODER_UNAVAILABLE": 503,
     "CORRUPT_PROJECT": 500,
 }
 
@@ -100,7 +102,7 @@ class ApiError(Exception):
 def _error_response(exc: Exception) -> JSONResponse:
     if isinstance(exc, ApiError):
         return JSONResponse(exc.to_dict(), status_code=exc.status)
-    if isinstance(exc, (StoreError, SoundbankError, RenderError)):
+    if isinstance(exc, (StoreError, SoundbankError, RenderError, EncodeError)):
         body = exc.to_dict()
         return JSONResponse(body, status_code=_STATUS_BY_CODE.get(body["code"], 400))
     if isinstance(exc, (UnknownInstrument, ValueError)):
@@ -173,6 +175,8 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
                 "banks": [b.to_dict() for b in ctx.registry.list_banks()],
                 "mcpPath": "/mcp",
                 "speedRange": [MIN_SPEED, MAX_SPEED],
+                "encoders": encoder_status(),
+                "mp3Bitrates": list(MP3_BITRATES),
             }
 
         return await _call(build)
@@ -308,10 +312,17 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             fmt = data.get("format")
             revision = _int(data, "revision")
             speed = float(data.get("speed", 1.0))
+            bitrate = _int(data, "bitrate") or DEFAULT_MP3_BITRATE
         except Exception as exc:
             return _error_response(exc)
         return await _call(
-            export_project_files, ctx, project_id, str(fmt), revision=revision, speed=speed
+            export_project_files,
+            ctx,
+            project_id,
+            str(fmt),
+            revision=revision,
+            speed=speed,
+            bitrate=bitrate,
         )
 
     @route("/api/renders/{name}", ["GET"])

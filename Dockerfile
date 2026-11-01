@@ -24,7 +24,7 @@ RUN for attempt in 1 2 3 4 5; do \
       rm -rf /var/lib/apt/lists/*; sleep 30; \
     done \
  && apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
-      python3 python3-venv fluidsynth fluid-soundfont-gm tini \
+      python3 python3-venv fluidsynth fluid-soundfont-gm lame tini \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/venv
 

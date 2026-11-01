@@ -46,7 +46,7 @@ Your PC / laptop                               TrueNAS SCALE
 
 ## Image
 
-- Base: `python:3.13-slim` (Debian) + `fluidsynth` + `fluid-soundfont-gm` (FluidR3_GM, MIT license — redistributable default bank; final retro bank choice still pending listening tests).
+- Base: Ubuntu 24.04 + `fluidsynth` + `fluid-soundfont-gm` + `lame` (MP3 encoder) (FluidR3_GM, MIT license — redistributable default bank; final retro bank choice still pending listening tests).
 - Single exposed port (default `8765`), healthcheck at `/healthz`.
 - Config via env: `MIDIMCP_TOKEN`, `MIDIMCP_DATA_DIR=/data`, `MIDIMCP_PORT`, `PUID`/`PGID`.
 - No hosted CI: the image is built locally (`docker compose build`) on the NAS or on the owner's PC and pushed to a registry of their choice. TrueNAS install via **Apps → Discover → Custom App → Install via YAML** using the repo's `compose.yaml`.

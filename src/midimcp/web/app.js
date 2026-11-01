@@ -378,9 +378,11 @@ async function refreshExports() {
 
 async function createExport(format) {
   const status = $("export-status");
-  status.textContent = format === "wav" ? "rendering…" : "exporting…";
+  status.textContent = format === "wav" || format === "mp3" ? "rendering…" : "exporting…";
   try {
-    const result = await state.api.createExport(state.view.projectId, format, { revision: state.view.revision });
+    const options = { revision: state.view.revision };
+    if (format === "mp3") options.bitrate = Number($("mp3-bitrate").value);
+    const result = await state.api.createExport(state.view.projectId, format, options);
     status.textContent = `ready: ${result.file}`;
     await refreshExports();
   } catch (error) {
