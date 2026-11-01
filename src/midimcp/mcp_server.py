@@ -31,8 +31,6 @@ from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
 from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError, sound_profile_issues
 from midimcp.store.errors import StoreError
-from midimcp.templates import get_template as get_template_data
-from midimcp.templates import list_templates as list_templates_data
 from midimcp.validation import MAX_DURATION_SECONDS, MAX_NOTES, MAX_TRACKS, validate_score
 from midimcp.views import export_project as export_project_files
 from midimcp.views import timing
@@ -145,7 +143,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         "midimcp://templates", name="Composition templates", mime_type="application/json"
     )
     def templates_resource() -> str:
-        return json.dumps({"templates": list_templates_data()})
+        return json.dumps({"templates": ctx.templates.summaries()})
 
     @server.resource(
         "midimcp://schema/score", name="Score JSON Schema", mime_type="application/json"
@@ -247,14 +245,14 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
     def list_templates() -> dict[str, Any]:
         """Composition templates (peaceful town, forest, crypt, tavern, sea, borderlands):
         tempo, meter, mode, ensemble and form. Pass template_id to create_project."""
-        return {"templates": list_templates_data()}
+        return {"templates": ctx.templates.summaries()}
 
     @server.tool()
     @_tool_errors
     def get_template(template_id: str) -> dict[str, Any]:
         """Full template guidance: parts (role, instrument, register, what to play), form with
         chord progressions per section, accompaniment patterns, dos and don'ts."""
-        return get_template_data(template_id).to_dict()
+        return ctx.templates.detail(template_id)
 
     @server.tool()
     @_tool_errors

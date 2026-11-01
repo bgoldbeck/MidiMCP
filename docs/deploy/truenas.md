@@ -86,6 +86,7 @@ Publish a new image (above), then **Apps** → `midimcp` → **Update** / **Rest
 | Path | Contents | Safe to delete? |
 |---|---|---|
 | `projects/` | Songs and every revision (source of truth) | **No** |
+| `templates/` | Your own composition templates (made with Duplicate on the Templates page) | Only if you no longer need them |
 | `trash/` | Songs deleted in the web UI (move a folder back into `projects/`, renamed to its original ID, to restore) | Yes, to free space for good |
 | `token.txt` | Access token | Delete + restart to get a new token |
 | `library.sqlite` | Search index | Yes (rebuilt automatically) |

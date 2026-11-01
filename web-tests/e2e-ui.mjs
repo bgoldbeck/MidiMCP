@@ -11,11 +11,12 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-const dialogs = { answer: null, seen: [] };
+const dialogs = { answer: null, seen: [], promptText: "" };
 page.on("dialog", (d) => {
   if (dialogs.answer === null) { errors.push(`unexpected dialog: ${d.message()}`); d.dismiss(); return; }
   dialogs.seen.push(d.message());
-  return dialogs.answer ? d.accept() : d.dismiss();
+  if (!dialogs.answer) return d.dismiss();
+  return d.type() === "prompt" ? d.accept(dialogs.promptText) : d.accept();
 });
 const step = (msg) => console.log(`step: ${msg}`);
 const text = (sel) => page.textContent(sel);
@@ -148,6 +149,25 @@ try {
   if (dialogs.seen.length !== 2 || !dialogs.seen[0].includes("trash")) throw new Error(`delete dialogs: ${dialogs.seen}`);
   dialogs.answer = null;
   step(`delete: cancel keeps, OK removes -> ${await text("#welcome-note")}`);
+
+  // Templates page: view a built-in, duplicate it, edit the copy's JSON, delete it.
+  await page.click("#tabs .tab[data-view=templates]");
+  await page.click("#template-list li:has-text('Peaceful Town')");
+  await waitText("#template-detail", "G  Em  C  D");
+  dialogs.answer = true;
+  dialogs.promptText = "Lantern Town";
+  await page.click("#template-detail button:has-text('Duplicate')");
+  await page.waitForSelector("#template-editor:not([hidden])");
+  const json = await page.inputValue("#template-json");
+  await page.fill("#template-json", json.replace('"default_tempo": 88', '"default_tempo": 92'));
+  await page.click("#template-save");
+  await waitText("#template-detail", "92 BPM");
+  await waitText("#template-list", "Lantern Town");
+  await page.click("#template-detail button:has-text('Delete')");
+  await page.waitForFunction(() => !document.querySelector("#template-list").textContent.includes("Lantern Town"));
+  dialogs.answer = null;
+  step("templates: view chart, duplicate, edit tempo, delete");
+  await page.click("#tabs .tab[data-view=songs]");
 
   if (shot) await page.screenshot({ path: shot, fullPage: true });
   await page.reload();

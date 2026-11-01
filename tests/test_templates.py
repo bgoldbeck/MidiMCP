@@ -101,3 +101,85 @@ def test_tavern_duplicate_section_labels_get_unique_ids(service: CompositionServ
     result = service.create_from_template(template_id="tavern", title="Inn")
     ids = [s.id for s in service.get_project(result.project_id).score.sections]
     assert len(ids) == len(set(ids))
+
+
+# ------------------------------------------------------------- custom library
+
+import json  # noqa: E402
+
+from midimcp.templates import (  # noqa: E402
+    TemplateLibrary,
+    TemplateValidationError,
+    template_from_dict,
+)
+
+
+@pytest.mark.parametrize("template_id", list(TEMPLATES))
+def test_builtin_templates_round_trip_through_json(template_id: str) -> None:
+    template = TEMPLATES[template_id]
+    assert template_from_dict(json.loads(json.dumps(template.to_dict()))) == template
+
+
+def test_library_duplicate_edit_delete(tmp_path: Path) -> None:
+    library = TemplateLibrary(tmp_path)
+    copy = library.duplicate("tavern", "my-tavern", "My Tavern")
+    assert copy.name == "My Tavern" and not library.is_builtin("my-tavern")
+    assert [s["id"] for s in library.summaries()][-1] == "my-tavern"
+    data = library.detail("my-tavern")
+    assert data["builtIn"] is False and data["chart"][0]["chords"][:2] == ["D", "C"]
+    data["default_tempo"] = 128
+    data["form"][0]["progression"] = ["I", "IV", "V", "I"]
+    library.save("my-tavern", data)
+    reloaded = TemplateLibrary(tmp_path).get("my-tavern")
+    assert reloaded.default_tempo == 128 and reloaded.form[0].progression == ("I", "IV", "V", "I")
+    with pytest.raises(TemplateValidationError):
+        library.save("tavern", data)  # built-ins are read-only
+    with pytest.raises(TemplateValidationError):
+        library.delete("tavern")
+    with pytest.raises(TemplateValidationError):
+        library.duplicate("tavern", "my-tavern")  # id taken
+    library.delete("my-tavern")
+    with pytest.raises(TemplateError):
+        library.get("my-tavern")
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda d: d["form"][0].update(progression=["I", "XIV"]), "cannot read chord"),
+        (lambda d: d["parts"][0].update(instrument_id="retro.kazoo"), "unknown instrument"),
+        (lambda d: d.update(default_tempo=300), "inside tempo_range"),
+        (lambda d: d["parts"][1].update(track_id=d["parts"][0]["track_id"]), "unique"),
+        (lambda d: d.update(colour="red"), "unknown fields"),
+        (lambda d: d.update(mode="bebop"), "mode must be"),
+        (lambda d: d["parts"][0].update(lowest=90, highest=60), "lowest < highest"),
+        (lambda d: d.update(meter=[5, 3]), "meter"),
+    ],
+)
+def test_template_validation_errors(tmp_path: Path, change, message: str) -> None:
+    library = TemplateLibrary(tmp_path)
+    library.duplicate("peaceful-town", "mine")
+    data = library.detail("mine")
+    change(data)
+    with pytest.raises(TemplateValidationError, match=message):
+        library.save("mine", data)
+
+
+def test_broken_custom_file_is_skipped(tmp_path: Path) -> None:
+    (tmp_path / "templates").mkdir()
+    (tmp_path / "templates" / "broken.json").write_text("{ nope")
+    assert "broken" not in [s["id"] for s in TemplateLibrary(tmp_path).summaries()]
+
+
+def test_song_from_custom_template(tmp_path: Path) -> None:
+    store = ProjectStore(tmp_path)
+    library = TemplateLibrary(tmp_path)
+    library.duplicate("peaceful-town", "quick-town", "Quick Town")
+    data = library.detail("quick-town")
+    data["form"] = [
+        {"label": "A", "bars": 4, "progression": ["I", "IV", "V", "I"], "intent": "short"}
+    ]
+    library.save("quick-town", data)
+    result = CompositionService(store).create_from_template(template_id="quick-town", title="Q")
+    score = CompositionService(store).get_project(result.project_id).score
+    assert [h.symbol for h in score.harmony] == ["G", "C", "D", "G"]
