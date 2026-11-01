@@ -3,7 +3,7 @@
 AI-controlled retro MIDI composer for 1990s-style fantasy RPG music.
 Claude, Codex, Antigravity (or any MCP-capable agent) compose structured scores through an MCP server; a local app validates, plays, edits, and exports them.
 
-Runs as one Docker container (designed for TrueNAS SCALE): MCP over HTTP at `/mcp`, FluidSynth rendering, songs stored on a `/data` volume and downloadable as MIDI / WAV / JSON. A web UI is next on the roadmap.
+Runs as one Docker container (designed for TrueNAS SCALE): a web UI at `/` (library, playback, tracks, exports, live updates), MCP over HTTP at `/mcp`, FluidSynth rendering, songs stored on a `/data` volume and downloadable as MIDI / WAV / JSON.
 
 - **Deploy on TrueNAS:** [`docs/deploy/truenas.md`](docs/deploy/truenas.md)
 - **Connect Claude Code / Codex / Antigravity:** [`docs/agents/connect-agents.md`](docs/agents/connect-agents.md)

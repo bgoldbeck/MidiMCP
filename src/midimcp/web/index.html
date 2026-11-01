@@ -10,13 +10,14 @@
 <body>
   <header class="topbar">
     <h1>MidiMCP</h1>
+    <span class="subtitle">retro RPG composer</span>
     <span id="connection" class="pill">offline</span>
     <button id="logout" class="link" hidden>Forget token</button>
   </header>
 
-  <section id="login" class="card" hidden>
+  <section id="login" class="card narrow" hidden>
     <h2>Connect</h2>
-    <p>Paste your MidiMCP access token (from the app logs or <code>token.txt</code> in the dataset).</p>
+    <p>Paste your MidiMCP access token (shown in the app logs on first start, or in <code>token.txt</code> in the dataset).</p>
     <form id="login-form">
       <input id="token-input" type="password" autocomplete="off" placeholder="access token" required>
       <button type="submit">Connect</button>
@@ -24,38 +25,97 @@
     <p id="login-error" class="error" hidden></p>
   </section>
 
-  <main id="app" hidden>
-    <section class="card">
-      <label>Song
-        <select id="project-select"><option value="">Loading…</option></select>
-      </label>
-      <p id="song-meta" class="meta"></p>
-    </section>
+  <div id="app" class="layout" hidden>
+    <aside class="card library" aria-label="Song library">
+      <h2>Songs</h2>
+      <input id="search" type="search" placeholder="Search title, tag, usage…" aria-label="Search songs">
+      <ul id="project-list" class="project-list"></ul>
+      <p id="library-empty" class="hint" hidden>No songs yet. Ask your AI client to compose one; it appears here automatically.</p>
+    </aside>
 
-    <section class="card transport" aria-label="Transport">
-      <div class="buttons">
-        <button id="play" disabled title="Play">▶ Play</button>
-        <button id="pause" disabled title="Pause">⏸ Pause</button>
-        <button id="stop" disabled title="Stop">⏹ Stop</button>
-        <label class="inline"><input id="loop" type="checkbox"> Loop</label>
-        <label class="inline">Speed
-          <select id="speed"></select>
-        </label>
-        <label class="inline">Volume
-          <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8">
-        </label>
-      </div>
-      <input id="seek" type="range" min="1" max="1" step="1" value="1" disabled aria-label="Seek (bar)">
-      <div class="readout">
-        <span>Bar <strong id="bar">–</strong> · Beat <strong id="beat">–</strong></span>
-        <span><strong id="time">0:00</strong> / <span id="duration">0:00</span></span>
-        <span id="player-state" class="pill">empty</span>
-      </div>
-      <p class="hint">Speed is preview-only: the song is re-rendered at the new tempo, pitch stays the same.</p>
-    </section>
+    <main class="workspace">
+      <section id="welcome" class="card">
+        <h2>Choose a song</h2>
+        <p class="hint">Pick a song on the left. New songs and edits made by Claude, Codex or Antigravity show up live.</p>
+      </section>
 
-    <p id="error" class="error" hidden></p>
-  </main>
+      <div id="song" hidden>
+        <section class="card song-head">
+          <div>
+            <h2 id="song-title"></h2>
+            <p id="song-meta" class="meta"></p>
+            <p id="last-change" class="meta"></p>
+          </div>
+          <span id="revision" class="pill"></span>
+        </section>
+
+        <p id="update-banner" class="banner" hidden>
+          <span id="update-text"></span>
+          <button id="update-reload" class="secondary">Load new version</button>
+        </p>
+
+        <section class="card transport" aria-label="Transport">
+          <div class="buttons">
+            <button id="play" disabled>▶ Play</button>
+            <button id="pause" disabled>⏸ Pause</button>
+            <button id="stop" disabled>⏹ Stop</button>
+            <label class="inline"><input id="loop" type="checkbox"> Loop</label>
+            <label class="inline">Speed <select id="speed"></select></label>
+            <label class="inline">Volume <input id="volume" type="range" min="0" max="1" step="0.05" value="0.8"></label>
+            <span id="player-state" class="pill">empty</span>
+          </div>
+          <div class="readout">
+            <span>Bar <strong id="bar">–</strong> · Beat <strong id="beat">–</strong></span>
+            <span><strong id="time">0:00</strong> / <span id="duration">0:00</span></span>
+          </div>
+          <p class="hint">Speed is preview-only: the song is re-rendered at the new tempo; pitch stays the same.</p>
+        </section>
+
+        <section class="card" aria-label="Measure overview">
+          <div class="section-head">
+            <h3>Overview</h3>
+            <span class="hint">click to jump</span>
+          </div>
+          <div id="overview" class="overview"></div>
+        </section>
+
+        <section class="card" aria-label="Tracks">
+          <div class="section-head">
+            <h3>Tracks</h3>
+            <span class="hint">changes are saved as new revisions</span>
+          </div>
+          <table class="tracks">
+            <thead><tr><th>Track</th><th>Instrument</th><th>Volume</th><th>Mute</th><th>Notes</th></tr></thead>
+            <tbody id="track-rows"></tbody>
+          </table>
+        </section>
+
+        <section class="card" aria-label="Validation">
+          <div class="section-head"><h3>Checks</h3><span id="check-summary" class="hint"></span></div>
+          <ul id="issues" class="issues"></ul>
+        </section>
+
+        <section class="card" aria-label="Export">
+          <div class="section-head"><h3>Export</h3><span class="hint">files stay on the NAS until you download them</span></div>
+          <div class="buttons">
+            <button class="secondary" data-export="midi">MIDI (.mid)</button>
+            <button class="secondary" data-export="wav">WAV audio</button>
+            <button class="secondary" data-export="json">Project JSON</button>
+            <span id="export-status" class="hint"></span>
+          </div>
+          <ul id="export-list" class="exports"></ul>
+        </section>
+      </div>
+
+      <section class="card" aria-label="AI connection">
+        <h3>Connect an AI client</h3>
+        <p class="hint">MCP endpoint: <code id="mcp-url"></code> with header <code>Authorization: Bearer &lt;token&gt;</code>. Setup for Claude Code, Codex and Antigravity: <code>docs/agents/connect-agents.md</code>.</p>
+        <p id="engine" class="hint"></p>
+      </section>
+
+      <p id="error" class="error" role="alert" hidden></p>
+    </main>
+  </div>
   <audio id="audio" preload="auto"></audio>
 </body>
 </html>

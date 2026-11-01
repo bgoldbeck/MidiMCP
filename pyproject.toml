@@ -14,6 +14,7 @@ dependencies = [
   "mido>=1.3,<2",
   "pydantic>=2.7,<3",
   "uvicorn>=0.30",
+  "websockets>=13",
 ]
 
 [project.scripts]

@@ -70,6 +70,14 @@ def seed_song(data_dir: Path) -> None:
         end_tick=4 * 2880,
         notes=notes,
     )
+    service.create_project(
+        title='<img src=x onerror="alert(1)"> Evil Title',
+        tempo_bpm=90,
+        meter=(4, 4),
+        tonic="C",
+        bars=2,
+        project_id="evil-title",
+    )
 
 
 @pytest.fixture
@@ -121,22 +129,15 @@ def test_ui_is_public_and_hardened(live_server) -> None:
 
 
 @pytest.mark.skipif(not (HAS_AUDIO and has_playwright()), reason="needs fluidsynth + playwright")
-def test_player_end_to_end_in_browser(live_server, tmp_path: Path) -> None:
+def test_web_ui_end_to_end_in_browser(live_server, tmp_path: Path) -> None:
     base, token = live_server
-    shot = tmp_path / "player.png"
+    shot = tmp_path / "ui.png"
     completed = subprocess.run(
-        [
-            NODE,
-            str(ROOT / "web-tests" / "e2e-player.mjs"),
-            base,
-            token,
-            "Browser Test Song",
-            str(shot),
-        ],
+        [NODE, str(ROOT / "web-tests" / "e2e-ui.mjs"), base, token, str(shot)],
         capture_output=True,
         text=True,
         cwd=ROOT,
         timeout=240,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert "E2E PLAYER PASSED" in completed.stdout
+    assert "E2E UI PASSED" in completed.stdout
