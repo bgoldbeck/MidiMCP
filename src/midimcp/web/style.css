@@ -105,3 +105,16 @@ input[type=range] { accent-color: var(--accent); }
 button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-weight: 500; }
 button.danger:hover { background: #3a1d17; }
 .tracks .role { color: var(--muted); font-size: 11px; margin-left: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; }
+
+.overview .ruler { fill: #15110d; }
+.overview .ruler-title { fill: var(--muted); font-size: 10px; }
+.overview .bar-label { font-size: 11px; }
+.overview .lane-label { font-size: 12px; }
+.overview .lane-swatch.c0 { fill: #d9a441; }
+.overview .lane-swatch.c1 { fill: #8fbf6a; }
+.overview .lane-swatch.c2 { fill: #6aa6d9; }
+.overview .lane-swatch.c3 { fill: #d97a6a; }
+.overview .lane-swatch.c4 { fill: #b48ad9; }
+.overview .lane-swatch.c5 { fill: #6ad9c4; }
+.overview .lane-swatch.c6 { fill: #d9d06a; }
+.overview .lane-swatch.c7 { fill: #d96ab0; }

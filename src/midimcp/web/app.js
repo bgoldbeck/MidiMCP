@@ -180,55 +180,69 @@ function renderHeader(view, notice) {
   $("revision").textContent = `revision ${view.revision}`;
 }
 
+const OVERVIEW = { width: 1000, gutter: 120, laneHeight: 46, top: 18, ruler: 18 };
+
 function renderOverview(view) {
   const box = $("overview");
   const { totalTicks, ticksPerBar } = view.timing;
   const tracks = view.score.tracks;
-  const width = 1000;
-  const laneHeight = 46;
-  const top = 18;
-  const height = top + Math.max(1, tracks.length) * laneHeight + 4;
-  const x = (tick) => (tick / totalTicks) * width;
+  const { width, gutter, laneHeight, top, ruler } = OVERVIEW;
+  const lanesBottom = top + Math.max(1, tracks.length) * laneHeight;
+  const height = lanesBottom + ruler;
+  const plot = width - gutter;
+  const x = (tick) => gutter + (tick / totalTicks) * plot;
   const root = svg("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": "Song overview" });
 
+  // Section bands + labels in the top row (notes area only).
   for (const section of view.score.sections) {
-    root.append(svg("rect", { class: "section", x: x(section.startTick), y: 0, width: x(section.endTick) - x(section.startTick), height }));
+    root.append(svg("rect", { class: "section", x: x(section.startTick), y: 0, width: x(section.endTick) - x(section.startTick), height: lanesBottom }));
     root.append(svg("text", { class: "section-label", x: x(section.startTick) + 4, y: 12, text: section.label }));
   }
+  // Bar lines through the lanes; numbers in their own ruler row underneath.
   const bars = Math.ceil(totalTicks / ticksPerBar);
-  const labelEvery = bars > 32 ? 8 : bars > 16 ? 4 : 1;
+  const labelEvery = bars > 48 ? 8 : bars > 24 ? 4 : bars > 12 ? 2 : 1;
+  root.append(svg("rect", { class: "ruler", x: gutter, y: lanesBottom, width: plot, height: ruler }));
   for (let bar = 0; bar <= bars; bar++) {
     const bx = x(bar * ticksPerBar);
-    root.append(svg("line", { class: "bar-line", x1: bx, x2: bx, y1: top, y2: height }));
-    if (bar < bars && bar % labelEvery === 0) root.append(svg("text", { class: "bar-label", x: bx + 2, y: height - 2, text: bar + 1 }));
+    root.append(svg("line", { class: "bar-line", x1: bx, x2: bx, y1: top, y2: lanesBottom + (bar % labelEvery === 0 ? 5 : 0) }));
+    if (bar < bars && bar % labelEvery === 0) {
+      root.append(svg("text", { class: "bar-label", x: bx + 3, y: height - 4, text: bar + 1 }));
+    }
   }
+  root.append(svg("text", { class: "ruler-title", x: gutter - 8, y: height - 4, "text-anchor": "end", text: "bar" }));
   tracks.forEach((track, index) => {
     const y0 = top + index * laneHeight;
-    root.append(svg("rect", { class: "lane", x: 0, y: y0 + 2, width, height: laneHeight - 4 }));
+    root.append(svg("rect", { class: "lane", x: gutter, y: y0 + 2, width: plot, height: laneHeight - 4 }));
+    // Track name lives in the left gutter, never on top of notes.
+    const label = track.name.length > 16 ? `${track.name.slice(0, 15)}…` : track.name;
+    root.append(svg("rect", { class: `lane-swatch c${index % COLORS.length}`, x: 4, y: y0 + laneHeight / 2 - 5, width: 8, height: 10, rx: 2 }));
+    const name = svg("text", { class: "lane-label", x: 18, y: y0 + laneHeight / 2 + 4, text: label });
+    name.append(svg("title", { text: track.name }));
+    root.append(name);
     const pitches = track.notes.map((n) => n.pitch);
     const low = Math.min(...pitches, 127);
     const high = Math.max(...pitches, 0);
     const span = Math.max(1, high - low);
     for (const note of track.notes) {
-      const ny = y0 + 4 + (1 - (note.pitch - low) / span) * (laneHeight - 14);
+      const ny = y0 + 5 + (1 - (note.pitch - low) / span) * (laneHeight - 16);
       root.append(svg("rect", {
         class: "note", x: x(note.startTick), y: ny, rx: 1,
-        width: Math.max(1.5, x(note.durationTicks)), height: 6,
+        width: Math.max(1.5, (note.durationTicks / totalTicks) * plot), height: 6,
         fill: track.mute ? "#5a5047" : COLORS[index % COLORS.length],
       }));
     }
-    root.append(svg("text", { class: "lane-label", x: 4, y: y0 + 14, text: track.name }));
   });
   const loop = view.score.timeline.loop;
   if (loop.enabled) {
-    root.append(svg("rect", { class: "loop", x: x(loop.startTick) + 1, y: top, width: x(loop.endTick) - x(loop.startTick) - 2, height: height - top - 1 }));
+    root.append(svg("rect", { class: "loop", x: x(loop.startTick) + 1, y: top, width: x(loop.endTick) - x(loop.startTick) - 2, height: lanesBottom - top - 1 }));
   }
-  const playhead = svg("line", { class: "playhead", x1: 0, x2: 0, y1: 0, y2: height, id: "playhead" });
+  const playhead = svg("line", { class: "playhead", x1: gutter, x2: gutter, y1: 0, y2: lanesBottom, id: "playhead" });
   root.append(playhead);
   root.addEventListener("click", (event) => {
     const rect = root.getBoundingClientRect();
-    const tick = ((event.clientX - rect.left) / rect.width) * totalTicks;
-    state.player.seekTick(Math.round(tick));
+    const svgX = ((event.clientX - rect.left) / rect.width) * width;
+    if (svgX < gutter) return;
+    state.player.seekTick(Math.round(((svgX - gutter) / plot) * totalTicks));
   });
   box.replaceChildren(root);
 }
@@ -236,7 +250,7 @@ function renderOverview(view) {
 function movePlayhead(tick) {
   const line = document.getElementById("playhead");
   if (!line || !state.view) return;
-  const px = (tick / state.view.timing.totalTicks) * 1000;
+  const px = OVERVIEW.gutter + (tick / state.view.timing.totalTicks) * (OVERVIEW.width - OVERVIEW.gutter);
   line.setAttribute("x1", px);
   line.setAttribute("x2", px);
 }
@@ -260,18 +274,7 @@ function renderTracks(view) {
       "aria-label": `Instrument for ${track.name}`,
       onchange: (e) => changeInstrument(track, e.target.value, allowed),
     });
-    const known = state.instruments.some((i) => i.id === track.instrumentId);
-    const options = (known ? state.instruments : [{ id: track.instrumentId, name: track.instrumentId }, ...state.instruments])
-      .filter((i) => !i.isPercussion || track.isPercussion);
-    const option = (i) => el("option", { value: i.id, selected: i.id === track.instrumentId, text: i.name });
-    if (allowed) {
-      const inList = options.filter((i) => allowed.includes(i.id) || i.id === track.instrumentId);
-      const others = options.filter((i) => !inList.includes(i));
-      instrumentSelect.append(el("optgroup", { label: "Allowed in this song" }, inList.map(option)));
-      if (others.length) instrumentSelect.append(el("optgroup", { label: "Other instruments (adds to the allowed list)" }, others.map(option)));
-    } else {
-      instrumentSelect.append(...options.map(option));
-    }
+    instrumentSelect.append(...instrumentOptions(track, allowed));
     const db = el("span", { class: "db", text: `${track.gainDb} dB` });
     const volume = el("input", {
       type: "range", min: -30, max: 6, step: 1, value: track.gainDb, disabled: wholeLock,
@@ -301,6 +304,48 @@ function renderTracks(view) {
   const names = (allowed || []).map((id) => state.instruments.find((i) => i.id === id)?.name || id);
   $("allowed-instruments").textContent = allowed ? `Allowed instruments for this song: ${names.join(", ")}` : "";
   $("allowed-instruments").hidden = !allowed;
+}
+
+const FAMILY_LABELS = [
+  ["wind", "Woodwinds"],
+  ["brass", "Brass"],
+  ["plucked", "Plucked strings"],
+  ["strings", "Bowed strings"],
+  ["keyboard", "Keyboards & organs"],
+  ["mallet", "Bells & mallets"],
+  ["voice", "Voices"],
+  ["pad", "Pads"],
+  ["bass", "Bass"],
+  ["percussion-melodic", "Timpani"],
+  ["drums", "Drums"],
+  ["gm", "Other General MIDI"],
+];
+
+/** Alphabetical options grouped by instrument family; the song's allowed list comes first. */
+function instrumentOptions(track, allowed) {
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  const pool = state.instruments.filter((i) => i.isPercussion === track.isPercussion);
+  if (!pool.some((i) => i.id === track.instrumentId)) {
+    pool.push({ id: track.instrumentId, name: track.instrumentId, family: "gm" });
+  }
+  const option = (i, note = "") => el("option", { value: i.id, selected: i.id === track.instrumentId, text: i.name + note });
+  const groups = [];
+  let rest = pool;
+  if (allowed) {
+    const inSong = pool.filter((i) => allowed.includes(i.id) || i.id === track.instrumentId).sort(byName);
+    groups.push(el("optgroup", { label: "In this song" }, inSong.map((i) => option(i))));
+    rest = pool.filter((i) => !inSong.includes(i));
+  }
+  for (const [family, label] of FAMILY_LABELS) {
+    const members = rest.filter((i) => (i.family || "gm") === family).sort(byName);
+    if (members.length) {
+      groups.push(el("optgroup", { label: allowed ? `${label} (adds to song)` : label }, members.map((i) => option(i))));
+    }
+  }
+  const known = new Set(FAMILY_LABELS.map(([f]) => f));
+  const leftovers = rest.filter((i) => !known.has(i.family || "gm")).sort(byName);
+  if (leftovers.length) groups.push(el("optgroup", { label: "Other" }, leftovers.map((i) => option(i))));
+  return groups;
 }
 
 function changeInstrument(track, instrumentId, allowed) {
