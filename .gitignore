@@ -7,3 +7,5 @@ node_modules/
 dist/
 *.sf2
 *.sf3
+*.egg-info/
+build/
