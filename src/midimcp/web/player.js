@@ -68,6 +68,7 @@ export class Player extends EventTarget {
     this.view = null;
     this.map = null;
     this.loop = { enabled: false, startTick: 0, endTick: 0 };
+    this.previewRange = null;
     this._frame = null;
     this._loadToken = 0;
     this._autoplayPending = false;
@@ -79,19 +80,25 @@ export class Player extends EventTarget {
    * With the loop on, the server renders exactly the loop section (no decay tail) and the
    * browser repeats it gaplessly - what a game engine would do. Otherwise the whole song.
    */
-  async load(view, { speed = this.speed, keepTick = null, autoplay = false, loop = null } = {}) {
+  async load(view, { speed = this.speed, keepTick = null, autoplay = false, loop = null, range = undefined } = {}) {
     // A load that replaces one still rendering keeps that one's wish to play.
     autoplay = autoplay || (this.state === "loading" && this._autoplayPending);
     this._autoplayPending = autoplay;
     const loadToken = ++this._loadToken;
     this.pause();
     const sameSong = this.view && this.view.projectId === view.projectId;
+    const songLoop = view.score.timeline.loop;
+    const oldLoop = this.view?.score.timeline.loop;
+    const loopChanged = sameSong && (oldLoop.enabled !== songLoop.enabled
+      || oldLoop.startTick !== songLoop.startTick || oldLoop.endTick !== songLoop.endTick);
+    range = range === undefined ? (sameSong && !loopChanged ? this.previewRange : null) : range;
+    if (range && (range.startTick < 0 || range.endTick > view.timing.totalTicks || range.endTick <= range.startTick)) range = null;
+    this.previewRange = range ? { ...range } : null;
     this.view = view;
     this.speed = speed;
     this.map = new TimeMap(view.timing, speed);
-    const songLoop = view.score.timeline.loop;
-    const enabled = loop ?? (sameSong ? this.loop.enabled : songLoop.enabled);
-    this.loop = songLoop.enabled
+    const enabled = loop ?? (sameSong && !loopChanged ? this.loop.enabled : songLoop.enabled);
+    this.loop = this.previewRange ? { enabled: true, ...this.previewRange } : songLoop.enabled
       ? { enabled, startTick: songLoop.startTick, endTick: songLoop.endTick }
       : { enabled, startTick: 0, endTick: view.timing.totalTicks };
     this.offsetTick = 0;
@@ -99,7 +106,8 @@ export class Player extends EventTarget {
     this._emit("loading", { speed });
     try {
       const options = { revision: view.revision, speed };
-      if (this.loop.enabled) options.loop = true;
+      if (this.previewRange) Object.assign(options, this.previewRange);
+      else if (this.loop.enabled) options.loop = true;
       const job = await this.api.render(view.projectId, options);
       const done = await this.api.waitForJob(job);
       if (loadToken !== this._loadToken) return; // superseded by a newer load
@@ -110,7 +118,7 @@ export class Player extends EventTarget {
       await whenMetadata(this.audio);
       this.seekTick(keepTick ?? (this.loop.enabled ? this.loop.startTick : 0));
       this._setState("ready");
-      this._emit("loaded", { render: done.render });
+      this._emit("loaded", { render: done.render, previewRange: this.previewRange });
       this._emitPosition();
       this._autoplayPending = false;
       if (autoplay) await this.play();
@@ -131,6 +139,7 @@ export class Player extends EventTarget {
     this.audio.removeAttribute("src");
     if (typeof this.audio.load === "function") this.audio.load();
     this.view = null;
+    this.previewRange = null;
     this.map = null;
     this._setState("empty");
   }
@@ -187,12 +196,30 @@ export class Player extends EventTarget {
   /** Switch between the seamless loop render and the full song (re-renders, keeps position). */
   async setLoop(enabled) {
     enabled = Boolean(enabled);
+    if (this.previewRange) {
+      if (!enabled) await this.clearPreviewRegion();
+      return;
+    }
     if (!this.view || enabled === this.loop.enabled) {
       this.loop.enabled = enabled;
       return;
     }
     const wasPlaying = this.state === "playing";
     await this.load(this.view, { speed: this.speed, keepTick: this.tick, autoplay: wasPlaying, loop: enabled });
+  }
+
+  /** Loop an exact note selection for listening only; does not save the song loop. */
+  async previewRegion(startTick, endTick) {
+    if (!this.view || !Number.isInteger(startTick) || !Number.isInteger(endTick)
+        || startTick < 0 || endTick <= startTick || endTick > this.view.timing.totalTicks) {
+      throw new Error("Choose a valid passage inside the song to preview.");
+    }
+    await this.load(this.view, { range: { startTick, endTick }, keepTick: startTick, autoplay: true });
+  }
+
+  async clearPreviewRegion() {
+    if (!this.view || !this.previewRange) return;
+    await this.load(this.view, { range: null, loop: false, keepTick: this.tick, autoplay: this.wantsPlayback });
   }
 
   setVolume(volume) {

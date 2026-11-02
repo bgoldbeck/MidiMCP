@@ -81,6 +81,18 @@ export class Api {
       changes,
     );
   }
+  editNotes(id, body) {
+    return this.request("POST", `/api/projects/${encodeURIComponent(id)}/notes`, body);
+  }
+  lock(id, body) {
+    return this.request("POST", `/api/projects/${encodeURIComponent(id)}/locks`, body);
+  }
+  unlock(id, lockId, body) {
+    return this.request("DELETE", `/api/projects/${encodeURIComponent(id)}/locks/${encodeURIComponent(lockId)}`, body);
+  }
+  setArrangement(id, body) {
+    return this.request("POST", `/api/projects/${encodeURIComponent(id)}/arrangement`, body);
+  }
   templates() { return this.request("GET", "/api/templates"); }
   template(id) { return this.request("GET", `/api/templates/${encodeURIComponent(id)}`); }
   saveTemplate(id, data) { return this.request("PUT", `/api/templates/${encodeURIComponent(id)}`, data); }

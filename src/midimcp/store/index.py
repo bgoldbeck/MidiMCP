@@ -50,7 +50,13 @@ class LibraryIndex:
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path, timeout=10)
-        conn.execute(_SCHEMA)
+        try:
+            conn.execute(_SCHEMA)
+        except Exception:
+            # A corrupt index must be replaceable immediately on Windows too.
+            # The caller's closing() cannot own a connection we never returned.
+            conn.close()
+            raise
         return conn
 
     def upsert(self, listing: ProjectListing) -> None:

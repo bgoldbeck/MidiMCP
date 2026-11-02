@@ -8,6 +8,7 @@
   <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="editor.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -119,6 +120,9 @@
             <span><strong id="time">0:00</strong> / <span id="duration">0:00</span></span>
           </div>
           <p class="hint">Speed is preview-only: the song is re-rendered at the new tempo; pitch stays the same. Loop plays just the loop section back-to-back with no gap, exactly as a game would.</p>
+          <p id="selection-preview" class="banner" hidden>Looping your selected passage (preview only).
+            <button id="end-selection-preview" class="secondary">Return to whole song</button>
+          </p>
         </section>
 
         <section class="card" aria-label="Measure overview">
@@ -139,6 +143,15 @@
             <thead><tr><th>Track</th><th>Instrument</th><th>Volume</th><th>Mute</th><th>Notes</th><th>Default</th></tr></thead>
             <tbody id="track-rows"></tbody>
           </table>
+        </section>
+
+        <section id="note-editor" class="card" aria-label="Note editor">
+          <div class="section-head">
+            <h3>Note editor</h3>
+            <button id="toggle-note-editor" class="secondary" aria-expanded="false" aria-controls="note-editor-panel">Edit notes / phrases</button>
+          </div>
+          <p class="hint">Refine a generated part: select notes, change their length or timing, and protect passages you want to keep.</p>
+          <div id="note-editor-panel" hidden></div>
         </section>
 
         <section class="card" aria-label="Validation">

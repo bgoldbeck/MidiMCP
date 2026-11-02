@@ -464,6 +464,8 @@ def test_smoke_script_against_server(http_server: tuple[str, str], tmp_path: Pat
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "SMOKE TEST PASSED" in completed.stdout
     assert (tmp_path / "out" / "midimcp-smoke-test-r5.mid").is_file()
+    if not httpx.get(f"{base}/healthz").json()["audio"]:
+        assert "Audio unavailable: skipped preview and WAV" in completed.stdout
 
 
 def test_templates_via_mcp(ctx: AppContext) -> None:

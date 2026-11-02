@@ -124,6 +124,10 @@ def test_ui_is_public_and_hardened(live_server) -> None:
     assert "script-src 'self'" in page.headers["content-security-policy"]
     assert page.headers["referrer-policy"] == "no-referrer"
     assert httpx.get(f"{base}/ui/app.js").headers["content-type"].startswith("text/javascript")
+    assert httpx.get(f"{base}/ui/editor.js").status_code == 200
+    assert httpx.get(f"{base}/ui/editor-model.js").status_code == 200
+    assert httpx.get(f"{base}/ui/editor.css").status_code == 200
+    assert 'id="note-editor-panel"' in page.text
     assert httpx.get(f"{base}/ui/../token.txt").status_code == 401  # normalised, not public
     assert httpx.get(f"{base}/ui/..%2Ftoken.txt").status_code == 404  # traversal refused
     assert httpx.get(f"{base}/ui/missing.js").status_code == 404

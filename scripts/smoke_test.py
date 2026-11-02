@@ -6,6 +6,7 @@ Usage (from any machine with the repo's Python deps installed):
 
 It creates a short song titled "MidiMCP Smoke Test" (a new project each run),
 renders a preview, exports MIDI and WAV, and downloads them to ./smoke-output/.
+When the server reports audio unavailable, only composition and MIDI are checked.
 """
 
 from __future__ import annotations
@@ -115,13 +116,17 @@ async def run(url: str, token: str, out: Path) -> None:
         print("revision", result["revision"], "-", result["changes"]["text"])
         report = await call(client, "validate_project", project_id=pid)
         print("validation ok:", report["ok"], "warnings:", [w["code"] for w in report["warnings"]])
-        job = await call(client, "render_preview", project_id=pid)
-        print("render:", json.dumps(job.get("render") or job))
         midi = await call(client, "export_project", project_id=pid, format="midi")
-        wav = await call(client, "export_project", project_id=pid, format="wav")
+        exports = [midi]
+        if health.get("audio"):
+            job = await call(client, "render_preview", project_id=pid)
+            print("render:", json.dumps(job.get("render") or job))
+            exports.append(await call(client, "export_project", project_id=pid, format="wav"))
+        else:
+            print("Audio unavailable: skipped preview and WAV; checking composition and MIDI only.")
 
     out.mkdir(exist_ok=True)
-    for item in (midi, wav):
+    for item in exports:
         response = httpx.get(
             f"{url}{item['downloadPath']}", headers={"Authorization": f"Bearer {token}"}, timeout=60
         )

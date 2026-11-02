@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {move,resize,scale,locked,boxSelect,prompt} from '../src/midimcp/web/editor-model.js';
+const notes=[{id:'a',pitch:2,startTick:10,durationTicks:20,velocity:80},{id:'b',pitch:126,startTick:30,durationTicks:10,velocity:90}];
+test('movement clamps the group, preserving intervals and offsets',()=>{const result=move(notes,-40,10);assert.deepEqual(result.map(n=>[n.startTick,n.pitch]),[[0,3],[20,127]]);});
+test('resize caps shared delta at shortest duration',()=>assert.deepEqual(resize(notes,-100).map(n=>n.durationTicks),[11,1]));
+test('length multiplication and anchored stretch are distinct',()=>{assert.deepEqual(scale(notes,2).map(n=>n.startTick),[10,30]);assert.deepEqual(scale(notes,2,true).map(n=>[n.startTick,n.durationTicks]),[[10,40],[50,20]]);assert.throws(()=>scale(notes,0));});
+test('locks use half-open overlap and match track',()=>{const locks=[{trackId:'t',startTick:30,endTick:40}];assert.equal(locked(notes[0],'t',locks),false);assert.equal(locked(notes[1],'t',locks),true);assert.equal(locked(notes[1],'other',locks),false);assert.equal(locked(notes[0],'t',[{trackId:'t'}]),true);});
+test('box includes overlapping notes within pitch limits',()=>{assert.deepEqual(boxSelect(notes,29,30).map(n=>n.id),['a']);assert.equal(boxSelect(notes,0,100,3,125).length,0);});
+test('prompt identifies exact project revision and note selection',()=>{const text=prompt({projectId:'song',revision:5},'t',[notes[0]],'Make calmer');assert.match(text,/expected revision: 5/);assert.match(text,/"id": "a"/);assert.doesNotMatch(text,/"id": "b"/);assert.match(text,/Make calmer/);});
+test('empty transforms and invalid numeric inputs are handled explicitly',()=>{assert.deepEqual(move([],0,0),[]);assert.deepEqual(resize([],3),[]);assert.deepEqual(scale([],2,true),[]);assert.throws(()=>move(notes,NaN,0));assert.throws(()=>resize(notes,Infinity));assert.throws(()=>scale(notes,NaN));});
+test('prompt includes explicit half-open selection bounds',()=>assert.match(prompt({projectId:'p',revision:1},'t',notes,''),/\[10, 40\)/));

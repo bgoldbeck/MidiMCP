@@ -49,8 +49,8 @@ class FakeApi {
   }
   async waitForJob(job) {
     const request = this.renders.at(-1);
-    const startTick = request.loop ? 2880 : 0;
-    const endTick = request.loop ? 4 * 2880 : 23040;
+    const startTick = request.startTick ?? (request.loop ? 2880 : 0);
+    const endTick = request.endTick ?? (request.loop ? 4 * 2880 : 23040);
     return { ...job, status: "completed",
              downloadPath: `/api/renders/${job.jobId}-${request.speed}${request.loop ? "-loop" : ""}.wav`,
              render: { speed: request.speed, startTick, endTick } };
@@ -70,6 +70,50 @@ function makePlayer() {
   const runFrame = () => { const cb = frames.shift(); if (cb) cb(); };
   return { player, audio, api, runFrame };
 }
+
+test("selection preview renders exact ticks, loops without saving, and keeps range at another speed", async () => {
+  const { player, audio, api } = makePlayer();
+  await player.load(view());
+  await player.previewRegion(1200, 4700);
+  assert.deepEqual(api.renders.at(-1), { id: "lanterns", revision: 3, speed: 1, startTick: 1200, endTick: 4700 });
+  assert.equal(audio.loop, true);
+  assert.equal(player.tick, 1200);
+  player.seekTick(2000);
+  assert.equal(player.tick, 2000);
+  await player.setSpeed(1.25);
+  assert.equal(api.renders.at(-1).startTick, 1200);
+  assert.equal(api.renders.at(-1).endTick, 4700);
+  assert.equal(player.tick, 2000);
+  await player.clearPreviewRegion();
+  assert.equal(api.renders.at(-1).startTick, undefined);
+  assert.equal(audio.loop, false);
+  assert.equal(player.previewRange, null);
+});
+
+test("selection preview validates bounds and does not leak to another project", async () => {
+  const { player, api } = makePlayer();
+  await player.load(view());
+  const before = api.renders.length;
+  for (const [lo, hi] of [[-1, 500], [100, 100], [100, 999999], [0.5, 500]]) {
+    await assert.rejects(player.previewRegion(lo, hi));
+  }
+  assert.equal(api.renders.length, before);
+  await player.previewRegion(1200, 4700);
+  await player.load({ ...view(), projectId: "other" });
+  assert.equal(player.previewRange, null);
+  assert.equal(api.renders.at(-1).startTick, undefined);
+});
+
+test("saving a new song loop activates the loop and supersedes a selection preview", async () => {
+  const { player, audio, api } = makePlayer();
+  await player.load(view());
+  await player.previewRegion(1200, 4700);
+  await player.load(view({ revision: 4, loop: true }));
+  assert.equal(player.previewRange, null);
+  assert.equal(api.renders.at(-1).loop, true);
+  assert.equal(audio.loop, true);
+  assert.equal(player.loop.startTick, 2880);
+});
 
 test("TimeMap converts ticks, seconds and bars", () => {
   const map = new TimeMap(TIMING, 1);

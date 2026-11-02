@@ -12,6 +12,23 @@ Runs as one Docker container (designed for TrueNAS SCALE): a web UI at `/` (libr
 - Design reference: [`docs/reference/`](docs/reference/README.md)
 - Build order: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
+## Refine generated music
+
+Open a song and choose **Edit notes** beside a track, or **Edit notes / phrases**.
+The piano roll supports click/Shift-click and box selection, drag to move notes,
+and right-edge drag to resize selected notes together. Phrase mode selects bars
+and provides scaling and velocity sliders. Changes save as new revisions.
+
+**Multiply note lengths** keeps note starts fixed. **Stretch time and lengths**
+also spreads note starts, anchored at the first selected note; enable timeline
+extension to grow the song instead of clipping notes. Existing expression and
+controller curves stay at their original times, as the editor warns.
+
+Preview a selection as a temporary exact loop, save a bar-aligned song loop,
+undo/redo local edits, and protect a passage or entire track from further edits.
+**Copy selection for AI** creates a prompt for your connected agent; it includes
+the exact notes and revision and preserves material outside the selection.
+
 ## Run with Docker (any host)
 
 ```bash

@@ -23,8 +23,12 @@ Routes::
     GET   /api/projects/{id}/revisions
     PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
     POST  /api/projects/{id}/tracks/{trackId}/reset {expectedRevision, fields?: instrument|volume|pan|mute}
+    POST  /api/projects/{id}/notes              {expectedRevision, operations, extendToTick?}
+    POST  /api/projects/{id}/locks              {expectedRevision, trackId, startTick?, endTick?}
+    DELETE /api/projects/{id}/locks/{lockId}    {expectedRevision}
+    POST  /api/projects/{id}/arrangement        {expectedRevision, bars?, loopEnabled?, loopStartBar?, loopEndBar?}
     POST  /api/projects/{id}/restore            {expectedRevision, revision}
-    POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?, loop?}
+    POST  /api/projects/{id}/render             {revision?, speed?, startBar?, endBar?, startTick?, endTick?, loop?}
     GET   /api/jobs/{jobId}
     GET   /api/projects/{id}/exports
     POST  /api/projects/{id}/exports            {format: midi|wav|mp3|json, revision?, speed?, bitrate?}
@@ -143,7 +147,12 @@ async def _call(func, *args: Any, **kwargs: Any) -> Response:
 
 async def _body(request: Request) -> dict[str, Any]:
     try:
-        data = await request.json()
+        chunks = bytearray()
+        async for chunk in request.stream():
+            chunks.extend(chunk)
+            if len(chunks) > 4 * 1024 * 1024:
+                raise ApiError("BODY_TOO_LARGE", "request body exceeds 4 MiB", 413)
+        data = json.loads(chunks)
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ApiError("INVALID_JSON", "request body must be JSON") from exc
     if not isinstance(data, dict):
@@ -160,6 +169,48 @@ def _int(data: dict, key: str, *, required: bool = False) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int):
         raise ApiError("INVALID_FIELD", f"{key} must be an integer")
     return value
+
+
+def _operation_id(data: dict) -> str | None:
+    value = data.get("operationId")
+    if value is not None and (not isinstance(value, str) or not 1 <= len(value) <= 128):
+        raise ApiError(
+            "INVALID_FIELD", "operationId must be a nonempty string up to 128 characters"
+        )
+    return value
+
+
+def _note_operations(data: dict) -> list[dict]:
+    operations = data.get("operations")
+    if not isinstance(operations, list) or not 1 <= len(operations) <= 20_000:
+        raise ApiError("INVALID_FIELD", "operations must contain 1..20000 objects")
+    for op in operations:
+        if not isinstance(op, dict):
+            raise ApiError("INVALID_FIELD", "each operation must be an object")
+        kind = op.get("op")
+        if kind not in ("add", "update", "delete"):
+            raise ApiError("INVALID_FIELD", "op must be add, update, or delete")
+        allowed = (
+            {"op", "trackId", "note"}
+            if kind == "add"
+            else (
+                {"op", "noteId", "pitch", "startTick", "durationTicks", "velocity"}
+                if kind == "update"
+                else {"op", "noteId"}
+            )
+        )
+        if set(op) - allowed:
+            raise ApiError("INVALID_FIELD", "unknown note operation fields")
+        key = "trackId" if kind == "add" else "noteId"
+        if not isinstance(op.get(key), str) or not op[key]:
+            raise ApiError("INVALID_FIELD", f"{key} must be a nonempty string")
+        if kind == "add":
+            note = op.get("note")
+            if not isinstance(note, dict):
+                raise ApiError("INVALID_FIELD", "note must be an object")
+            if "id" in note and note["id"] is not None and not isinstance(note["id"], str):
+                raise ApiError("INVALID_FIELD", "note id must be a string")
+    return operations
 
 
 def register_web_ui(server: MCPServer) -> None:
@@ -438,6 +489,95 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             ).to_dict()
         )  # fmt: skip
 
+    @route("/api/projects/{project_id}/notes", ["POST"])
+    async def notes(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            operations = _note_operations(data)
+            extend = _int(data, "extendToTick")
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.edit_notes(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                operations=operations,
+                extend_to_tick=extend,
+                author="user",
+                operation_id=operation_id,
+            ).to_dict()
+        )
+
+    @route("/api/projects/{project_id}/locks", ["POST"])
+    async def lock(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            track_id = data.get("trackId")
+            if not isinstance(track_id, str) or not track_id:
+                raise ApiError("INVALID_FIELD", "trackId must be a nonempty string")
+            start, end = _int(data, "startTick"), _int(data, "endTick")
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.lock(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                track_id=track_id,
+                start_tick=start,
+                end_tick=end,
+                author="user",
+                operation_id=operation_id,
+            ).to_dict()
+        )
+
+    @route("/api/projects/{project_id}/locks/{lock_id}", ["DELETE"])
+    async def unlock(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.unlock(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                lock_id=request.path_params["lock_id"],
+                author="user",
+                operation_id=operation_id,
+            ).to_dict()
+        )
+
+    @route("/api/projects/{project_id}/arrangement", ["POST"])
+    async def arrangement(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            bars = _int(data, "bars")
+            start, end = _int(data, "loopStartBar"), _int(data, "loopEndBar")
+            enabled = data.get("loopEnabled")
+            if "loopEnabled" in data and not isinstance(enabled, bool):
+                raise ApiError("INVALID_FIELD", "loopEnabled must be a boolean")
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.set_arrangement(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                bars=bars,
+                loop_enabled=enabled,
+                loop_start_bar=start,
+                loop_end_bar=end,
+                author="user",
+                operation_id=operation_id,
+            ).to_dict()
+        )
+
     @route("/api/projects/{project_id}/restore", ["POST"])
     async def restore(request: Request) -> Response:
         project_id = request.path_params["project_id"]
@@ -460,7 +600,17 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             data = await _body(request)
             revision = _int(data, "revision")
             start_bar, end_bar = _int(data, "startBar"), _int(data, "endBar")
-            loop = bool(data.get("loop", False))
+            start_tick, end_tick = _int(data, "startTick"), _int(data, "endTick")
+            loop = data.get("loop", False)
+            if not isinstance(loop, bool):
+                raise ApiError("INVALID_FIELD", "loop must be a boolean")
+            if start_tick is not None or end_tick is not None:
+                if start_tick is None or end_tick is None:
+                    raise ApiError("INVALID_RANGE", "give both startTick and endTick")
+                if loop or start_bar is not None or end_bar is not None:
+                    raise ApiError(
+                        "INVALID_RANGE", "tick selection cannot combine with bars or loop"
+                    )
             speed = data.get("speed", 1.0)
             if isinstance(speed, bool) or not isinstance(speed, (int, float)):
                 raise ApiError("INVALID_FIELD", "speed must be a number")
@@ -481,6 +631,15 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
                 kwargs["start_tick"], kwargs["end_tick"] = bar_range(
                     start_bar, end_bar, t.ppq, t.meter.numerator, t.meter.denominator
                 )
+            if start_tick is not None:
+                if (
+                    not 0
+                    <= start_tick
+                    < end_tick
+                    <= min(snap.score.timeline.total_ticks, 1_000_000_000)
+                ):
+                    raise ApiError("INVALID_RANGE", "tick selection must be within the song")
+                kwargs.update(start_tick=start_tick, end_tick=end_tick, tail=False)
             if loop:
                 timeline = snap.score.timeline
                 if timeline.loop.enabled:

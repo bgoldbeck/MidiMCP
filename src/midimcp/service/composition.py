@@ -502,10 +502,14 @@ class CompositionService:
         *,
         expected_revision: int,
         operations: Sequence[dict[str, Any]],
+        extend_to_tick: int | None = None,
         author: Author = "agent",
         operation_id: str | None = None,
     ) -> OperationResult:
-        """Apply note patches atomically.
+        """Apply note patches atomically, optionally growing to a bar boundary.
+
+        ``extend_to_tick`` never shrinks the timeline. A loop ending at the old
+        song end follows growth; a custom loop retains its bounds.
 
         Each operation is one of::
 
@@ -513,11 +517,30 @@ class CompositionService:
             {"op": "update", "noteId": ..., "pitch"?, "startTick"?, "durationTicks"?, "velocity"?}
             {"op": "delete", "noteId": ...}
         """
+        if extend_to_tick is not None and (
+            isinstance(extend_to_tick, bool)
+            or not isinstance(extend_to_tick, int)
+            or not 0 <= extend_to_tick <= 1_000_000_000
+        ):
+            raise InvalidOperation("extendToTick must be an integer in 0..1000000000")
         if not operations:
             raise InvalidOperation("operations must not be empty")
 
         def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
-            tracks = {t.id: list(t.notes) for t in score.tracks}
+            timeline = score.timeline
+            if extend_to_tick is not None and extend_to_tick > timeline.total_ticks:
+                bar = ticks_per_bar(
+                    timeline.ppq, timeline.meter.numerator, timeline.meter.denominator
+                )
+                total = ((extend_to_tick + bar - 1) // bar) * bar
+                loop = timeline.loop
+                if loop.end_tick == timeline.total_ticks:
+                    loop = _with(loop, end_tick=total)
+                score = _with(score, timeline=_with(timeline, total_ticks=total, loop=loop))
+            # Keep the index synchronized after each operation so later patches
+            # see earlier adds/deletes without scanning every note in the song.
+            tracks = {t.id: {n.id: n for n in t.notes} for t in score.tracks}
+            note_tracks = {n.id: t.id for t in score.tracks for n in t.notes}
             ids = _NoteIds(score)
             for index, op in enumerate(operations):
                 kind = op.get("op")
@@ -525,12 +548,17 @@ class CompositionService:
                     track_id = op.get("trackId")
                     if track_id not in tracks:
                         raise TrackNotFound(f"operation {index}: track {track_id!r} not found")
-                    tracks[track_id].append(self._note(op.get("note") or {}, ids))
+                    note = self._note(op.get("note") or {}, ids)
+                    tracks[track_id][note.id] = note
+                    note_tracks[note.id] = track_id
                 elif kind in {"update", "delete"}:
                     note_id = op.get("noteId")
-                    track_id, position = _find_note(tracks, note_id, index)
+                    track_id = note_tracks.get(note_id) if isinstance(note_id, str) else None
+                    if track_id is None:
+                        raise NoteNotFound(f"operation {index}: note {note_id!r} not found")
                     if kind == "delete":
-                        tracks[track_id].pop(position)
+                        del tracks[track_id][note_id]
+                        del note_tracks[note_id]
                         continue
                     allowed = {"pitch", "startTick", "durationTicks", "velocity"}
                     extra = set(op) - allowed - {"op", "noteId"}
@@ -538,12 +566,12 @@ class CompositionService:
                         raise InvalidOperation(
                             f"operation {index}: unknown fields {', '.join(sorted(extra))}"
                         )
-                    current = tracks[track_id][position].to_json_dict()
+                    current = tracks[track_id][note_id].to_json_dict()
                     patch = {k: op[k] for k in allowed if k in op}
-                    tracks[track_id][position] = self._build(Note, **{**current, **patch})
+                    tracks[track_id][note_id] = self._build(Note, **{**current, **patch})
                 else:
                     raise InvalidOperation(f"operation {index}: unknown op {kind!r}")
-            new_tracks = [_with(t, notes=_sorted(tracks[t.id])) for t in score.tracks]
+            new_tracks = [_with(t, notes=_sorted(tracks[t.id].values())) for t in score.tracks]
             return _with(score, tracks=new_tracks), brief, tuple(ids.created)
 
         return self._mutate(
@@ -713,11 +741,32 @@ class CompositionService:
         harmony: Sequence[dict[str, Any]] | None = None,
         bars: int | None = None,
         loop: dict[str, Any] | None = None,
+        loop_enabled: bool | None = None,
+        loop_start_bar: int | None = None,
+        loop_end_bar: int | None = None,
         author: Author = "agent",
         operation_id: str | None = None,
     ) -> OperationResult:
-        """Replace sections and/or harmony, resize the song, or set the loop."""
-        if sections is None and harmony is None and bars is None and loop is None:
+        """Replace form, resize the song, or set the loop.
+
+        Bar loop fields are one-based inclusive and converted after the revision
+        guard using this score's meter. They cannot combine with ``loop``.
+        """
+        bar_loop = any(v is not None for v in (loop_enabled, loop_start_bar, loop_end_bar))
+        if loop is not None and bar_loop:
+            raise InvalidOperation("give loop or loop bar fields, not both")
+        for name, value in (
+            ("bars", bars),
+            ("loopStartBar", loop_start_bar),
+            ("loopEndBar", loop_end_bar),
+        ):
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 100_000
+            ):
+                raise InvalidOperation(f"{name} must be an integer in 1..100000")
+        if loop_enabled is not None and not isinstance(loop_enabled, bool):
+            raise InvalidOperation("loopEnabled must be a boolean")
+        if sections is None and harmony is None and bars is None and loop is None and not bar_loop:
             raise InvalidOperation("nothing to change")
 
         def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
@@ -732,9 +781,40 @@ class CompositionService:
                     raise InvalidOperation("bars must be >= 1")
                 t = score.timeline
                 total = bars * ticks_per_bar(t.ppq, t.meter.numerator, t.meter.denominator)
-                timeline = _with(timeline, total_ticks=total)
+                old_loop = timeline.loop
+                if old_loop.end_tick == timeline.total_ticks:
+                    old_loop = _with(old_loop, end_tick=total)
+                timeline = _with(timeline, total_ticks=total, loop=old_loop)
             if loop is not None:
                 timeline = _with(timeline, loop=self._build(LoopRegion, **loop))
+            if bar_loop:
+                bar = ticks_per_bar(
+                    timeline.ppq, timeline.meter.numerator, timeline.meter.denominator
+                )
+                current_loop = timeline.loop
+                start = (
+                    (loop_start_bar - 1) * bar
+                    if loop_start_bar is not None
+                    else current_loop.start_tick
+                )
+                end = (
+                    loop_end_bar * bar
+                    if loop_end_bar is not None
+                    else current_loop.end_tick or timeline.total_ticks
+                )
+                if not 0 <= start < end <= timeline.total_ticks:
+                    raise InvalidRange("loop bars must define a nonempty range within the song")
+                timeline = _with(
+                    timeline,
+                    loop=self._build(
+                        LoopRegion,
+                        enabled=(
+                            loop_enabled if loop_enabled is not None else current_loop.enabled
+                        ),
+                        start_tick=start,
+                        end_tick=end,
+                    ),
+                )
             updates["timeline"] = timeline
             return _with(score, **updates), brief, ()
 

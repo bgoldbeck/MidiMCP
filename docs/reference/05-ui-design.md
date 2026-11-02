@@ -57,7 +57,13 @@ Plain ES modules in `src/midimcp/web/` (no React/Vite build; nothing to compile 
 - Checks: validation errors and advisory warnings.
 - Download: a prominent **⬇ Download song** button in the song header (format list: MP3 320/192/128 kbps, WAV, MIDI, Project JSON; choice remembered) and a Download card with one button per format. Each click exports the current revision into the project's exports folder and saves it to the computer; earlier files stay listed.
 - Live updates: an agent edit reloads the song (or offers "Load new version" while playing).
-- Not yet: revision history panel / A-B / undo (feature 14), piano-roll editing and lock controls (feature 16).
+- Note editor (feature 16): piano roll and phrase mode, click/Shift/box selection,
+  group drag/resize and keyboard controls, note-length/time scaling, velocity,
+  snap/zoom, optional atomic song extension, selection playback, saved loops,
+  local edit undo/redo, user-only track/range protection and exact AI prompts.
+  Note edits leave controller automation at its original ticks with a visible
+  warning; undo/redo is session-local and clears after external edits.
+- Not yet: full revision history panel and A/B audition (feature 14).
 
 ## Favorites and collections
 

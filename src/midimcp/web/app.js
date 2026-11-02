@@ -4,6 +4,7 @@ import { Api, ApiError, getToken, setToken } from "./api.js";
 import { Player, SPEEDS, formatTime } from "./player.js";
 import { copyText, flashCopyResult } from "./clipboard.js";
 import { setupTemplates } from "./templates-view.js";
+import { NoteEditor } from "./editor.js";
 
 const $ = (id) => document.getElementById(id);
 const COLORS = ["#d9a441", "#8fbf6a", "#6aa6d9", "#d97a6a", "#b48ad9", "#6ad9c4", "#d9d06a", "#d96ab0"];
@@ -12,6 +13,9 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const state = {
   api: null,
   player: null,
+  editor: null,
+  projectLoad: 0,
+  requestedProject: null,
   projects: [],
   view: null,
   instruments: [],
@@ -136,10 +140,11 @@ function onServerEvent(event) {
   refreshLibrary().catch(() => {});
   const view = state.view;
   if (!view || event.projectId !== view.projectId || event.revision <= view.revision) return;
+  if (state.requestedProject !== view.projectId) return; // a navigation is already in progress
   if (state.ownRevisions.has(`${event.projectId}@${event.revision}`)) return; // our own save
   const who = event.author === "agent" ? "an AI agent" : event.author;
   state.pendingUpdate = event;
-  if (state.player.state === "playing") {
+  if (state.player.state === "playing" || state.editor?.hasPendingWork()) {
     $("update-text").textContent = `Revision ${event.revision} by ${who}: ${event.summary}`;
     $("update-banner").hidden = false;
   } else {
@@ -326,11 +331,20 @@ async function deleteCollection() {
 // ------------------------------------------------------------------ project
 
 async function openProject(projectId, { notice = "" } = {}) {
+  const request = ++state.projectLoad;
+  state.requestedProject = projectId;
   showError(null);
   const sameSong = state.view?.projectId === projectId;
   const keepTick = sameSong ? state.player.tick : 0;
   const resume = sameSong && state.player.wantsPlayback; // e.g. instrument changed mid-song
-  const view = await state.api.project(projectId);
+  let view;
+  try {
+    view = await state.api.project(projectId);
+  } catch (error) {
+    if (request === state.projectLoad) state.requestedProject = state.view?.projectId ?? null;
+    throw error;
+  }
+  if (request !== state.projectLoad) return;
   state.view = view;
   state.pendingUpdate = null;
   $("update-banner").hidden = true;
@@ -341,6 +355,7 @@ async function openProject(projectId, { notice = "" } = {}) {
   renderOverview(view);
   renderTracks(view);
   renderChecks(view);
+  state.editor?.setView(view);
   refreshExports().catch(() => {});
   renderSongOrganization(projectId).catch(() => {});
   for (const item of $("project-list").children) {
@@ -477,7 +492,10 @@ function renderTracks(view) {
       el("td", {}, instrumentSelect, resetButton(track, "instrument", wholeLock)),
       el("td", {}, volume, db, resetButton(track, "volume", wholeLock)),
       el("td", {}, mute),
-      el("td", { text: track.notes.length }),
+      el("td", {}, `${track.notes.length} `, el("button", {
+        class: "secondary small", text: "Edit notes", "aria-label": `Edit notes in ${track.name}`,
+        onclick: () => showEditor(track.id),
+      })),
       el("td", {}, resetButton(track, "all", wholeLock)));
   });
   if (!rows.length) rows.push(el("tr", {}, el("td", { colspan: 6, class: "hint", text: "No tracks yet." })));
@@ -622,7 +640,10 @@ function renderChecks(view) {
 }
 
 function closeSong(note = "") {
+  state.projectLoad++;
+  state.requestedProject = null;
   state.player.unload();
+  state.editor?.setView(null);
   state.view = null;
   $("song").hidden = true;
   $("welcome").hidden = false;
@@ -724,10 +745,12 @@ function setupPlayer() {
     $("beat").textContent = beat;
     $("time").textContent = formatTime(seconds);
     movePlayhead(tick);
+    state.editor?.setPosition(tick);
   });
   player.addEventListener("loaded", () => {
     $("duration").textContent = formatTime(player.map.songSeconds());
     $("loop").checked = player.loop.enabled;
+    $("selection-preview").hidden = !player.previewRange;
   });
   player.addEventListener("error", (e) => showError(e.detail.error));
 
@@ -738,6 +761,38 @@ function setupPlayer() {
   $("volume").oninput = (e) => player.setVolume(Number(e.target.value));
   $("speed").replaceChildren(...SPEEDS.map((s) => el("option", { value: s, selected: s === 1, text: `${Math.round(s * 100)}%` })));
   $("speed").onchange = (e) => player.setSpeed(Number(e.target.value)).catch(() => {});
+  $("end-selection-preview").onclick = () => player.clearPreviewRegion().catch(showError);
+}
+
+function showEditor(trackId = null) {
+  $("note-editor-panel").hidden = false;
+  $("toggle-note-editor").setAttribute("aria-expanded", "true");
+  if (trackId) state.editor.selectTrack(trackId);
+  $("note-editor").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function setupEditor() {
+  state.editor = new NoteEditor({
+    container: $("note-editor-panel"), api: state.api,
+    onChange: async ({ projectId, revision }) => {
+      state.ownRevisions.add(`${projectId}@${revision}`);
+      if (state.view?.projectId === projectId && state.requestedProject === projectId) await openProject(projectId);
+      await refreshLibrary();
+    },
+    onPreview: ({ startTick, endTick }) => state.player.previewRegion(startTick, endTick).catch(showError),
+    onSeek: (tick) => state.player.seekTick(tick),
+    onError: (error) => {
+      showError(error);
+      if (error.code === "REVISION_CONFLICT" && state.view && state.requestedProject === state.view.projectId) {
+        openProject(state.view.projectId, { notice: "The song changed; reloaded the latest revision. Your unsaved edit was not applied." }).catch(showError);
+      }
+    },
+  });
+  $("toggle-note-editor").onclick = () => {
+    const panel = $("note-editor-panel");
+    panel.hidden = !panel.hidden;
+    $("toggle-note-editor").setAttribute("aria-expanded", String(!panel.hidden));
+  };
 }
 
 // --------------------------------------------------------------------- boot
@@ -762,6 +817,7 @@ async function enterApp(status) {
   const audio = status.audio;
   $("engine").textContent = audio.available ? `Audio engine: ${audio.engine}` : `Audio engine unavailable: ${audio.error}`;
   setupPlayer();
+  setupEditor();
   state.instruments = (await state.api.instruments()).instruments.filter((i) => i.available !== false);
   state.filter = prefs.get("filter", "all");
   state.sort = prefs.get("sort", "recent");
