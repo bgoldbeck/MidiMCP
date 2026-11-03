@@ -1,6 +1,15 @@
+# Bootstrap verified HTTPS before apt installs Ubuntu's maintained CA package.
+# Mozilla CA bundle (MPL-2.0), immutable dated release from curl's CA extract.
+FROM ubuntu:24.04 AS ubuntu-https
+ADD --checksum=sha256:796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe \
+    https://curl.se/ca/cacert-2026-10-20.pem /etc/ssl/certs/ca-certificates.crt
+RUN chmod 0755 /etc/ssl /etc/ssl/certs \
+ && chmod 0644 /etc/ssl/certs/ca-certificates.crt \
+ && sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+
 # sfizz sources and all Git-linked dependencies are pinned by commit; only build
 # stages access the network. No plugin host or runtime sample downloader is used.
-FROM ubuntu:24.04 AS sfizz-build
+FROM ubuntu-https AS sfizz-build
 COPY docker/apt-install.sh /usr/local/bin/apt-install.sh
 RUN sh /usr/local/bin/apt-install.sh git ca-certificates cmake make g++ pkg-config
 WORKDIR /build/sfizz
@@ -18,7 +27,7 @@ RUN cmake -S . -B /build/out -DCMAKE_BUILD_TYPE=Release \
  && find . -type f \( -iname '*license*' -o -iname '*copying*' -o -name AUTHORS.md \) \
       -not -path './.git/*' -exec cp --parents '{}' /notices/ \;
 
-FROM ubuntu:24.04 AS sampler-assets
+FROM ubuntu-https AS sampler-assets
 COPY docker/apt-install.sh /usr/local/bin/apt-install.sh
 RUN sh /usr/local/bin/apt-install.sh python3 ca-certificates
 WORKDIR /provision
@@ -29,7 +38,7 @@ RUN python3 scripts/provision-samplers.py /samplers
 # MidiMCP: retro MIDI composer — MCP server, web UI and FluidSynth renderer.
 # Ubuntu 24.04 base: FluidSynth 2.3.4 + FluidR3 GM, the exact versions the render
 # determinism tests and docs/reference/08-soundbanks.md checksum were verified against.
-FROM ubuntu:24.04
+FROM ubuntu-https
 
 LABEL org.opencontainers.image.source="https://github.com/bgoldbeck/MidiMCP" \
       org.opencontainers.image.description="MidiMCP retro MIDI composer (MCP server + FluidSynth renderer)" \

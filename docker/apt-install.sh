@@ -4,7 +4,7 @@
 # apt-get update is retried: Ubuntu mirrors briefly serve mismatched indexes while syncing.
 set -eu
 for attempt in 1 2 3 4 5; do
-  apt-get -o Acquire::Retries=3 update && break
+  apt-get -o Acquire::Retries=3 -o APT::Update::Error-Mode=any update && break
   echo "apt-get update failed (attempt $attempt/5), retrying in 30s..." >&2
   rm -rf /var/lib/apt/lists/*
   sleep 30

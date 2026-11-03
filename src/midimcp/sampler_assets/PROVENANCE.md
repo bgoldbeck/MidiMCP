@@ -1,5 +1,11 @@
 # Bundled sampler definitions and provisioned audio
 
+Build TLS bootstrap: curl's dated Mozilla CA bundle, MPL-2.0, source and license
+information at https://curl.se/docs/caextract.html. The Dockerfile pins the
+2026-10-20 bundle by SHA-256 before fetching Ubuntu packages over verified HTTPS.
+Ubuntu's maintained `ca-certificates` package then supplies the runtime trust
+store and its distribution notices under `/usr/share/doc/ca-certificates`.
+
 VSCO 2 Community Edition, SFZ release 1.1.0:
 https://github.com/sgossner/VSCO-2-CE/releases/tag/1.1.0
 Pinned Git revision: `28092772094b2d9f1148d84cea97f4545b8c687d`.
