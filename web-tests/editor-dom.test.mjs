@@ -28,3 +28,25 @@ test('external same-song revisions invalidate pending save history',async()=>{co
 test('drag previews reuse the note rectangle index without DOM queries',()=>{const e=setup();const v=view();v.score.tracks[0].notes=Array.from({length:1000},(_,i)=>({...v.score.tracks[0].notes[0],id:`n${i}`}));e.setView(v);let queries=0;e.scroll.querySelectorAll=()=>{queries++;throw new Error('Unexpected DOM scan');};e.previewGeometry(e.notes.map(n=>({...n,startTick:960})));assert.equal(queries,0);assert.equal(e.noteRects.size,1000);assert.equal(e.noteRects.get('n999').getAttribute('x'),String(e.x(960)));});
 test('phrase factor and velocity sliders update their numeric controls',()=>{const e=setup();e.mode='phrase';e.setView(view());const labels=descendants(e.container).filter(n=>n.tagName==='LABEL');const field=label=>labels.find(n=>n.textContent===label).children[0];const factor=field('Factor'),factorRange=field('Time scaling slider'),velocity=field('Velocity'),velocityRange=field('Loudness slider');factorRange.value='1.5';factorRange.oninput();assert.equal(factor.value,'1.5');velocityRange.value='110';velocityRange.oninput();assert.equal(velocity.value,'110');assert.equal(factorRange.max,3);assert.equal(factor.max,undefined);});
 test('separate sticky ruler shares time geometry and clamps seeks',()=>{const seeks=[];const e=setup({onSeek:tick=>seeks.push(tick)});e.setView(view());const ruler=e.scroll.children[0],roll=e.scroll.children[1];assert.equal(ruler.getAttribute('class'),'editor-ruler');assert.equal(ruler.getAttribute('width'),roll.getAttribute('width'));ruler.getBoundingClientRect=()=>({left:100});ruler.onclick({clientX:100+e.x(3840)});ruler.onclick({clientX:0});ruler.onclick({clientX:100000});assert.deepEqual(seeks,[3840,0,7680]);});
+
+test('note end handle snaps an off-grid end to the grid without moving its start',()=>{
+  const e=setup();const v=view();v.score.tracks[0].notes[0].durationTicks=900;e.setView(v);
+  const handle=descendants(e.container).find(n=>n.getAttribute('data-resize-note')==='n');
+  assert.ok(handle,'notes expose a dedicated resize target');
+  const roll=e.scroll.children[1];roll.getBoundingClientRect=()=>({left:0,top:0});roll.setPointerCapture=()=>{};
+  let edited;e.apply=notes=>{edited=notes;};
+  const x=e.x(900)-2,y=24+(127-74)*14+6;
+  e.pointer({button:0,target:handle,clientX:x,clientY:y,pointerId:1,preventDefault(){}},roll);
+  e.gesture.move({clientX:x+10,clientY:y-20});
+  assert.equal(e.noteRects.get('n').getAttribute('width'),'60');
+  assert.equal(handle.getAttribute('x'),'97');
+  e.gesture.up();
+  assert.equal(edited[0].durationTicks,1200);
+  assert.equal(edited[0].startTick,0);
+  assert.equal(edited[0].pitch,74);
+});
+
+test('protected notes do not expose an active resize handle',()=>{
+  const e=setup();const v=view();v.brief.locks=[{id:'lock',trackId:'t'}];e.setView(v);
+  assert.equal(descendants(e.container).filter(n=>n.getAttribute('data-resize-note')).length,0);
+});

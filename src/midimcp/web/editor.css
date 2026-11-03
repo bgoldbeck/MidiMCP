@@ -17,6 +17,9 @@
 .editor-roll .editor-note { fill: var(--accent); stroke: var(--bg); cursor: grab; }
 .editor-roll .editor-note.selected { fill: var(--ok); stroke: var(--ink); stroke-width: 2; }
 .editor-roll .editor-note.protected { fill: var(--muted); }
+.editor-roll .editor-resize-handle { fill: var(--ink); fill-opacity: .15; cursor: ew-resize; }
+.editor-roll .editor-resize-handle:hover, .editor-roll .editor-resize-handle.active { fill-opacity: 1; }
+.editor-roll.resizing, .editor-roll.resizing * { cursor: ew-resize; }
 .editor-roll .marquee { fill: #6aa6d933; stroke: #6aa6d9; pointer-events: none; }
 .editor-roll .cursor { stroke: white; pointer-events: none; }
 .editor-roll .protection { fill: #e0715a22; pointer-events: none; }

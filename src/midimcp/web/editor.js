@@ -105,6 +105,8 @@ export class NoteEditor {
   }
   cancel() {
     if (this.gesture) {
+      this.gesture.svg.classList.toggle("resizing", false);
+      this.gesture.handle?.classList.toggle("active", false);
       this.gesture.svg.removeEventListener("pointermove", this.gesture.move);
       this.gesture.svg.removeEventListener("pointerup", this.gesture.up);
       this.gesture.svg.removeEventListener("pointercancel", this.gesture.cancel);
@@ -422,6 +424,7 @@ export class NoteEditor {
     for (const l of this.locks.filter((l2) => l2.trackId === this.trackId)) s.append(svg("rect", { class: "protection", x: this.x(l.startTick || 0), y: 24, width: this.x(l.endTick ?? this.view.timing.totalTicks) - this.x(l.startTick || 0), height: height - 24 }));
     const altered = new Map((preview || []).map((n) => [n.id, n]));
     this.noteRects = new Map();
+    this.resizeHandles = new Map();
     for (const original of this.notes) {
       const n = altered.get(original.id) || original;
       const r = svg("rect", { class: `editor-note${this.selected.has(n.id) ? " selected" : ""}${locked(n, this.trackId, this.locks) ? " protected" : ""}`, x: this.x(n.startTick), y: 24 + (127 - n.pitch) * 14, width: Math.max(3, this.x(n.durationTicks) - 44), height: 13, rx: 2, "data-note": n.id });
@@ -430,6 +433,15 @@ export class NoteEditor {
       title.textContent = `${n.id}: pitch ${n.pitch}, tick ${n.startTick}, length ${n.durationTicks}, velocity ${n.velocity}`;
       r.append(title);
       s.append(r);
+      if (!locked(n, this.trackId, this.locks)) {
+        const width = Math.max(3, this.x(n.durationTicks) - 44), grip = Math.min(7, width);
+        const handle = svg("rect", { class: "editor-resize-handle", x: this.x(n.startTick) + width - grip, y: 24 + (127 - n.pitch) * 14, width: grip, height: 13, rx: 2, "data-resize-note": n.id });
+        const hint = svg("title", {});
+        hint.textContent = "Drag to resize; snaps the note end to the grid.";
+        handle.append(hint);
+        this.resizeHandles.set(n.id, handle);
+        s.append(handle);
+      }
     }
     if (box) s.append(svg("rect", { class: "marquee", x: Math.min(box.a.x, box.b.x), y: Math.min(box.a.y, box.b.y), width: Math.abs(box.a.x - box.b.x), height: Math.abs(box.a.y - box.b.y) }));
     this.cursor = svg("line", { class: "cursor", x1: this.x(this.position), x2: this.x(this.position), y1: 0, y2: height });
@@ -445,7 +457,7 @@ export class NoteEditor {
       const r = s.getBoundingClientRect();
       return { x: ev.clientX - r.left, y: ev.clientY - r.top };
     };
-    const a = point(e), id = e.target.getAttribute("data-note");
+    const a = point(e), handleId = e.target.getAttribute("data-resize-note"), id = handleId || e.target.getAttribute("data-note");
     if (a.y < 24) {
       this.onSeek(Math.max(0, snap((a.x - 44) / (48 * this.zoom) * this.view.timing.ppq, this.step)));
       return;
@@ -460,13 +472,16 @@ export class NoteEditor {
       if (!this.selected.has(id)) this.selected = /* @__PURE__ */ new Set([id]);
     }
     const originals = this.selection, initial = new Set(this.selected), n = this.notes.find((n2) => n2.id === id);
-    const resizing = n && a.x >= this.x(n.startTick + n.durationTicks) - 7;
+    const resizing = !!handleId;
     if (id && originals.some((n2) => locked(n2, this.trackId, this.locks))) {
       this.draw();
       this.say("Protected notes cannot be dragged. Unlock first.");
       return;
     }
     let result = null, moved = false;
+    const handle = resizing ? this.resizeHandles.get(id) : null;
+    s.classList.toggle("resizing", resizing);
+    handle?.classList.toggle("active", true);
     s.setPointerCapture(e.pointerId);
     const marquee = svg("rect", { class: "marquee", x: a.x, y: a.y, width: 0, height: 0 });
     s.append(marquee);
@@ -475,7 +490,8 @@ export class NoteEditor {
       moved ||= Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > 3;
       if (!moved) return;
       if (id) {
-        const dt = snap((b.x - a.x) / (48 * this.zoom) * this.view.timing.ppq, this.step);
+        const raw = (b.x - a.x) / (48 * this.zoom) * this.view.timing.ppq;
+        const dt = resizing ? snap(n.startTick + n.durationTicks + raw, this.step) - n.startTick - n.durationTicks : snap(raw, this.step);
         result = resizing ? resize(originals, dt) : move(originals, dt, Math.round((a.y - b.y) / 14));
         this.previewGeometry(result);
       } else {
@@ -497,7 +513,7 @@ export class NoteEditor {
       this.cancel();
       this.draw();
     };
-    this.gesture = { svg: s, move: motion, up, cancel };
+    this.gesture = { svg: s, handle, move: motion, up, cancel };
     s.addEventListener("pointermove", motion);
     s.addEventListener("pointerup", up);
     s.addEventListener("pointercancel", cancel);
@@ -509,6 +525,13 @@ export class NoteEditor {
         r.setAttribute("x", this.x(n.startTick));
         r.setAttribute("y", 24 + (127 - n.pitch) * 14);
         r.setAttribute("width", Math.max(3, this.x(n.durationTicks) - 44));
+        const handle = this.resizeHandles.get(n.id);
+        if (handle) {
+          const width = Math.max(3, this.x(n.durationTicks) - 44), grip = Math.min(7, width);
+          handle.setAttribute("x", this.x(n.startTick) + width - grip);
+          handle.setAttribute("y", 24 + (127 - n.pitch) * 14);
+          handle.setAttribute("width", grip);
+        }
       }
     }
   }

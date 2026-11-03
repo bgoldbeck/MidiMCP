@@ -60,12 +60,15 @@ try {
   state = await waitRevision(gesture.revision);
   await firstNote.scrollIntoViewIfNeeded();
   box = await firstNote.boundingBox();
+  const handle = page.locator(`[data-resize-note="${ids[0]}"]`);
   await page.mouse.move(box.x + box.width - 2, box.y + 6);
+  assert.equal(await handle.evaluate(el => getComputedStyle(el).cursor), "ew-resize");
+  assert.equal(await handle.evaluate(el => getComputedStyle(el).fillOpacity), "1");
   await page.mouse.down();
   await page.mouse.move(box.x + box.width + 10, box.y + 6, { steps: 4 });
   await page.mouse.up();
   gesture = await waitRevision(state.revision);
-  assert.deepEqual(gesture.score.tracks[0].notes.slice(0, 2).map(n => n.durationTicks), [1140, 1140]);
+  assert.deepEqual(gesture.score.tracks[0].notes.slice(0, 2).map(n => n.durationTicks), [1200, 1200]);
   await button("Undo").click();
   state = await waitRevision(gesture.revision);
 
