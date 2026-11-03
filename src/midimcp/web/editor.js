@@ -29,6 +29,8 @@ export class NoteEditor {
     this.generation = 0;
     this.allowExtension = false;
     this.message = "";
+    this.performanceSettings = { seed: 1, timingTicks: 8, velocityVariation: 4, breathTicks: 120, base: 96, peak: 112, swell: 8, vibratoDepth: 20 };
+    this.openGroups = new Set();
     container.classList.add("note-editor");
     container.tabIndex = 0;
     this.keyHandler = (e) => this.key(e);
@@ -205,6 +207,10 @@ export class NoteEditor {
     let tools;
     const group = (title, collapsed = false) => {
       const section = el(collapsed ? "details" : "fieldset", "", { class: "editor-group" });
+      if (collapsed) {
+        section.open = this.openGroups.has(title);
+        section.ontoggle = () => { if (section.open) this.openGroups.add(title); else this.openGroups.delete(title); };
+      }
       section.append(el(collapsed ? "summary" : "legend", title));
       tools = el("div", "", { class: "editor-tools" });
       section.append(tools);
@@ -317,6 +323,36 @@ export class NoteEditor {
     linkedRange("Loudness slider", velocity, 1, 127, 1);
     button("Set velocity", () => this.apply(this.selection.map((n) => ({ ...n, velocity: Math.max(1, Math.min(127, Math.round(+velocity.value) || 1)) }))));
     button("Delete selection", () => this.apply([], true));
+    group("Flute performance", true);
+    tools.append(el("span", "Shape phrases and held notes. This replaces expression in the chosen passage and adjusts note timing/lengths. Undo restores the previous performance.", { class: "hint" }));
+    const performanceFields = [
+      ["Seed", "seed", 0, 2147483647], ["Timing variation (ticks)", "timingTicks", 0, 240],
+      ["Velocity variation", "velocityVariation", 0, 30], ["Breath gap (ticks)", "breathTicks", 0, 1920],
+      ["Phrase start level", "base", 0, 127], ["Phrase peak level", "peak", 0, 127],
+      ["Held-note swell", "swell", 0, 40], ["Vibrato depth", "vibratoDepth", 0, 127],
+    ];
+    const settings = {};
+    for (const [label, key, min, max] of performanceFields) {
+      const input = field(label, this.performanceSettings[key]);
+      input.min = min; input.max = max; input.step = 1;
+      input.onchange = () => { this.performanceSettings[key] = Math.max(min, Math.min(max, Math.round(+input.value) || 0)); input.value = this.performanceSettings[key]; };
+      settings[key] = input;
+    }
+    const selectedPassage = field("Only selected passage", "", "checkbox");
+    button("Apply flute performance", () => {
+      const range = selectedPassage.checked ? bounds(this.selection) : null;
+      if (selectedPassage.checked && !range) return this.say("Select notes first.");
+      const values = {};
+      for (const [label, key, min, max] of performanceFields) {
+        const value = Number(settings[key].value);
+        if (!Number.isInteger(value) || value < min || value > max) return this.say(`${label} must be an integer from ${min} to ${max}.`);
+        values[key] = value;
+      }
+      this.performanceSettings = { ...values };
+      if (this.track?.sampler?.patchId === "vsco-flute-recorded") values.vibratoDepth = 0;
+      return this.mutate(r => this.api.applyPerformance(this.view.projectId, this.trackId, { expectedRevision: r, ...values, ...(range || {}) }));
+    });
+    tools.append(el("span", "Selected passage applies to the time range between the first and last selected notes, including other notes in that range. Recorded flute vibrato is baked in; its vibrato-depth setting is ignored. These samples have no recorded legato transitions.", { class: "hint" }));
     group("Add a note", true);
     const pitch = field("New note pitch", 60), tick = field("New note tick", 0), duration = field("New note length", this.step);
     pitch.min = 0;

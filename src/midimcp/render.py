@@ -11,21 +11,26 @@ render is 80% as long with unchanged pitch.
 
 from __future__ import annotations
 
+import array
 import hashlib
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import wave
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
+from dataclasses import replace as dataclass_replace
 from fractions import Fraction
 from pathlib import Path
 from typing import Final
 
 from midimcp.midi import export_midi_bytes
 from midimcp.model.score import Score
+from midimcp.sampler import SamplerError, SamplerRegistry
 from midimcp.soundbanks import SoundbankRegistry, sound_profile_issues
 from midimcp.store.files import canonical_json_bytes
 from midimcp.validation import Issue
@@ -119,6 +124,7 @@ class RenderResult:
     start_tick: int
     end_tick: int
     cached: bool
+    clipped_samples: int = 0
 
     @property
     def duration_seconds(self) -> float:
@@ -137,6 +143,7 @@ class RenderResult:
             "startTick": self.start_tick,
             "endTick": self.end_tick,
             "cached": self.cached,
+            "clippedSamples": self.clipped_samples,
         }
 
 
@@ -160,12 +167,16 @@ class Renderer:
         *,
         profile: RenderProfile = DEFAULT_RENDER_PROFILE,
         fluidsynth: str | None = None,
+        samplers: SamplerRegistry | None = None,
+        sfizz: str | None = None,
     ) -> None:
         self.registry = registry
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.profile = profile
         self.fluidsynth = fluidsynth or os.environ.get("MIDIMCP_FLUIDSYNTH", "fluidsynth")
+        self.samplers = samplers
+        self.sfizz = sfizz or os.environ.get("MIDIMCP_SFIZZ", "sfizz_render")
         self._version: str | None = None
         self._lock = threading.Lock()
 
@@ -183,14 +194,17 @@ class Renderer:
         return self._version
 
     def status(self) -> dict:
+        data = {"available": False, "profile": asdict(self.profile)}
         try:
-            return {
-                "available": True,
-                "engine": self.engine_version(),
-                "profile": asdict(self.profile),
-            }
+            data.update(available=True, engine=self.engine_version())
         except RenderError as exc:
-            return {"available": False, "error": str(exc), "profile": asdict(self.profile)}
+            data.update(engine=None, error=str(exc))
+        try:
+            data.update(samplerAvailable=True, samplerEngine=self.sampler_engine_identity())
+            data["available"] = True
+        except RenderError as exc:
+            data.update(samplerAvailable=False, samplerError=str(exc))
+        return data
 
     # --------------------------------------------------------------- render
 
@@ -214,6 +228,8 @@ class Renderer:
         end = total if end_tick is None else end_tick
         if not 0 <= start < end <= total:
             raise RenderError(f"render range must satisfy 0 <= start < end <= {total}")
+        if any(getattr(t, "sampler", None) for t in score.tracks):
+            return self._render_sampled(score, speed, start, end, include_muted, tail)
         issues = sound_profile_issues(score, self.registry)
         if issues:
             raise RenderBlocked("soundbank problems prevent rendering", issues)
@@ -231,6 +247,200 @@ class Renderer:
                 target, score, Path(bank.path), speed, start, end, include_muted, with_tail
             )
             return self._result(target, key, score, speed, start, end, cached=False)
+
+    def sampler_engine_identity(self) -> str:
+        """sfizz_render has no version flag: pin release + actual executable bytes."""
+        binary = shutil.which(self.sfizz)
+        if binary is None:
+            raise RenderUnavailable(f"sfizz executable {self.sfizz!r} not found")
+        with Path(binary).open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        return f"sfizz-1.2.3:{digest}:block256:quality8:poly256"
+
+    def _sampled_cache_key(self, score, sources, bank_sha, speed, start, end, muted, tail):
+        content = score.to_json_dict()
+        content.pop("revision", None)
+        content.pop("metadata", None)
+        payload = {
+            "score": content,
+            "sources": sources,
+            "bankSha256": bank_sha,
+            "profile": asdict(self.profile),
+            "samplerEngine": self.sampler_engine_identity() if sources else None,
+            "gmEngine": self.engine_version() if bank_sha else None,
+            "speed": repr(float(speed)),
+            "range": [start, end],
+            "includeMuted": muted,
+            "tail": tail,
+            "mixer": "aligned-s16-wide-saturate-v1",
+        }
+        return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()[:40]
+
+    def _render_sampled(self, score, speed, start, end, include_muted, tail):
+        audible = [t for t in score.tracks if t.notes and (include_muted or not t.mute)]
+        if not any(t.notes for t in audible):
+            raise RenderBlocked("nothing to render: no audible notes")
+        gm_tracks = [t for t in audible if not getattr(t, "sampler", None)]
+        sampled = [t for t in audible if getattr(t, "sampler", None)]
+        patches = {}
+        if sampled and self.samplers is None:
+            raise RenderUnavailable("sampler registry is unavailable")
+        try:
+            for track in sampled:
+                patches[track.id] = self.samplers.require(
+                    track.sampler.patch_id, track.sampler.patch_sha256
+                )
+        except SamplerError as exc:
+            raise RenderBlocked(str(exc)) from exc
+        bank = None
+        if gm_tracks:
+            gm_score = score.model_copy(update={"tracks": gm_tracks})
+            issues = sound_profile_issues(gm_score, self.registry)
+            if issues:
+                raise RenderBlocked("soundbank problems prevent rendering", issues)
+            bank = self.registry.require(
+                score.sound_profile.bank_id, score.sound_profile.bank_sha256
+            )
+        with_tail = (end == score.timeline.total_ticks) if tail is None else tail
+        key = self._sampled_cache_key(
+            score,
+            {k: p.sha256 for k, p in patches.items()},
+            bank.sha256 if bank else None,
+            speed,
+            start,
+            end,
+            include_muted,
+            with_tail,
+        )
+        target = self.cache_dir / f"{key}.wav"
+        clipping_path = target.with_suffix(".clipping.json")
+        with self._lock:
+            cached = target.is_file()
+            if not cached:
+                with tempfile.TemporaryDirectory(dir=self.cache_dir, prefix=".stems-") as work:
+                    stems = []
+                    if bank is not None:
+                        path = Path(work) / "gm.wav"
+                        self._render_to(
+                            path,
+                            gm_score,
+                            Path(bank.path),
+                            speed,
+                            0,
+                            score.timeline.total_ticks,
+                            True,
+                            True,
+                        )
+                        stems.append(path)
+                    for index, track in enumerate(sampled):
+                        path = Path(work) / f"sample-{index}.wav"
+                        # One patch / track / process: the sfizz CLI ignores channels/programs.
+                        stem_score = score.model_copy(update={"tracks": [track]})
+                        self._render_sample(path, stem_score, patches[track.id], speed)
+                        stems.append(path)
+                    first = tick_to_frame(start, score, speed, self.profile.sample_rate)
+                    last = tick_to_frame(end, score, speed, self.profile.sample_rate)
+                    if with_tail:
+                        last += round(self.profile.tail_seconds * self.profile.sample_rate)
+                    output = Path(work) / "mix.wav"
+                    clipped = self._mix_stems(stems, output, first=first, frames=last - first)
+                    clipping_path.write_text(json.dumps({"clippedSamples": clipped}))
+                    os.replace(output, target)
+            result = self._result(target, key, score, speed, start, end, cached=cached)
+            clipped = (
+                json.loads(clipping_path.read_text())["clippedSamples"]
+                if clipping_path.exists()
+                else 0
+            )
+            return dataclass_replace(result, clipped_samples=clipped)
+
+    def _render_sample(self, target, score, patch, speed):
+        binary = shutil.which(self.sfizz)
+        if binary is None:
+            raise RenderUnavailable(f"sfizz executable {self.sfizz!r} not found")
+        scaled = score.model_copy(
+            update={
+                "timeline": score.timeline.model_copy(
+                    update={
+                        "tempo_us_per_quarter": max(
+                            1, round(score.timeline.tempo_us_per_quarter / speed)
+                        )
+                    }
+                )
+            }
+        )
+        tail_ticks = round(
+            self.profile.tail_seconds
+            * 1_000_000
+            * score.timeline.ppq
+            / scaled.timeline.tempo_us_per_quarter
+        )
+        midi_path = target.with_suffix(".mid")
+        midi_path.write_bytes(export_midi_bytes(scaled, include_muted=True, tail_ticks=tail_ticks))
+        command = [
+            binary,
+            "--sfz",
+            str(patch.path.resolve()),
+            "--midi",
+            str(midi_path.resolve()),
+            "--wav",
+            str(target.resolve()),
+            "--samplerate",
+            str(self.profile.sample_rate),
+            "--blocksize",
+            "256",
+            "--quality",
+            "8",
+            "--polyphony",
+            "256",
+            "--use-eot",
+        ]
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=RENDER_TIMEOUT_SECONDS, check=False
+        )
+        if completed.returncode or not target.is_file():
+            detail = (completed.stderr or completed.stdout).strip()[-500:]
+            raise RenderError(f"sfizz failed (exit {completed.returncode}): {detail}")
+
+    def _mix_stems(self, stems, dest, *, first, frames):
+        """Bounded-memory wide integer sum, one final saturation; short stems pad with zero.
+
+        Synths apply MIDI gain/pan/CC once; the mixer applies neither again.
+        """
+        readers = []
+        clipped = 0
+        with ExitStack() as stack:
+            for path in stems:
+                reader = stack.enter_context(wave.open(str(path), "rb"))
+                readers.append(reader)
+                if (reader.getframerate(), reader.getnchannels(), reader.getsampwidth()) != (
+                    self.profile.sample_rate,
+                    2,
+                    2,
+                ):
+                    raise RenderError(
+                        "stem must be stereo signed 16-bit PCM at profile sample rate"
+                    )
+                reader.setpos(min(first, reader.getnframes()))
+            with wave.open(str(dest), "wb") as writer:
+                writer.setparams((2, 2, self.profile.sample_rate, 0, "NONE", "not compressed"))
+                remaining = frames
+                while remaining:
+                    count = min(remaining, 8192)
+                    mixed = [0] * (count * 2)
+                    for reader in readers:
+                        samples = array.array("h", reader.readframes(count))
+                        if sys.byteorder != "little":
+                            samples.byteswap()
+                        for index, value in enumerate(samples):
+                            mixed[index] += value
+                    clipped += sum(value < -32768 or value > 32767 for value in mixed)
+                    output = array.array("h", (max(-32768, min(32767, value)) for value in mixed))
+                    if sys.byteorder != "little":
+                        output.byteswap()
+                    writer.writeframes(output.tobytes())
+                    remaining -= count
+        return clipped
 
     def _cache_key(
         self,

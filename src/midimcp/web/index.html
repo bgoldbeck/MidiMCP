@@ -139,8 +139,9 @@
             <span class="hint">changes are saved as new revisions</span>
           </div>
           <p id="allowed-instruments" class="hint" hidden></p>
+          <p class="hint">Libraries have different playing dynamics and levels. After changing a sound source, balance its track volume against the other instruments.</p>
           <table class="tracks">
-            <thead><tr><th>Track</th><th>Instrument</th><th>Volume</th><th>Mute</th><th>Notes</th><th>Default</th></tr></thead>
+            <thead><tr><th>Track</th><th>Sound source / instrument</th><th>Volume</th><th>Mute</th><th>Notes</th><th>Default</th></tr></thead>
             <tbody id="track-rows"></tbody>
           </table>
         </section>
@@ -161,6 +162,7 @@
 
         <section class="card" aria-label="Download">
           <div class="section-head"><h3>Download</h3><span class="hint">each button saves the current version to your computer; a copy stays on the NAS</span></div>
+          <p class="hint">WAV and MP3 preserve sampled instruments. MIDI uses each track's General MIDI fallback; project JSON remembers the sampled source but does not include its samples.</p>
           <div class="buttons">
             <button class="secondary" data-export="midi">⬇ MIDI (.mid)</button>
             <button class="secondary" data-export="wav">⬇ WAV audio</button>

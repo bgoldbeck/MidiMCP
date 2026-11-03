@@ -1,0 +1,75 @@
+{
+  "upstream": "https://github.com/sgossner/VSCO-2-CE",
+  "revision": "28092772094b2d9f1148d84cea97f4545b8c687d",
+  "release": "1.1.0",
+  "license": "CC0-1.0",
+  "patches": [
+    {
+      "id": "vsco-flute-controlled",
+      "name": "Sampled flute (controllable vibrato)",
+      "path": "vsco-flute-controlled.sfz",
+      "files": {
+        "FluteSusNV.sfz": "0c3e15abe738778c38f93aa69e1d994e3b6e32b68ab7977b9138c4e079f99661",
+        "LICENSE": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A3_v1_1.wav": "6fc8d707afddfaaf3003551b95a83b52f514adbe488bfea1c8c5250080a07278",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A3_v3_1.wav": "8a24758e25e1b6036fc8ca55cdff129d18d70b0719cdb63f6eb6dc756b41cfc7",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A4_v1_1.wav": "c8fd15bb561dbdac6d35ffd9c5e49413131d96f8948d5bdf03d4a03fa344c5c0",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A4_v3_1.wav": "9958014f58a16b5b28b8a8b3afe2e28a9f5af5b68c9bc9057ea2cbdfcadbf4df",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A5_v1_1.wav": "d35c9b6cc3fa887cb93042b901ddaa6a05c72eb9040bd125d82a0940366f9022",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_A5_v3_1.wav": "36f09bd6d712c9c55d4e32e15bca12966f0dc96206973c8aa25088036f662513",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C3_v1_1.wav": "4f221909317e257e4d0bc49f10479643c80cb213a0486455c1bdc1d6ed13a450",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C3_v3_1.wav": "8e0549fb44827c7379b74bba4d8402671c863e483cc1ea85a73407ce27ca3bd6",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C4_v1_1.wav": "105a6dbced98de7ae04a317bdd3ba1a5c6b90dc94034439b68cce6635e2781df",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C4_v3_1.wav": "9e09ce606f8fe31c8dd071c717de54d40c38029e3c2e947500defac474e8cd7d",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C5_v1_1.wav": "46a335b804c9b2f081efa8e6c695f155d05b3700c69bf73950cc9cb40ed53d41",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C5_v2_1.wav": "7c9414267bade75f432e38aa893edea9fb7146b5b1b3e0ae1f97a475fa89db0f",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_C6_v1_1.wav": "0d1c902873564fac780ded78ce54788745bc81b0b3113b311169cfee9fdf9357",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E3_v1_1.wav": "87c667c2af888ed86dff87f2452248de3e3d958fc93848a4426b7c16f85f09da",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E3_v3_1.wav": "3226ecd95142e09f1c1b6db0834265da845ea0ce48ea2570131c558eb8ad8f66",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E4_v1_1.wav": "b609d37fb577e2a0f64f20800fba4bed067151375349bf713c0d4e803f862580",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E4_v3_1.wav": "670c72afcd4d437236f0a9f33a532c46fd56145615aad775eb7aab1c5ab6c24d",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E5_v1_1.wav": "660df172b551dfd7859dade283cb1e8dd6eac8095ccaabb5b19416caaacdef87",
+        "Woodwinds/Flute/susNV/LDFlute_susNV_E5_v2_1.wav": "c9617b571d5a40e70b1a1c93120e6ab37691c98902ce319b0a8ca50705858594",
+        "vsco-flute-controlled.sfz": "84d0ea95ccd69961aa7e232c8ca5cbffba07f921c1104134b2447d9b4a65022c"
+      },
+      "controllers": {
+        "expression": "CC11",
+        "vibrato": "CC1 delayed 5.2 Hz, 0\u201335 cents",
+        "pitchBend": "\u00b12 semitones"
+      },
+      "description": "VSCO 2 CE 1.1.0 CC0 flute, MIDI notes 60\u201396. No recorded legato transitions. Non-vibrato sustain with delayed CC1 vibrato.",
+      "sourceTrimDb": 3
+    },
+    {
+      "id": "vsco-flute-recorded",
+      "name": "Sampled flute (recorded vibrato)",
+      "path": "vsco-flute-recorded.sfz",
+      "files": {
+        "FluteExpVib.sfz": "b0956b3d25498ef9083541999da408f569758d0dbd5f8b759639423334ba36f3",
+        "LICENSE": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_A3_v1_1.wav": "6f7566797c5ac37172189ab375d28f0068232b74f5611e16da217055d3da6420",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_A4_v1_1.wav": "25f416f625f0acbf427c377f67bba01e68c514d4ea980557bc2884812f7c57f2",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_A5_v1_1.wav": "27e56b5ac3b89be1deafe50c1644d9a9a947c62b959177820b50cc90c04b1325",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C3_v1_1.wav": "5fde88f6ce3994f8a5c3b38d2c31e3245f2fcd563d6334e598d38bb9d6004af6",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C4_v1_1.wav": "af29be391cd3de946c8ff263a05f349a3c85e7298deed183339004a2ab1cad26",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C5_v1_1.wav": "7f85ac8b21270bacf48d37e39b0c59ad25b3710bf270150940a948369f30028a",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C5_v1_2.wav": "c8d40e82530911eb847ca6712e6d26c86403c8c5c76dadcb06d927b42661dba6",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C6_v1_1.wav": "fdf1cab7e2e6cc7fc088fdbc77d735638fc3a314f4fcb9ccd1bfb7bcf064040c",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_C6_v1_2.wav": "b195772efe2e4e97d175993fd9052f8113c6215425b5ba4806600557bf0cca3e",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_E3_v1_1.wav": "ceea6c5a734afa7764172191c34369f8266036acf58410cba066ae73554b7b3c",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_E3_v1_2.wav": "4d6745cd8186c360f34e2e5a4ad9ecfd1680ffe97bf084a9d4dac1badb49e407",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_E4_v1_1.wav": "76ddf8704b6725b0f601fd70394503a5f2dd767881a0a70e6fd90315d3d96757",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_E5_v1_1.wav": "98bb4ad4eb81f1d73ccc794622e8045ec618eccf331d71f95520b6e51c379189",
+        "Woodwinds/Flute/expvib/LDFlute_expvib_E5_v1_2.wav": "b08170ecbeec7801f43fca54d04fafb004f4422ed0daca3face2edc9265c3942",
+        "vsco-flute-recorded.sfz": "3625876892616fefa918a7cc21da053db1a3f5b4e232a37a77305e1510722878"
+      },
+      "controllers": {
+        "expression": "CC11",
+        "vibrato": "baked into recording; CC1 does not remove it",
+        "pitchBend": "\u00b12 semitones"
+      },
+      "description": "VSCO 2 CE 1.1.0 CC0 flute, MIDI notes 60\u201396. No recorded legato transitions. Expressive sustain with recorded vibrato.",
+      "sourceTrimDb": 8
+    }
+  ]
+}

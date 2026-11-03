@@ -521,6 +521,7 @@ def test_track_defaults_and_reset(service: CompositionService) -> None:
         "gainDb": -5.0,
         "pan": 0.0,
         "mute": False,
+        "sampler": None,
     }
     # Instrument only: volume and mute stay as edited.
     rev = service.reset_track(

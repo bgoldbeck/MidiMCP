@@ -29,6 +29,8 @@ Store: tonic pitch class (0–11), mode ID, requested spelling, practical displa
 
 ## Document shape (schema 1.1.0)
 
+The current schema is **1.2.0**; 1.0/1.1 documents still load. Schema 1.2 adds optional per-track `sampler` bindings: `{"patchId":"vsco-flute-controlled","patchSha256":"<64 lowercase hex characters>"}`. Null uses the project GM bank. A non-null binding pins all patch/sample content while `instrumentId` remains the MIDI fallback. Older MidiMCP versions cannot load sampler-enabled scores. The example below remains a valid legacy 1.1 document.
+
 ```json
 {
   "schemaVersion": "1.1.0",

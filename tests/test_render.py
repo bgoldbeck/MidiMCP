@@ -83,10 +83,30 @@ def test_argument_checks(fake_registry: SoundbankRegistry, tmp_path: Path, score
 
 
 def test_missing_engine(fake_registry: SoundbankRegistry, tmp_path: Path, score: Score) -> None:
-    renderer = Renderer(fake_registry, tmp_path / "r", fluidsynth="no-such-fluidsynth-binary")
+    renderer = Renderer(
+        fake_registry,
+        tmp_path / "r",
+        fluidsynth="no-such-fluidsynth-binary",
+        sfizz="no-such-sfizz-binary",
+    )
     with pytest.raises(RenderUnavailable):
         renderer.render(score)
     assert renderer.status()["available"] is False
+
+
+def test_sampler_only_status_is_available(fake_registry, tmp_path, monkeypatch):
+    renderer = Renderer(fake_registry, tmp_path / "r")
+
+    def missing_fluidsynth():
+        raise RenderUnavailable("FluidSynth unavailable")
+
+    monkeypatch.setattr(renderer, "engine_version", missing_fluidsynth)
+    monkeypatch.setattr(renderer, "sampler_engine_identity", lambda: "test-sfizz")
+    status = renderer.status()
+    assert status["available"] is True
+    assert status["engine"] is None
+    assert status["samplerAvailable"] is True
+    assert status["samplerEngine"] == "test-sfizz"
 
 
 @needs_fluidsynth

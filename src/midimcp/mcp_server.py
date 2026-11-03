@@ -26,28 +26,34 @@ from midimcp.mcp_schema import make_tools_portable, portable_schema
 from midimcp.midi import MidiExportError
 from midimcp.model.brief import Brief
 from midimcp.model.schema import brief_json_schema, score_json_schema
-from midimcp.model.score import Score
+from midimcp.model.score import SamplerBinding, Score
 from midimcp.music.expression import ExpressionSettings, HumanizeSettings
 from midimcp.music.theory import TheoryError
 from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
-from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError, sound_profile_issues
+from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError
 from midimcp.store.errors import StoreError
 from midimcp.validation import MAX_DURATION_SECONDS, MAX_NOTES, MAX_TRACKS, validate_score
 from midimcp.views import export_project as export_project_files
-from midimcp.views import timing
+from midimcp.views import source_issues, timing
 
 INSTRUCTIONS = """\
-MidiMCP composes original 1990s General-MIDI-style fantasy RPG music. Read the
+MidiMCP composes original fantasy/RPG music using General MIDI or sampled flute. Read the
 resource midimcp://guide first. Workflow: list_templates -> create_project with
 template_id (gives tracks, sections and a chord chart) -> replace_notes (by bar
 range, following the chords) -> humanize_notes + shape_expression on the melody
 (so it sounds played, not typed) -> validate_project -> render_preview. Every
 mutation needs expected_revision (the latest revision you received). Locked
 material is protected: never try to bypass LOCKED errors.
+For natural flute, optionally list_sampler_patches -> update_track with a sampler
+binding (patchId + patchSha256) -> apply_performance -> validate_project -> render_preview.
+The GM instrument remains the portable MIDI fallback. Omit sampler to preserve it;
+explicit null returns the sound source to the project GM bank.
 """
 
 F = TypeVar("F", bound=Callable[..., Any])
+_UNSET = object()
+_OMITTED_SAMPLER = Field(default_factory=lambda: _UNSET)
 
 
 class NoteIn(BaseModel):
@@ -525,13 +531,16 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         pan: float | None = None,
         mute: bool | None = None,
         operation_id: str | None = None,
+        sampler: SamplerBinding | None = _OMITTED_SAMPLER,
     ) -> dict[str, Any]:
-        """Change a track's name, instrument, gain, pan or mute. Notes are unchanged."""
+        """Change track properties. Omit sampler to preserve; null selects the project GM bank."""
         changes: dict[str, Any] = {
             k: v
             for k, v in {"name": name, "gain_db": gain_db, "pan": pan, "mute": mute}.items()
             if v is not None
         }
+        if sampler is not _UNSET:
+            changes["sampler"] = sampler.model_dump() if sampler is not None else None
         if instrument_id is not None:
             from midimcp.instruments import resolve_instrument
 
@@ -543,6 +552,49 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             expected_revision=expected_revision,
             track_id=track_id,
             changes=changes,
+            author="agent",
+            operation_id=operation_id,
+        ).to_dict()
+
+    @server.tool()
+    @_tool_errors
+    def list_sampler_patches() -> dict[str, Any]:
+        """List allowlisted sampled sources, checksums, availability and controller support."""
+        return {"patches": ctx.samplers.list_patches()}
+
+    @server.tool()
+    @_tool_errors
+    def apply_performance(
+        project_id: str,
+        expected_revision: int,
+        track_id: str,
+        start_tick: int = 0,
+        end_tick: int | None = None,
+        seed: int = 1,
+        timing_ticks: int = 8,
+        velocity_variation: int = 4,
+        breath_ticks: int = 120,
+        base: int = 96,
+        peak: int = 112,
+        swell: int = 8,
+        vibrato_depth: int = 20,
+        operation_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Apply seeded humanization and expression atomically; default is the full track."""
+        return service.apply_performance(
+            project_id,
+            expected_revision=expected_revision,
+            track_id=track_id,
+            start_tick=start_tick,
+            end_tick=end_tick,
+            seed=seed,
+            timing_ticks=timing_ticks,
+            velocity_variation=velocity_variation,
+            breath_ticks=breath_ticks,
+            base=base,
+            peak=peak,
+            swell=swell,
+            vibrato_depth=vibrato_depth,
             author="agent",
             operation_id=operation_id,
         ).to_dict()
@@ -807,7 +859,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         """Errors (must fix), warnings (musical advice), summary, and soundbank checks."""
         snap = service.get_project(project_id)
         report = validate_score(snap.score, snap.brief, strict=strict)
-        report.issues += sound_profile_issues(snap.score, ctx.registry)
+        report.issues += source_issues(ctx, snap.score)
         return {"projectId": project_id, "revision": snap.revision, **report.to_dict()}
 
     @server.tool()

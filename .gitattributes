@@ -1,3 +1,5 @@
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
 *.sh text eol=lf
+# These bytes are checksum-pinned for native Windows and Linux provisioning.
+*.sfz text eol=lf

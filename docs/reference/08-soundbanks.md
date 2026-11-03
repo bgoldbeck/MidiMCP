@@ -36,3 +36,11 @@ FluidR3 is a clean general-purpose GM bank, not a vintage sound-card capture. It
 - Every bank is identified by ID + SHA-256 of its bytes (hash cached by size/mtime).
 - A project pins `soundProfile.bankId` (+ `bankSha256`). If the file is missing (`BANK_UNAVAILABLE`), unknown (`BANK_NOT_FOUND`) or changed (`BANK_CHECKSUM_MISMATCH`), rendering stops with an explicit error. It never silently substitutes another bank.
 - Every instrument a score uses must exist as a preset (bank/program) in the bank, otherwise the result is `PRESET_MISSING`. FluidSynth's own fallback-to-piano is never relied on.
+
+## Per-track sampled flute (`midimcp.sampler`)
+
+Schema 1.2 adds an optional `sampler: {patchId, patchSha256}` track property. Null uses the project GM bank; the GM `instrumentId` remains the portable MIDI fallback when a sampler is selected. Changing that fallback does not clear the sampler. Source reset is explicit. WAV/MP3 keep the sampled sound; native JSON pins the source and never embeds sample bytes.
+
+The two allowlisted patches are `vsco-flute-controlled` and `vsco-flute-recorded`, from VSCO Community Edition 1.1.0 (CC0). Definitions, source revision, full dependency checksums, controller mapping and licensing live in `src/midimcp/sampler_assets/`. The controlled patch supports delayed CC1 vibrato; the recorded patch has vibrato baked in. Both support CC11 expression and pitches 60–96, without recorded legato transitions.
+
+The container builds a pinned sfizz offline renderer and verifies the sample subset during image creation. Native installs use `scripts/provision-samplers.py`; playback never downloads samples. Every render checks wrapper/include/sample hashes and rejects missing or changed dependencies. Each sampled track renders separately and mixes with the GM stem. Sample-only songs need no SF2 bank. Cache identity includes engines, settings, complete source hashes and mixer version; render/export metadata reports mixer clipping. See `src/midimcp/sampler_assets/PROVENANCE.md` for details and limits.

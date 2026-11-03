@@ -10,8 +10,9 @@ from midimcp.encode import DEFAULT_MP3_BITRATE, MP3_BITRATES, encode_mp3
 from midimcp.midi import export_midi_bytes
 from midimcp.model.score import Score
 from midimcp.music.timing import tempo_us_to_bpm, ticks_per_bar, ticks_to_seconds
+from midimcp.sampler import SamplerError
 from midimcp.soundbanks import sound_profile_issues
-from midimcp.validation import validate_score
+from midimcp.validation import Issue, Severity, validate_score
 
 if TYPE_CHECKING:
     from midimcp.context import AppContext
@@ -41,6 +42,23 @@ def timing(score: Score) -> dict[str, Any]:
     }
 
 
+def source_issues(ctx: AppContext, score: Score) -> list[Issue]:
+    """Check assets needed by the audible notes, retaining GM only as MIDI fallback."""
+    audible = [track for track in score.tracks if not track.mute and track.notes]
+    gm = [track for track in audible if track.sampler is None]
+    issues = (
+        sound_profile_issues(score.model_copy(update={"tracks": gm}), ctx.registry) if gm else []
+    )
+    for track in audible:
+        if track.sampler is None:
+            continue
+        try:
+            ctx.samplers.require(track.sampler.patch_id, track.sampler.patch_sha256)
+        except SamplerError as exc:
+            issues.append(Issue(exc.code, Severity.ERROR, str(exc), track_id=track.id))
+    return issues
+
+
 def project_view(ctx: AppContext, project_id: str, revision: int | None = None) -> dict[str, Any]:
     """Everything the UI needs to show one project."""
     snap = (
@@ -49,7 +67,7 @@ def project_view(ctx: AppContext, project_id: str, revision: int | None = None) 
         else ctx.store.load(project_id)
     )
     report = validate_score(snap.score, snap.brief)
-    report.issues += sound_profile_issues(snap.score, ctx.registry)
+    report.issues += source_issues(ctx, snap.score)
     return {
         "projectId": project_id,
         "revision": snap.revision,
@@ -106,7 +124,30 @@ def export_project(
                 title=snap.score.metadata.title,
                 comment=f"revision {snap.revision}",
             )
-    return export_entry(project_id, path, revision=snap.revision, fmt=fmt)
+    entry = export_entry(project_id, path, revision=snap.revision, fmt=fmt)
+    if fmt in {"wav", "mp3"}:
+        entry["clippedSamples"] = result.clipped_samples
+        if result.clipped_samples > 0:
+            entry["warnings"] = [
+                {
+                    "code": "AUDIO_CLIPPING",
+                    "message": (
+                        f"{result.clipped_samples} PCM samples clipped during audio rendering. "
+                        "Lower track gains and export again."
+                    ),
+                }
+            ]
+    if fmt == "midi" and any(track.sampler for track in snap.score.tracks):
+        entry["warnings"] = [
+            {
+                "code": "SAMPLER_GM_FALLBACK",
+                "message": (
+                    "MIDI uses each track's General MIDI instrument fallback; "
+                    "sampled sound is retained in WAV/MP3 exports."
+                ),
+            }
+        ]
+    return entry
 
 
 def export_entry(

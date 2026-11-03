@@ -49,12 +49,13 @@ Second change: the **composition service** (single mutation authority with locks
 | 24 | ✅ MP3 export | `feature/mp3-export` | MP3 download (LAME, 128-320 kbps, ID3 title tags) from the web UI, web API and MCP |
 | 25 | ✅ Expression + humanize + style templates | `feature/expression-and-humanize` | Score schema 1.1.0 automation (CC11 expression, CC1 vibrato, pitch bend) with MIDI export/import and lock protection; MCP `humanize_notes` (seeded), `shape_expression`, `set_automation`; `MECHANICAL_MELODY` advisory; 9 `old-realm-*` templates (late-90s online fantasy RPG spirit: title/login, town, forest, sailing, dungeon, battle, castle, shrine, wilderness) and 12 `retro-*` game-era templates; per-template expression guidance; help page section |
 | 26 | ✅ Favorites + collections | `feature/favorites-and-collections` | Star songs, user-made collections (create/rename/delete, multi-membership), library filter chips and sorting, `collections.json` outside song revisions, live updates, MCP `list_collections` / `add_to_collection` |
+| 27 | ✅ Natural sampled flute | `main` (current checkout) | Per-track sfizz/GM source selection, pinned licensed VSCO flute patches, atomic performance controls, portable MIDI fallback, mixed rendering and clipping reports; native/browser and Linux mixed-render/determinism checks passed |
 
 ## Phase 4 — Editing depth and quality
 
 | # | Feature | Branch | Delivers |
 |---|---|---|---|
-| 16 | ✅ Piano roll + locks UI (implemented locally; deployment pending) | `feature/piano-roll-note-editor-and-lock-ranges` | Click/Shift/marquee selection, group move/resize, velocity, snap/zoom, phrase sliders, length/time scaling with atomic timeline extension, selection audition/saved loop, revision-safe undo/redo, track/range protection, exact AI selection prompts |
+| 16 | ✅ Piano roll + locks UI | `feature/piano-roll-note-editor-and-lock-ranges` | Click/Shift/marquee selection, group move/resize, velocity, snap/zoom, phrase sliders, length/time scaling with atomic timeline extension, selection audition/saved loop, revision-safe undo/redo, track/range protection, exact AI selection prompts; highlighted note-end grip with absolute grid snapping added in `5654827` |
 | 17 | ✅ Composition templates + theory advisories | `feature/rpg-composition-templates-and-theory-advisories` | Town/forest/crypt/tavern/sea/borderlands templates that scaffold tracks, roles, ranges, form and chord chart; range/breath/leap/masking/dynamics/repetition advisories (example songs deferred) |
 | 18 | ⬜ Connections page + diagnostics | `feature/connections-page-and-diagnostics` | Per-host setup, health, last MCP call, missing-bank diagnostics, user SoundFont upload |
 | 19 | ⬜ TrueNAS hardening | `feature/truenas-app-hardening-and-backups` | Upgrade/migration path, snapshot-friendly backups, resource limits, fresh-install test |

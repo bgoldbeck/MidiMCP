@@ -1,4 +1,4 @@
-"""Canonical score document (schema 1.1.0; 1.0.0 documents load unchanged).
+"""Canonical score document (schema 1.2.0; 1.0/1.1 documents load unchanged).
 
 The score is the project's source of truth. Field names serialize as camelCase
 to match ``docs/reference/03-score-format.md``. Models enforce per-field
@@ -17,9 +17,9 @@ from pydantic.alias_generators import to_camel
 
 from midimcp.music.theory import MODES, normalize_mode, parse_note_name
 
-# 1.1.0 added per-track ``automation`` (expression / vibrato / pitch-bend curves).
-SCORE_SCHEMA_VERSION: Final = "1.1.0"
-SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({"1.0.0", SCORE_SCHEMA_VERSION})
+# 1.1.0 added automation; 1.2.0 adds pinned per-track sampler bindings.
+SCORE_SCHEMA_VERSION: Final = "1.2.0"
+SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({"1.0.0", "1.1.0", SCORE_SCHEMA_VERSION})
 
 ID_PATTERN: Final = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 TRACK_ROLES: Final = (
@@ -122,6 +122,13 @@ LANE_FIELDS: Final = {
 }
 
 
+class SamplerBinding(ScoreModel):
+    """Allowlisted sampled source pinned to the complete patch content."""
+
+    patch_id: Identifier
+    patch_sha256: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+
+
 class Track(ScoreModel):
     id: Identifier
     name: Annotated[str, Field(min_length=1, max_length=100)]
@@ -133,6 +140,7 @@ class Track(ScoreModel):
     role: Literal[TRACK_ROLES] | None = None  # type: ignore[valid-type]
     notes: list[Note] = Field(default_factory=list)
     automation: Automation = Field(default_factory=Automation)
+    sampler: SamplerBinding | None = None
 
 
 class Meter(ScoreModel):

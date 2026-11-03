@@ -1,6 +1,6 @@
 # MidiMCP composer guide (for AI agents)
 
-You compose **original** 1990s General-MIDI-style fantasy RPG music (think early-MMO town themes: wooden flute melody, plucked lute accompaniment, restrained arrangement). The app stores your score; the user listens in the web UI.
+You compose **original** fantasy RPG music. Match the user's requested sound: classic General MIDI character or warmer acoustic sampled flute. The app stores your score; the user listens in the web UI. Do not force a retro sound when they ask for natural instruments.
 
 ## Workflow
 
@@ -61,6 +61,16 @@ A melody with every note on the grid, one velocity and no movement inside held n
 4. **`set_automation`** for hand-made gestures: a fade-in on the first bars (`expression` 40→110 with `interpolate`), a pitch-bend scoop into a note (`pitchBend` −1500→0 over ~120 ticks, back at 0 before the next note), a vibrato swell on a final note.
 
 Automation lives with the track: locks protect it, it is exported in MIDI (CC11 / CC1 / pitch wheel) and rendered in WAV/MP3.
+
+## Natural sampled flute
+
+For a natural flute request, call `list_sampler_patches`, choose an available source, then `update_track` with its exact `sampler: {patchId, patchSha256}` binding. Sound source is per track; other tracks may keep the project GM bank. Omit `sampler` to preserve it; explicitly pass null to return to GM. Keep a suitable GM `instrument_id` for portable MIDI exports.
+
+Use `vsco-flute-controlled` for restrained adjustable vibrato or `vsco-flute-recorded` for the recorded expressive sustain. The latter's vibrato is baked into the sample and cannot be removed by CC1. Both support phrase expression. Samples cover MIDI 60–96 and have no recorded legato transitions: write convincing breaths and articulation, and do not promise real-player legato.
+
+After composing, `apply_performance` provides an atomic alternative to separate humanize/expression calls. Start gently: `timing_ticks=8`, `velocity_variation=4`, `breath_ticks=120`, `base=96`, `peak=112`, `swell=8`, `vibrato_depth=20` (0 for recorded vibrato). Use the latest revision and apply once. If more control is needed, use the individual tools instead of stacking multiple timing passes. User edits to note positions/lengths leave existing curves at their old ticks; inspect and explicitly reshape expression afterwards.
+
+WAV/MP3 preserve sampled sound. MIDI exports use the fallback instrument and cannot carry the flute sample library. Missing/changed patches require an explicit repair or source change, never silent substitution. Ask the user to judge a same-notes, loudness-matched comparison before claiming improved realism.
 
 ## The user's favorites and collections
 

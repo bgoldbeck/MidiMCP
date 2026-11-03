@@ -74,6 +74,10 @@ export class Api {
     const q = search ? `?search=${encodeURIComponent(search)}` : "";
     return this.request("GET", `/api/instruments${q}`);
   }
+  samplerPatches() { return this.request("GET", "/api/sampler-patches"); }
+  applyPerformance(id, trackId, body) {
+    return this.request("POST", `/api/projects/${encodeURIComponent(id)}/tracks/${encodeURIComponent(trackId)}/performance`, body);
+  }
   updateTrack(id, trackId, changes) {
     return this.request(
       "PATCH",

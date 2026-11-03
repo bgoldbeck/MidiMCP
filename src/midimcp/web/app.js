@@ -5,6 +5,7 @@ import { Player, SPEEDS, formatTime } from "./player.js";
 import { copyText, flashCopyResult } from "./clipboard.js";
 import { setupTemplates } from "./templates-view.js";
 import { NoteEditor } from "./editor.js";
+import { sourceOptions, samplerBinding } from "./sampler-view.js";
 
 const $ = (id) => document.getElementById(id);
 const COLORS = ["#d9a441", "#8fbf6a", "#6aa6d9", "#d97a6a", "#b48ad9", "#6ad9c4", "#d9d06a", "#d96ab0"];
@@ -19,6 +20,7 @@ const state = {
   projects: [],
   view: null,
   instruments: [],
+  patches: [],
   pendingUpdate: null,
   socket: null,
   ownRevisions: new Set(), // revisions this page created; their events are not "news"
@@ -471,6 +473,15 @@ function renderTracks(view) {
       onchange: (e) => changeInstrument(track, e.target.value, allowed),
     });
     instrumentSelect.append(...instrumentOptions(track, allowed));
+    const sourceSelect = el("select", {
+      disabled: wholeLock || track.isPercussion,
+      "aria-label": `Sound source for ${track.name}`,
+      onchange: e => {
+        try { saveTrack(track.id, {sampler:samplerBinding(e.target.value,state.patches)}); }
+        catch (error) { showError(error); renderTracks(state.view); }
+      },
+    }, sourceOptions(track,state.patches).map(o => el("option", {value:o.value,text:o.label,selected:o.selected,disabled:o.disabled})));
+    const patch = state.patches.find(p => p.id === track.sampler?.patchId);
     const db = el("span", { class: "db", text: `${track.gainDb} dB` });
     const volume = el("input", {
       type: "range", min: -30, max: 6, step: 1, value: track.gainDb, disabled: wholeLock,
@@ -489,7 +500,10 @@ function renderTracks(view) {
         track.name,
         track.role ? el("span", { class: "role", text: track.role }) : null,
         locks.has(track.id) ? el("span", { class: "lock", text: `🔒 ${locks.get(track.id)}` }) : null),
-      el("td", {}, instrumentSelect, resetButton(track, "instrument", wholeLock)),
+      el("td", {class:"track-source"},
+        el("label", {}, "Sound source", sourceSelect), resetButton(track, "sampler", wholeLock),
+        el("label", {}, track.sampler ? "MIDI fallback instrument" : "Instrument", instrumentSelect), resetButton(track, "instrument", wholeLock),
+        track.sampler ? el("small", {class:"hint",text:patch?.description || "Sampled sound is preserved in WAV/MP3. MIDI uses the fallback instrument."}) : null),
       el("td", {}, volume, db, resetButton(track, "volume", wholeLock)),
       el("td", {}, mute),
       el("td", {}, `${track.notes.length} `, el("button", {
@@ -562,6 +576,7 @@ function changedFields(track) {
   if (d.gainDb !== track.gainDb) fields.push("volume");
   if (d.pan !== track.pan) fields.push("pan");
   if (d.mute !== track.mute) fields.push("mute");
+  if (JSON.stringify(d.sampler ?? null) !== JSON.stringify(track.sampler ?? null)) fields.push("sampler");
   return fields;
 }
 
@@ -575,12 +590,13 @@ function resetButton(track, what, locked) {
     volume: `volume → ${d.gainDb} dB`,
     pan: `pan → ${d.pan}`,
     mute: d.mute ? "muted" : "unmuted",
+    sampler: `sound source → ${d.sampler ? state.patches.find(p=>p.id===d.sampler.patchId)?.name || d.sampler.patchId : "Project GM bank"}`,
   };
   const label = what === "all" ? "Reset" : "↺";
   return el("button", {
     class: what === "all" ? "secondary small" : "icon-button",
     title: `Back to default (revision ${d.revision}): ${fields.map((f) => parts[f]).join(", ")}`,
-    "aria-label": `Reset ${what === "all" ? "track" : what} of ${track.name} to default`,
+    "aria-label": `Reset ${what === "all" ? "track" : what === "sampler" ? "sound source" : what} of ${track.name} to default`,
     "data-reset": what,
     onclick: () => resetTrack(track.id, fields),
   }, label);
@@ -591,10 +607,10 @@ async function resetTrack(trackId, fields) {
   try {
     const result = await state.api.resetTrack(view.projectId, trackId, { expectedRevision: view.revision, fields });
     state.ownRevisions.add(`${view.projectId}@${result.revision}`);
-    await openProject(view.projectId);
+    if (state.view?.projectId === view.projectId && state.requestedProject === view.projectId) await openProject(view.projectId);
   } catch (error) {
     if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
-      await openProject(view.projectId, { notice: "The song changed meanwhile; reloaded the latest version. Please try again." });
+      if (state.view?.projectId === view.projectId && state.requestedProject === view.projectId) await openProject(view.projectId, { notice: "The song changed meanwhile; reloaded the latest version. Please try again." });
     } else {
       showError(error);
     }
@@ -616,13 +632,13 @@ async function saveTrack(trackId, changes) {
   try {
     const result = await state.api.updateTrack(view.projectId, trackId, { expectedRevision: view.revision, ...changes });
     state.ownRevisions.add(`${view.projectId}@${result.revision}`);
-    await openProject(view.projectId);
+    if (state.view?.projectId === view.projectId && state.requestedProject === view.projectId) await openProject(view.projectId);
   } catch (error) {
     if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
-      await openProject(view.projectId, { notice: "The song changed meanwhile; reloaded the latest version. Please try again." });
+      if (state.view?.projectId === view.projectId && state.requestedProject === view.projectId) await openProject(view.projectId, { notice: "The song changed meanwhile; reloaded the latest version. Please try again." });
     } else {
       showError(error);
-      renderTracks(view);
+      if (state.view?.projectId === view.projectId && state.requestedProject === view.projectId) renderTracks(state.view);
     }
   }
 }
@@ -704,6 +720,7 @@ async function createExport(format, { bitrate, statusId = "export-status" } = {}
     const result = await state.api.createExport(state.view.projectId, format, options);
     saveToComputer(result);
     status.textContent = `downloaded: ${result.file}`;
+    if (result.warnings?.length) showError(new Error(result.warnings.map(w=>w.message).join(" ")));
     await refreshExports();
     return result;
   } catch (error) {
@@ -746,6 +763,9 @@ function setupPlayer() {
     $("time").textContent = formatTime(seconds);
     movePlayhead(tick);
     state.editor?.setPosition(tick);
+  });
+  player.addEventListener("loaded", e => {
+    if (e.detail.render?.clippedSamples > 0) showError(new Error("The mix clipped. Lower the track volumes and render again."));
   });
   player.addEventListener("loaded", () => {
     $("duration").textContent = formatTime(player.map.songSeconds());
@@ -815,10 +835,14 @@ async function enterApp(status) {
     }
   };
   const audio = status.audio;
-  $("engine").textContent = audio.available ? `Audio engine: ${audio.engine}` : `Audio engine unavailable: ${audio.error}`;
+  $("engine").textContent = audio.available ? `Audio engines: ${[audio.engine, audio.samplerAvailable ? "sfizz sampled instruments" : null].filter(Boolean).join(" · ")}` : `Audio engine unavailable: ${audio.error}`;
   setupPlayer();
   setupEditor();
-  state.instruments = (await state.api.instruments()).instruments.filter((i) => i.available !== false);
+  const [instruments, patches] = await Promise.allSettled([state.api.instruments(), state.api.samplerPatches()]);
+  if (instruments.status === "fulfilled") state.instruments = instruments.value.instruments.filter(i=>i.available !== false);
+  else showError(instruments.reason);
+  if (patches.status === "fulfilled") state.patches = patches.value.patches.map(p => ({...p,available:p.available && audio.samplerAvailable !== false}));
+  else showError(patches.reason);
   state.filter = prefs.get("filter", "all");
   state.sort = prefs.get("sort", "recent");
   $("library-sort").value = state.sort;

@@ -16,6 +16,7 @@ from midimcp.events import EventBus
 from midimcp.model.score import Score
 from midimcp.organizer import SongOrganizer
 from midimcp.render import Renderer, RenderError, RenderResult
+from midimcp.sampler import SamplerRegistry
 from midimcp.service import CompositionService
 from midimcp.soundbanks import SoundbankRegistry
 from midimcp.store import CommitResult, ProjectStore
@@ -112,9 +113,12 @@ class AppContext:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.store = ProjectStore(self.data_dir)
-        self.service = CompositionService(self.store)
+        self.samplers = SamplerRegistry(self.data_dir)
+        self.service = CompositionService(self.store, samplers=self.samplers)
         self.registry = SoundbankRegistry(self.data_dir)
-        self.renderer = renderer or Renderer(self.registry, self.data_dir / "renders")
+        self.renderer = renderer or Renderer(
+            self.registry, self.data_dir / "renders", samplers=self.samplers
+        )
         self.events = EventBus()
         self.templates = TemplateLibrary(self.data_dir)
         self.organizer = SongOrganizer(

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { NoteEditor } from '../src/midimcp/web/editor.js';
 class Element {
   constructor(tag) { this.tagName=tag.toUpperCase();this.children=[];this.attributes={};this.scrollTop=0;this.scrollLeft=0;this.clientHeight=400;this.classList={add(){},toggle(){}}; }
-  setAttribute(key,value){this.attributes[key]=String(value);}
+  setAttribute(key,value){this.attributes[key]=String(value);if(key==='value')this.value=String(value);}
   getAttribute(key){return this.attributes[key]??null;}
   append(...nodes){this.children.push(...nodes);}
   replaceChildren(...nodes){this.children=nodes;}
@@ -49,4 +49,15 @@ test('note end handle snaps an off-grid end to the grid without moving its start
 test('protected notes do not expose an active resize handle',()=>{
   const e=setup();const v=view();v.brief.locks=[{id:'lock',trackId:'t'}];e.setView(v);
   assert.equal(descendants(e.container).filter(n=>n.getAttribute('data-resize-note')).length,0);
+});
+
+test('performance applies once and supports undo without changing another track',async()=>{
+  const calls=[];const e=setup();e.api.applyPerformance=async(...args)=>{calls.push(args);return {revision:2};};e.setView(view());
+  descendants(e.container).find(n=>n.textContent==='Apply flute performance').onclick();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls.length,1);
+  assert.equal(calls[0][0],'a');assert.equal(calls[0][1],'t');
+  assert.equal(calls[0][2].expectedRevision,1);
+  assert.equal(calls[0][2].breathTicks,120);
+  assert.deepEqual(e.undo,[1]);
 });

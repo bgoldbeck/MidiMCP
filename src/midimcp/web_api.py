@@ -452,7 +452,7 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             expected = _int(data, "expectedRevision", required=True)
             changes: dict[str, Any] = {}
             for key, field in (("name", "name"), ("gainDb", "gain_db"), ("pan", "pan"),
-                               ("mute", "mute")):  # fmt: skip
+                               ("mute", "mute"), ("sampler", "sampler")):  # fmt: skip
                 if key in data:
                     changes[field] = data[key]
             if "instrumentId" in data:
@@ -469,6 +469,49 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
                 allow_instrument=bool(data.get("allowInstrument", False)), author="user",
             ).to_dict()
         )  # fmt: skip
+
+    @route("/api/sampler-patches", ["GET"])
+    async def sampler_patches(request: Request) -> Response:
+        return await _call(lambda: {"patches": ctx.samplers.list_patches()})
+
+    @route("/api/projects/{project_id}/tracks/{track_id}/performance", ["POST"])
+    async def performance(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            fields = {
+                "startTick": "start_tick",
+                "endTick": "end_tick",
+                "seed": "seed",
+                "timingTicks": "timing_ticks",
+                "velocityVariation": "velocity_variation",
+                "breathTicks": "breath_ticks",
+                "base": "base",
+                "peak": "peak",
+                "swell": "swell",
+                "vibratoDepth": "vibrato_depth",
+            }
+            unknown = set(data) - fields.keys() - {"expectedRevision", "operationId"}
+            if unknown:
+                raise ApiError("INVALID_FIELD", f"unknown performance fields: {sorted(unknown)}")
+            settings = {
+                field: _int(data, key, required=True)
+                for key, field in fields.items()
+                if key in data
+            }
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.apply_performance(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                track_id=request.path_params["track_id"],
+                author="user",
+                operation_id=operation_id,
+                **settings,
+            ).to_dict()
+        )
 
     @route("/api/projects/{project_id}/tracks/{track_id}/reset", ["POST"])
     async def reset_track(request: Request) -> Response:

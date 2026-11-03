@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pydantic import ValidationError
 
@@ -35,6 +35,7 @@ from midimcp.model.score import (
     Metadata,
     Meter,
     Note,
+    SamplerBinding,
     Score,
     Section,
     SoundProfile,
@@ -62,13 +63,25 @@ from midimcp.store import CommitResult, ProjectSnapshot, ProjectStore
 from midimcp.store.errors import RevisionConflict
 from midimcp.validation import ValidationReport, validate_score
 
+if TYPE_CHECKING:
+    from midimcp.sampler import SamplerRegistry
+
 Author = Literal["user", "agent", "system"]
 
 DEFAULT_PROFILE_ID = "retro-gm-1997-v1"
 DEFAULT_BANK_ID = "fluidr3-gm"
 
 _GENERATED_NOTE_ID = re.compile(r"^n(\d+)$")
-_TRACK_PROPERTIES = {"name", "instrument_id", "gain_db", "pan", "mute", "is_percussion", "role"}
+_TRACK_PROPERTIES = {
+    "name",
+    "instrument_id",
+    "gain_db",
+    "pan",
+    "mute",
+    "is_percussion",
+    "role",
+    "sampler",
+}
 
 
 @dataclass(frozen=True)
@@ -99,8 +112,9 @@ def slugify(text: str) -> str:
 
 
 class CompositionService:
-    def __init__(self, store: ProjectStore) -> None:
+    def __init__(self, store: ProjectStore, *, samplers: SamplerRegistry | None = None) -> None:
         self.store = store
+        self.samplers = samplers
 
     # ------------------------------------------------------------------ reads
 
@@ -181,6 +195,9 @@ class CompositionService:
             sections=[self._build(Section, **x) for x in sections],
             harmony=[self._build(HarmonyEvent, **h) for h in harmony],
         )
+        for track in score.tracks:
+            if track.sampler is not None:
+                self._require_sampler(track.sampler)
         result = self.store.create_project(
             score,
             brief or Brief(),
@@ -359,6 +376,7 @@ class CompositionService:
         "volume": "gain_db",
         "pan": "pan",
         "mute": "mute",
+        "sampler": "sampler",
     }
 
     def track_defaults(self, project_id: str) -> dict[str, dict[str, Any]]:
@@ -382,6 +400,7 @@ class CompositionService:
                         "gainDb": track.gain_db,
                         "pan": track.pan,
                         "mute": track.mute,
+                        "sampler": track.sampler.to_json_dict() if track.sampler else None,
                     }
         return defaults
 
@@ -409,6 +428,7 @@ class CompositionService:
             "gain_db": default["gainDb"],
             "pan": default["pan"],
             "mute": default["mute"],
+            "sampler": default["sampler"],
         }
         changes = {self.RESETTABLE[f]: source[self.RESETTABLE[f]] for f in fields}
         if "instrument_id" in changes:
@@ -584,6 +604,114 @@ class CompositionService:
         )
 
     # ------------------------------------------------------------- expression
+
+    def _require_sampler(self, binding: SamplerBinding) -> None:
+        if self.samplers is None:
+            raise InvalidOperation(
+                "sampled sources are unavailable: no sampler registry configured"
+            )
+        self.samplers.require(binding.patch_id, binding.patch_sha256)
+
+    def apply_performance(
+        self,
+        project_id: str,
+        *,
+        expected_revision: int,
+        track_id: str,
+        start_tick: int = 0,
+        end_tick: int | None = None,
+        seed: int = 1,
+        timing_ticks: int = 8,
+        velocity_variation: int = 4,
+        breath_ticks: int = 120,
+        base: int = 96,
+        peak: int = 112,
+        swell: int = 8,
+        vibrato_depth: int = 20,
+        author: Author = "user",
+        operation_id: str | None = None,
+    ) -> OperationResult:
+        """Apply seeded note performance and expression in one undoable revision."""
+        values = (
+            seed,
+            timing_ticks,
+            velocity_variation,
+            breath_ticks,
+            base,
+            peak,
+            swell,
+            vibrato_depth,
+            start_tick,
+        )
+        if any(type(value) is not int for value in values) or (
+            end_tick is not None and type(end_tick) is not int
+        ):
+            raise InvalidOperation("performance settings and range must be integers")
+        human = HumanizeSettings(
+            seed=seed,
+            timing_ticks=timing_ticks,
+            velocity_variation=velocity_variation,
+            breath_ticks=breath_ticks,
+        )
+        expression = ExpressionSettings(
+            base=base, peak=peak, swell=swell, vibrato_depth=vibrato_depth
+        )
+        _check_settings(human)
+        _check_settings(expression)
+
+        def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
+            track = _require_track(score, track_id)
+            lo, hi = _bounded_range(score, start_tick, end_tick)
+            timeline = score.timeline
+            notes = humanize(
+                track.notes,
+                ppq=timeline.ppq,
+                bar_ticks=ticks_per_bar(
+                    timeline.ppq, timeline.meter.numerator, timeline.meter.denominator
+                ),
+                beat_ticks=_beat_ticks(score),
+                start=lo,
+                end=hi,
+                settings=human,
+            )
+            # Keep edited onsets inside the selected interval. Releases remain anchored.
+            target_ids = {note.id for note in track.notes if lo <= note.start_tick < hi}
+            notes = [
+                _with(
+                    note,
+                    start_tick=max(lo, min(hi - 1, note.start_tick)),
+                    duration_ticks=max(1, note.end_tick - max(lo, min(hi - 1, note.start_tick))),
+                )
+                if note.id in target_ids
+                else note
+                for note in notes
+            ]
+            curves = expression_curves(
+                notes, ppq=timeline.ppq, start=lo, end=hi, settings=expression
+            )
+            if vibrato_depth == 0:
+                curves["modulation"] = [(lo, 0)]
+            automation = track.automation
+            for lane, points in curves.items():
+                automation = _replace_lane(automation, lane, lo, hi, points)
+                # Restore the original held value on the final editable tick. This
+                # preserves the following range without writing into an adjacent lock.
+                original = track.automation.lanes()[lane]
+                if hi < timeline.total_ticks and not any(p.tick == hi for p in original):
+                    resting = AUTOMATION_LANES[lane][3]
+                    held = next((p.value for p in reversed(original) if p.tick <= hi), resting)
+                    automation = _replace_lane(automation, lane, hi - 1, hi, [(hi - 1, held)])
+            updated = _with(track, notes=_sorted(notes), automation=automation)
+            return _replace_track(score, updated), brief, ()
+
+        return self._mutate(
+            project_id,
+            expected_revision,
+            change,
+            author,
+            operation_id,
+            f"Applied performance to {track_id!r}",
+        )
 
     def humanize_notes(
         self,
@@ -969,6 +1097,12 @@ class CompositionService:
         if score.schema_version != SCORE_SCHEMA_VERSION:
             score = _with(score, schema_version=SCORE_SCHEMA_VERSION)
         check_locks(current.score, score, current.brief)
+        for track in score.tracks:
+            previous = current.score.track(track.id)
+            if track.sampler is not None and (
+                previous is None or track.sampler != previous.sampler
+            ):
+                self._require_sampler(track.sampler)
         summary = summarize_changes(current.score, score)
         text = summary.text if summary.text != "No changes" else default_summary
         result = self.store.commit(

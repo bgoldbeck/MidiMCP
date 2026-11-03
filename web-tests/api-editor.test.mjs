@@ -21,3 +21,17 @@ test("editor API carries expected revisions, exact operations and protected path
   ]);
   assert.deepEqual(calls[0].body, body);
 });
+
+test("sampler listing and atomic performance preserve selection and revision", async () => {
+  const calls = [];
+  const api = new Api({token:"test",fetchImpl:async(url,init)=>{
+    calls.push({url,method:init.method,body:init.body ? JSON.parse(init.body) : null});
+    return {ok:true,json:async()=>({revision:10})};
+  }});
+  await api.samplerPatches();
+  await api.applyPerformance("a/b","flute/1",{expectedRevision:9,startTick:240,endTick:1920,seed:3,swell:8});
+  assert.deepEqual(calls,[
+    {url:"/api/sampler-patches",method:"GET",body:null},
+    {url:"/api/projects/a%2Fb/tracks/flute%2F1/performance",method:"POST",body:{expectedRevision:9,startTick:240,endTick:1920,seed:3,swell:8}},
+  ]);
+});

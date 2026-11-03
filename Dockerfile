@@ -1,3 +1,31 @@
+# sfizz sources and all Git-linked dependencies are pinned by commit; only build
+# stages access the network. No plugin host or runtime sample downloader is used.
+FROM ubuntu:24.04 AS sfizz-build
+COPY docker/apt-install.sh /usr/local/bin/apt-install.sh
+RUN sh /usr/local/bin/apt-install.sh git ca-certificates cmake make g++ pkg-config
+WORKDIR /build/sfizz
+RUN git init \
+ && git remote add origin https://github.com/sfztools/sfizz.git \
+ && git fetch --depth 1 origin 4e70dc0bef53b41f2853ed46e26f5911114c92d0 \
+ && git checkout --detach FETCH_HEAD \
+ && test "$(git rev-parse HEAD)" = 4e70dc0bef53b41f2853ed46e26f5911114c92d0 \
+ && git submodule update --init --recursive --depth 1
+RUN cmake -S . -B /build/out -DCMAKE_BUILD_TYPE=Release \
+      -DSFIZZ_JACK=OFF -DSFIZZ_RENDER=ON -DSFIZZ_SHARED=OFF \
+      -DSFIZZ_TESTS=OFF -DENABLE_LTO=OFF \
+ && cmake --build /build/out --target sfizz_render --parallel 2 \
+ && mkdir -p /notices \
+ && find . -type f \( -iname '*license*' -o -iname '*copying*' -o -name AUTHORS.md \) \
+      -not -path './.git/*' -exec cp --parents '{}' /notices/ \;
+
+FROM ubuntu:24.04 AS sampler-assets
+COPY docker/apt-install.sh /usr/local/bin/apt-install.sh
+RUN sh /usr/local/bin/apt-install.sh python3 ca-certificates
+WORKDIR /provision
+COPY scripts/provision-samplers.py scripts/provision-samplers.py
+COPY src/midimcp/sampler_assets src/midimcp/sampler_assets
+RUN python3 scripts/provision-samplers.py /samplers
+
 # MidiMCP: retro MIDI composer — MCP server, web UI and FluidSynth renderer.
 # Ubuntu 24.04 base: FluidSynth 2.3.4 + FluidR3 GM, the exact versions the render
 # determinism tests and docs/reference/08-soundbanks.md checksum were verified against.
@@ -15,7 +43,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/venv/bin:$PATH \
     MIDIMCP_DATA_DIR=/data \
     MIDIMCP_HOST=0.0.0.0 \
-    MIDIMCP_PORT=8765
+    MIDIMCP_PORT=8765 \
+    MIDIMCP_SAMPLER_DIR=/usr/share/midimcp/samplers \
+    MIDIMCP_SFIZZ=/usr/local/bin/sfizz_render
 
 # Layers are ordered from "almost never changes" to "changes every commit". Docker only
 # rebuilds (and the publish only uploads) the first layer that changed and those after it,
@@ -32,6 +62,11 @@ RUN sh /usr/local/bin/apt-install.sh python3 python3-venv fluidsynth tini \
 
 # 3. Extra tools (small). New packages go here: changing this line re-uploads only this layer.
 RUN sh /usr/local/bin/apt-install.sh lame
+
+COPY --from=sfizz-build /build/out/library/bin/sfizz_render /usr/local/bin/sfizz_render
+COPY --from=sfizz-build /notices /usr/share/doc/sfizz
+COPY --from=sampler-assets /samplers /usr/share/midimcp/samplers
+RUN /usr/local/bin/sfizz_render --help >/dev/null
 
 # Run as the TrueNAS "apps" user by default (UID/GID 568); override with `user:` in compose.
 RUN groupadd --system --gid 568 apps \

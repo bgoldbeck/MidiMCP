@@ -81,6 +81,12 @@ Tests that render audio need `fluidsynth` and the FluidR3 GM soundbank (Ubuntu/D
 MIDIMCP_TOKEN=dev-token-0123456789 MIDIMCP_DATA_DIR=./data python -m midimcp serve
 ```
 
+Tracks can also use the bundled VSCO Community Edition sampled flute through sfizz. In the track's **Sound source** selector, choose the controlled-vibrato or recorded-vibrato flute; other tracks can keep the project GM bank. WAV/MP3 preserve the sampled sound; MIDI uses the track's fallback GM instrument. Project JSON remembers the pinned source but does not contain the sample files. Scores with sampler bindings use schema 1.2 and require an updated MidiMCP.
+
+The Docker image builds sfizz and provisions verified samples automatically. For native development, install `sfizz_render`, set `MIDIMCP_SFIZZ` to its executable path, run `python scripts/provision-samplers.py ./data/samplers`, and use the same data directory when starting the app. `MIDIMCP_SAMPLER_DIR` overrides the sample location. See [sampler provenance and rendering details](src/midimcp/sampler_assets/PROVENANCE.md).
+
+In **Edit notes → Flute performance**, set phrase levels, held-note swell, vibrato, breath spacing and timing/velocity variation, then apply explicitly. The edit is one undoable revision. Recorded vibrato cannot be removed with the vibrato control, and these flute samples do not include recorded legato transitions. Note moves/resizes leave existing controller curves at their original ticks; reapply expression when needed. Hover a note's right edge to highlight its resize grip, then drag to snap the end to the selected grid step.
+
 There is no hosted CI (GitHub Actions is intentionally not used). Run the lint and test commands above before every pull request.
 
 Browser UI tests need Node.js 20+ and, for the end-to-end run, Playwright with Chromium (skipped when missing):
