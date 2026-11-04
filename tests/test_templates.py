@@ -11,6 +11,7 @@ from midimcp.store import ProjectStore
 from midimcp.templates import (
     TEMPLATES,
     TemplateError,
+    TemplateLibrary,
     build_form,
     get_template,
     list_templates,
@@ -38,17 +39,28 @@ def test_builtin_templates_listed() -> None:
     assert {"old-realm-title", "old-realm-town", "old-realm-sailing", "old-realm-forest"} <= set(
         old_realm
     )
-    assert {i for i in ids if i.startswith("runescape-")} == {
-        "runescape-city",
-        "runescape-dungeon",
-        "runescape-forest",
-        "runescape-harbor",
-        "runescape-village",
-        "runescape-desert",
+    assert {i for i in ids if i.startswith("wayfarer-")} == {
+        "wayfarer-city",
+        "wayfarer-dungeon",
+        "wayfarer-forest",
+        "wayfarer-harbor",
+        "wayfarer-village",
+        "wayfarer-desert",
     }
     assert len(ids) == len(set(ids)) == 6 + 9 + 12 + 6
     with pytest.raises(TemplateError):
         get_template("disco")
+
+
+def test_legacy_wayfarer_id_resolves_without_appearing_in_catalog(tmp_path: Path) -> None:
+    library = TemplateLibrary(tmp_path)
+    legacy_id = "runescape-forest"
+    current_id = "wayfarer-forest"
+    assert get_template(legacy_id) is get_template(current_id)
+    assert library.detail(legacy_id) == library.detail(current_id)
+    assert library.detail(legacy_id)["name"] == "Wayfarer Forest Trails"
+    assert library.detail(legacy_id)["builtIn"]
+    assert legacy_id not in {template["id"] for template in library.summaries()}
 
 
 @pytest.mark.parametrize("template_id", list(TEMPLATES))
@@ -125,7 +137,6 @@ def test_tavern_duplicate_section_labels_get_unique_ids(service: CompositionServ
 import json  # noqa: E402
 
 from midimcp.templates import (  # noqa: E402
-    TemplateLibrary,
     TemplateValidationError,
     template_from_dict,
 )

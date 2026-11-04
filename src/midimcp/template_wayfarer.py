@@ -1,11 +1,4 @@
-"""Original location templates inspired by Old School RuneScape's region scoring.
-
-The Jagex Audio Team's soundtrack and Mod Surma's official podcast discussion
-of narrative and repeatable content are style references. The ensembles, forms
-and chord plans below are new.
-https://runescape-ost.bandcamp.com/album/runescape-25-years-original-soundtrack
-https://www.youtube.com/watch?v=ASXWjDtTV9o
-"""
+"""Original location templates for a fantasy travel soundtrack."""
 
 from __future__ import annotations
 
@@ -20,10 +13,10 @@ _PIANO_PEDAL = (
     "sixteenth before the next harmony or loop seam. "
 )
 
-RUNESCAPE: Final[tuple[Template, ...]] = (
+WAYFARER: Final[tuple[Template, ...]] = (
     Template(
-        id="runescape-city",
-        name="RuneScape-inspired: Market City",
+        id="wayfarer-city",
+        name="Wayfarer Market City",
         summary="A bustling stone city with a nimble clarinet, plucked lute and piano replies.",
         mood="lively, friendly, full of small discoveries",
         setting="city gates, a market square, busy crafting stalls",
@@ -117,8 +110,8 @@ RUNESCAPE: Final[tuple[Template, ...]] = (
         + "Use that brief pedal only on cadential piano chords. Keep it off the clarinet and bass.",
     ),
     Template(
-        id="runescape-dungeon",
-        name="RuneScape-inspired: Dungeon Passages",
+        id="wayfarer-dungeon",
+        name="Wayfarer Dungeon Passages",
         summary="A low bassoon and sparse bell tolls over slowly shifting dungeon drones.",
         mood="uneasy, hollow, watchful",
         setting="underground passages, flooded stone vaults, abandoned mines",
@@ -206,8 +199,8 @@ RUNESCAPE: Final[tuple[Template, ...]] = (
         "CC64 up throughout and use the bell's natural decay between sparse strikes.",
     ),
     Template(
-        id="runescape-forest",
-        name="RuneScape-inspired: Forest Trails",
+        id="wayfarer-forest",
+        name="Wayfarer Forest Trails",
         summary="An airy flute over broken harp figures and a quiet bowed response.",
         mood="curious, leafy, quietly magical",
         setting="forest paths, woodcutting clearings, hidden groves",
@@ -301,8 +294,8 @@ RUNESCAPE: Final[tuple[Template, ...]] = (
         "natural decay for harp. Leave CC64 up on winds and bowed parts.",
     ),
     Template(
-        id="runescape-harbor",
-        name="RuneScape-inspired: Working Harbor",
+        id="wayfarer-harbor",
+        name="Wayfarer Working Harbor",
         summary="A rolling harbor tune with accordion, pizzicato strings and marimba replies.",
         mood="outgoing, playful, salt-air adventure",
         setting="ferry docks, coastal warehouses, an island embarkation point",
@@ -398,8 +391,8 @@ RUNESCAPE: Final[tuple[Template, ...]] = (
         "the gaps between pizzicato, accordion and bass.",
     ),
     Template(
-        id="runescape-village",
-        name="RuneScape-inspired: Riverside Village",
+        id="wayfarer-village",
+        name="Wayfarer Riverside Village",
         summary="A gentle recorder and piano waltz for a small riverside settlement.",
         mood="warm, intimate, quietly nostalgic",
         setting="village lanes, mills, small farms beside a river",
@@ -493,8 +486,8 @@ RUNESCAPE: Final[tuple[Template, ...]] = (
         "Taper cello notes with CC11 and preserve gaps in the lute replies.",
     ),
     Template(
-        id="runescape-desert",
-        name="RuneScape-inspired: Desert Caravan",
+        id="wayfarer-desert",
+        name="Wayfarer Desert Caravan",
         summary="An uneven caravan rhythm with an oboe call and hammered dulcimer.",
         mood="sunlit, restless, far from home",
         setting="desert roads, ancient sandstone gates, a caravan camp",

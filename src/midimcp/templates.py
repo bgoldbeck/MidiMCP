@@ -760,10 +760,19 @@ TEMPLATES: Final[dict[str, Template]] = {
 
 
 # Style families live in their own module (they import Template from here).
-from midimcp.template_runescape import RUNESCAPE  # noqa: E402
 from midimcp.template_styles import OLD_REALM, RETRO_GAMES  # noqa: E402
+from midimcp.template_wayfarer import WAYFARER  # noqa: E402
 
-TEMPLATES.update({t.id: t for t in (*OLD_REALM, *RETRO_GAMES, *RUNESCAPE)})
+TEMPLATES.update({t.id: t for t in (*OLD_REALM, *RETRO_GAMES, *WAYFARER)})
+# Older project briefs and saved prompts can still resolve these six IDs.
+_LEGACY_TEMPLATE_IDS: Final = {
+    "runescape-city": "wayfarer-city",
+    "runescape-dungeon": "wayfarer-dungeon",
+    "runescape-forest": "wayfarer-forest",
+    "runescape-harbor": "wayfarer-harbor",
+    "runescape-village": "wayfarer-village",
+    "runescape-desert": "wayfarer-desert",
+}
 
 
 def list_templates() -> list[dict[str, Any]]:
@@ -771,7 +780,7 @@ def list_templates() -> list[dict[str, Any]]:
 
 
 def get_template(template_id: str) -> Template:
-    template = TEMPLATES.get(template_id)
+    template = TEMPLATES.get(_LEGACY_TEMPLATE_IDS.get(template_id, template_id))
     if template is None:
         raise TemplateError(
             f"unknown template {template_id!r}; choose one of {', '.join(TEMPLATES)}"
@@ -1123,7 +1132,7 @@ class TemplateLibrary:
                 template = template_from_dict(json.loads(path.read_text(encoding="utf-8")))
             except (ValueError, TemplateError):
                 continue  # broken file: skipped, still editable on disk
-            if template.id == path.stem and template.id not in TEMPLATES:
+            if template.id == path.stem and not self.is_builtin(template.id):
                 found[template.id] = template
         return found
 
@@ -1131,10 +1140,10 @@ class TemplateLibrary:
         return {**TEMPLATES, **self._custom()}
 
     def is_builtin(self, template_id: str) -> bool:
-        return template_id in TEMPLATES
+        return template_id in TEMPLATES or template_id in _LEGACY_TEMPLATE_IDS
 
     def get(self, template_id: str) -> Template:
-        template = self.all().get(template_id)
+        template = self.all().get(_LEGACY_TEMPLATE_IDS.get(template_id, template_id))
         if template is None:
             raise TemplateError(
                 f"unknown template {template_id!r}; choose one of {', '.join(self.all())}"
