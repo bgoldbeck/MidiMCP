@@ -94,3 +94,16 @@ Browser UI tests need Node.js 20+ and, for the end-to-end run, Playwright with C
 ```bash
 node --test web-tests/*.test.mjs
 ```
+
+## Example songs
+
+`examples/` holds complete songs written through the MCP tools (the same calls an AI client makes), so you can hear what a template can do and use them as a starting point:
+
+- [`examples/old_realm_deep_forest.py`](examples/old_realm_deep_forest.py): "My Old Realm: Deep Forest Theme" from the `old-realm-forest` template.
+
+Run one inside the container on the NAS (it reads the token from `/data/token.txt`):
+
+```bash
+cd /mnt/POOL/midimcp/src
+sudo docker exec -i $(sudo docker ps -qf name=midimcp) python - < examples/old_realm_deep_forest.py
+```

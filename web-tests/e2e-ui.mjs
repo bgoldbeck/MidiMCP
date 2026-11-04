@@ -71,7 +71,7 @@ try {
   // Changing an instrument while playing re-renders and keeps playing from the same spot.
   await page.click("#play");
   await waitText("#player-state", "playing");
-  await page.locator("tr[data-track=flute] select").selectOption({ label: "Recorder" });
+  await page.locator("tr[data-track=flute] select[aria-label^=Instrument]").selectOption({ label: "Recorder" });
   await waitText("#revision", "revision 4");
   await waitText("#last-change", "instrumentId");
   await waitText("#player-state", "playing", 60000);
@@ -179,13 +179,13 @@ try {
 
   // Song only allows flute + recorder: picking Harp asks first; Cancel keeps everything.
   await waitText("#allowed-instruments", "Wooden Flute, Recorder");
-  const flute = page.locator("tr[data-track=flute] select");
+  const flute = page.locator("tr[data-track=flute] select[aria-label^=Instrument]");
   dialogs.answer = false;
   await flute.selectOption({ label: "Harp" });
-  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select").selectedOptions[0].textContent === "Recorder");
+  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select[aria-label^=Instrument]").selectedOptions[0].textContent === "Recorder");
   if (!(await text("#revision")).includes("revision 6")) throw new Error("cancelled change was saved");
   dialogs.answer = true;
-  await page.locator("tr[data-track=flute] select").selectOption({ label: "Harp" });
+  await page.locator("tr[data-track=flute] select[aria-label^=Instrument]").selectOption({ label: "Harp" });
   await waitText("#revision", "revision 7");
   await waitText("#allowed-instruments", "Harp");
   if (dialogs.seen.length !== 2 || !dialogs.seen[0].includes("Harp")) throw new Error(`dialogs: ${dialogs.seen}`);
@@ -195,7 +195,7 @@ try {
   // Reset to default: the seed song started with a wooden flute.
   await page.click("tr[data-track=flute] button[data-reset=instrument]");
   await waitText("#revision", "revision 8");
-  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select").selectedOptions[0].textContent === "Wooden Flute");
+  await page.waitForFunction(() => document.querySelector("tr[data-track=flute] select[aria-label^=Instrument]").selectedOptions[0].textContent === "Wooden Flute");
   if (await page.locator("tr[data-track=flute] button[data-reset=instrument]").count()) throw new Error("reset button still shown");
   step("instrument reset to its default (Wooden Flute)");
 
