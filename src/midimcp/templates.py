@@ -760,9 +760,10 @@ TEMPLATES: Final[dict[str, Template]] = {
 
 
 # Style families live in their own module (they import Template from here).
+from midimcp.template_runescape import RUNESCAPE  # noqa: E402
 from midimcp.template_styles import OLD_REALM, RETRO_GAMES  # noqa: E402
 
-TEMPLATES.update({t.id: t for t in (*OLD_REALM, *RETRO_GAMES)})
+TEMPLATES.update({t.id: t for t in (*OLD_REALM, *RETRO_GAMES, *RUNESCAPE)})
 
 
 def list_templates() -> list[dict[str, Any]]:

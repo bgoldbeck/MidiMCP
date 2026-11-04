@@ -38,7 +38,15 @@ def test_builtin_templates_listed() -> None:
     assert {"old-realm-title", "old-realm-town", "old-realm-sailing", "old-realm-forest"} <= set(
         old_realm
     )
-    assert len(ids) == len(set(ids)) == 6 + 9 + 12
+    assert {i for i in ids if i.startswith("runescape-")} == {
+        "runescape-city",
+        "runescape-dungeon",
+        "runescape-forest",
+        "runescape-harbor",
+        "runescape-village",
+        "runescape-desert",
+    }
+    assert len(ids) == len(set(ids)) == 6 + 9 + 12 + 6
     with pytest.raises(TemplateError):
         get_template("disco")
 

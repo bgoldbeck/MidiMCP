@@ -142,12 +142,17 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         ),
         donts=("No busy runs", "No percussion beyond timpani", _ORIGINAL),
         patterns={
-            "harp 4/4 arpeggio (ticks)": "every 480: root, 5th, octave, 10th, 12th, 10th, octave, "
-            "5th — each 600 long so they overlap"
+            "harp 4/4 arpeggio (ticks)": "Every 480: root, 5th, octave, 10th, 12th, 10th, octave, "
+            "5th. Use 600-tick lengths within a chord and shorten the last note before changes."
         },
-        expression="Flute: humanize (legato 0.95, breath_ticks 200, timing_ticks 12) and "
-        "shape_expression (base 90, peak 122, vibrato_depth 40). Horn: shape_expression with "
-        "swell 14. Strings: set_automation fade-in over the intro (expression 50 -> 110).",
+        expression="Give the horn an audible swell and taper on its opening call. On flute, use "
+        "humanize_notes (legato 0.95, breath_ticks 200, timing_ticks 12) then shape_expression "
+        "(base 90, peak 116, swell 12, vibrato_depth 30, vibrato_delay_ticks 360). If using "
+        "sampled flute, start with release_seconds 0.45 and shorten it if the breath gaps "
+        "blur. Ride string expression from 50 to 104 across the intro. Roll the harp from "
+        "a slightly firmer bass note into lighter upper notes. Let same-chord notes overlap. "
+        "If the harp patch benefits from CC64 sustain, use it for one chord and lift before "
+        "the next harmony. Keep pedal up on horn, flute and bass.",
     ),
     Template(
         id="old-realm-town",
@@ -253,9 +258,13 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         patterns={
             "lute 3/4 (ticks)": "0: chord (root+5th+octave) 400 long; 960: 3rd 400; 1920: 5th 400"
         },
-        expression="Recorder: humanize with legato 0.7 (detached dance), timing_ticks 10, "
-        "breath_ticks 120; shape_expression with swell 6 and vibrato_depth 20. Harpsichord and "
-        "lute: humanize timing_ticks 8 only.",
+        expression="On recorder, use humanize_notes (legato 0.7, timing_ticks 10, "
+        "breath_ticks 120) then shape_expression (swell 6, vibrato_depth 15). Let the first beat "
+        "land, ease the second, and lift the third into the pickup. Stagger lute strum attacks "
+        "by 10-20 ticks at 960 PPQ. Vary harpsichord lengths and leave space between answers. "
+        "Keep CC64 up on the lute, harpsichord and recorder so the dance stays clear. If a "
+        "piano is substituted, reserve a short pedal for the cadential chord and lift before "
+        "the next downbeat.",
     ),
     Template(
         id="old-realm-forest",
@@ -350,9 +359,14 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Harp never stops; pad and bass are barely there.",
         dos=("Leave long rests in the flute", "Use grace notes on held notes"),
         donts=("No percussion", "No loud dynamics", _ORIGINAL),
-        expression="Flute and oboe: humanize (legato 0.95, breath_ticks 240, timing_ticks 14) "
-        "and shape_expression (base 85, peak 112, swell 14, vibrato_depth 35). Harp: humanize "
-        "timing_ticks 10, phrase_dynamics 4.",
+        expression="For flute and oboe, use humanize_notes (legato 0.94, breath_ticks 240, "
+        "timing_ticks 14) then shape_expression (base 85, peak 109, swell 14, vibrato_depth 28). "
+        "Let the oboe answer more softly after a rest. Try release_seconds 0.55 on sampled "
+        "flute and listen for a clean breath before each answer. Let the harp decay within "
+        "each harmony. "
+        "Try a short CC64 sustain pulse on the occasional resolving harp chord if its patch "
+        "responds, lifting before harmony changes. Ease the pad down where the winds speak. "
+        "Keep pedal up on winds, pad and bass.",
     ),
     Template(
         id="old-realm-sailing",
@@ -445,9 +459,13 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Pizzicato rocks steadily; strings provide the swell.",
         dos=("Give each 2-bar wave a crescendo and decrescendo",),
         donts=("No drums", _ORIGINAL),
-        expression="Oboe: humanize (legato 0.9, timing_ticks 14, breath_ticks 160) and "
-        "shape_expression (swell 14, vibrato_depth 35). Strings: set_automation 2-bar swells "
-        "(expression 60 -> 115 -> 60, interpolate).",
+        expression="On oboe, use humanize_notes (legato 0.90, timing_ticks 14, breath_ticks 160) "
+        "and shape_expression (swell 14, vibrato_depth 28). Shape each two-bar swell on strings "
+        "with set_automation on expression (60 to 108 to 60, interpolate). Lean on the first "
+        "dotted beat in the bass and make the second lighter. Keep pizzicato short, with "
+        "small velocity changes on its inner notes. Let harp rolls decay between entries. If "
+        "adding CC64 to a responsive harp patch, use it on a section-opening roll and lift "
+        "before the next chord. Keep pedal up on oboe, bowed strings and cello.",
     ),
     Template(
         id="old-realm-dungeon",
@@ -533,9 +551,12 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Drones, not chords; movement comes from fades and the bells.",
         dos=("Keep velocities 35-70", "Leave silence"),
         donts=("No tune you could whistle", "No fast notes", _ORIGINAL),
-        expression="English horn: humanize (timing_ticks 16, phrase_dynamics 8, breath_ticks "
-        "240) and shape_expression (base 70, peak 100, swell 18, vibrato_depth 15). Pad and "
-        "tremolo strings: set_automation slow fades (expression 30 <-> 90 over 2 bars).",
+        expression="On English horn, use humanize_notes (timing_ticks 16, phrase_dynamics 8, "
+        "breath_ticks 240), then shape_expression (base 70, peak 100, swell 18, vibrato_depth "
+        "15). Taper individual calls into silence. Alternate choir and tremolo swells using "
+        "expression from 35 to 84 over two bars, fading one as the other enters. Vary toll "
+        "velocity gently and leave enough room for each bell's decay. Keep CC64 up throughout. "
+        "Shape the contrabass drone with note length and a quiet release before a pitch change.",
     ),
     Template(
         id="old-realm-battle",
@@ -621,9 +642,12 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="The ostinato never stops; drums and bass lock to it.",
         dos=("Crescendo through B", "Use the major V for tension"),
         donts=("No lyrical legato lines", _ORIGINAL),
-        expression="Brass: humanize with legato 0.7, timing_ticks 6, keep_downbeats. Strings and "
-        "drums: humanize timing_ticks 4, velocity_variation 6 (tight but alive). shape_expression "
-        "on horns (base 85, peak 120, vibrato_depth 20).",
+        expression="Use detached brass calls (humanize_notes legato 0.7, timing_ticks 6, "
+        "keep_downbeats). Accent the first call and weaken the answer. Keep drums and the "
+        "string ostinato on the same pulse, with timing_ticks 4 and velocity_variation 6. "
+        "Keep CC64 up so attacks and rests remain sharp. On the long horn response in B, use "
+        "shape_expression (base 85, peak 116, vibrato_depth 20) and taper before the loop. "
+        "Pull back the ostinato under the horn peak to make space without raising the whole mix.",
     ),
     Template(
         id="old-realm-castle",
@@ -699,8 +723,12 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Baroque-flavoured continuo; avoid rock-like repeated chords.",
         dos=("End phrases with V-I cadences", "Use suspensions (4-3) in the strings"),
         donts=("No percussion", _ORIGINAL),
-        expression="Horn: humanize (legato 0.9, timing_ticks 10) and shape_expression (base 90, "
-        "peak 118, vibrato_depth 25). Harpsichord: humanize timing_ticks 8, phrase_dynamics 4.",
+        expression="On horn, use humanize_notes (legato 0.9, timing_ticks 10, breath_ticks 180) "
+        "then shape_expression (base 90, peak 113, vibrato_depth 20). Taper the fourth bar of each "
+        "call. Roll the harpsichord chords lightly and shorten their notes at cadences. Give "
+        "string suspensions a slight swell, then ease the resolution. Keep CC64 up on horn, "
+        "strings and continuo. If using piano for continuo, pedal the last chord of a phrase "
+        "and lift before the walking bass moves.",
     ),
     Template(
         id="old-realm-shrine",
@@ -792,9 +820,13 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Everything rolled or sustained; no rhythmic drive.",
         dos=("Keep velocities 50-85", "Let notes ring"),
         donts=("No percussion", "No minor-key turns", _ORIGINAL),
-        expression="Ocarina: humanize (legato 0.97, breath_ticks 240) and shape_expression "
-        "(base 85, peak 115, swell 16, vibrato_depth 30, vibrato_delay_ticks 360). Choir: "
-        "set_automation slow swells.",
+        expression="On ocarina, use humanize_notes (legato 0.95, breath_ticks 240) and "
+        "shape_expression (base 85, peak 110, swell 16, vibrato_depth 22, "
+        "vibrato_delay_ticks 360). Give the choir a slow rise and fall under each held note. "
+        "Lower it where celesta answers. Let "
+        "celesta and harp ring into rests. For a responsive celesta patch, use CC64 down (127) "
+        "just for the isolated sparkle, then up (0) before the next harmony and the loop seam. "
+        "Keep pedal up on ocarina, choir and bass to retain separate releases.",
     ),
     Template(
         id="old-realm-wilderness",
@@ -872,8 +904,12 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         accompaniment="Drone first, chords only in B.",
         dos=("Use open 5ths", "End phrases on long notes"),
         donts=("No percussion", "No thick chords", _ORIGINAL),
-        expression="Recorder: humanize (legato 0.93, timing_ticks 14, breath_ticks 200) and "
-        "shape_expression (base 88, peak 116, vibrato_depth 30). Lute: humanize timing_ticks 8.",
+        expression="On recorder, use humanize_notes (legato 0.93, timing_ticks 14, "
+        "breath_ticks 200) and shape_expression (base 88, peak 110, vibrato_depth 24). Let the "
+        "last note of each call fade before the next breath. Make the first pluck firmer, then "
+        "let the lighter answer decay. Leave pedal up while the drone repeats. Bring strings "
+        "in slowly with CC11 in B and fade out early enough to expose the lone recorder again. "
+        "Hold the cello pedal tone with an actual note and taper its end before a chord change.",
     ),
 )
 
