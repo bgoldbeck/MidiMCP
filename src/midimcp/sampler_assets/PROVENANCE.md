@@ -51,7 +51,10 @@ statically links sfizz internals and uses the container runtime's C/C++ librarie
 
 sfizz_render exposes no seed/version option and ignores MIDI channel/program
 selection, so each sampled track gets its own process. Settings are explicitly
-48 kHz (profile configurable), 256-frame block, quality 8, 256 voices and --use-eot.
+48 kHz (profile configurable), 256-frame block, quality 8 and 256 voices. sfizz
+renders the decay after its last MIDI event and the mixer enforces the requested
+frame count. Per-track release overrides are applied to a temporary SFZ definition
+while the registered patch and sample files retain their pinned checksums.
 Cache identity includes release identity, executable SHA-256, profile, wrapper/sample
 identity, score/controller content, range, speed and mixer version. Repeatability
 is promised within the pinned image/environment, not across CPUs or platforms.

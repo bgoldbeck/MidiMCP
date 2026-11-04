@@ -8,11 +8,11 @@ Export layout:
   percussion tracks, nothing is ever written to channel 10.
 * Program (and bank select when non-zero), volume (CC7, from gainDb), pan
   (CC10), expression (CC11) precede the notes.
-* Automation: expression points become CC11, modulation CC1 (vibrato) and
-  pitchBend pitch-wheel messages. Tracks without automation produce exactly the
+* Automation: expression points become CC11, modulation CC1 (vibrato), sustain
+  CC64 and pitchBend pitch-wheel messages. Tracks without automation produce exactly the
   bytes they did before automation existed.
-* At equal ticks: note-offs, then controller changes, then note-ons (so a swell
-  or bend applies to the note starting there); ties break by note ID / lane, so
+* At equal ticks: sustain changes, then note-offs, other controller changes, then
+  note-ons. Ties break by note ID / lane, so
   the output bytes are deterministic.
 """
 
@@ -192,12 +192,16 @@ def score_to_midi(
             ),
             (0, mido.Message("control_change", channel=channel, control=11, value=127)),
         ]
-        # (tick, order, key): note-off (0) < controller (1) < note-on (2).
+        # A pedal change at a key release determines whether that note is sustained.
+        # Other controllers retain their position between note-off and note-on.
         note_events: list[tuple[int, int, str, mido.Message]] = []
         for lane, points in track.automation.lanes().items():
             for point in points:
                 message = _automation_message(lane, channel, point.value)
-                note_events.append((point.tick, 1, lane, message))
+                note_events.append((point.tick, -1 if lane == "sustain" else 1, lane, message))
+        if track.automation.sustain and track.automation.sustain[-1].value >= 64:
+            tick = timeline.total_ticks
+            note_events.append((tick, -1, "sustain", _automation_message("sustain", channel, 0)))
         for note in track.notes:
             note_events.append(
                 (
@@ -225,7 +229,8 @@ def score_to_midi(
     return midi
 
 
-_LANE_CC: Final = {"expression": 11, "modulation": 1}
+_LANE_CC: Final = {"expression": 11, "modulation": 1, "sustain": 64}
+_CC_LANE: Final = {controller: lane for lane, controller in _LANE_CC.items()}
 
 
 def _automation_message(lane: str, channel: int, value: int) -> mido.Message:
@@ -316,8 +321,8 @@ def import_midi_bytes(
                 state.volume = message.value
             elif kind == "control_change" and message.control == 10:
                 state.pan = message.value
-            elif kind == "control_change" and message.control in (1, 11):
-                lane = "expression" if message.control == 11 else "modulation"
+            elif kind == "control_change" and message.control in _CC_LANE:
+                lane = _CC_LANE[message.control]
                 curves.setdefault(message.channel, {}).setdefault(lane, []).append(
                     (tick, message.value)
                 )

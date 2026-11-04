@@ -29,7 +29,22 @@ def _lanes_touching(track: Track | None, start: int, end: int) -> dict[str, list
     return {
         lane: [(p.tick, p.value) for p in points if start <= p.tick < end]
         for lane, points in track.automation.lanes().items()
+        if lane != "sustain"
     }
+
+
+def _sustain_touching(track: Track, start: int, end: int) -> list[tuple[int, int]]:
+    """Compare effective CC64 values, including the value inherited at a range boundary."""
+    points = track.automation.sustain
+    value = next((point.value for point in reversed(points) if point.tick <= start), 0)
+    result = [(start, value)]
+    for point in points:
+        if point.tick >= end:
+            break
+        if point.tick > start and point.value != value:
+            value = point.value
+            result.append((point.tick, value))
+    return result
 
 
 def _changed_lanes(old: Track, new: Track) -> list[str]:
@@ -49,6 +64,8 @@ def check_locks(before: Score, after: Score, brief: Brief) -> None:
     Whole-track lock: the track (properties, every note and every automation point)
     must be identical and must not be removed. Range lock: the set of notes sounding
     anywhere inside the range, and the automation points inside it, must be identical.
+    Sustain is compared by its effective value, including the value inherited from
+    before the range. A sampled release override applies to the whole track.
     This is checked on the resulting document, so it holds for every kind of operation.
     """
     violated: list[str] = []
@@ -75,8 +92,11 @@ def _lock_broken(lock: Lock, old: Track, new: Track | None) -> bool:
         )
     assert lock.start_tick is not None and lock.end_tick is not None
     start, end = lock.start_tick, lock.end_tick
-    return _notes_touching(old, start, end) != _notes_touching(new, start, end) or (
-        _lanes_touching(old, start, end) != _lanes_touching(new, start, end)
+    return (
+        _notes_touching(old, start, end) != _notes_touching(new, start, end)
+        or _lanes_touching(old, start, end) != _lanes_touching(new, start, end)
+        or _sustain_touching(old, start, end) != _sustain_touching(new, start, end)
+        or old.release_seconds != new.release_seconds
     )
 
 

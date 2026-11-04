@@ -15,6 +15,7 @@ import array
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -255,7 +256,7 @@ class Renderer:
             raise RenderUnavailable(f"sfizz executable {self.sfizz!r} not found")
         with Path(binary).open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        return f"sfizz-1.2.3:{digest}:block256:quality8:poly256"
+        return f"sfizz-1.2.3:{digest}:block256:quality8:poly256:decay-tail"
 
     def _sampled_cache_key(self, score, sources, bank_sha, speed, start, end, muted, tail):
         content = score.to_json_dict()
@@ -377,10 +378,28 @@ class Renderer:
         )
         midi_path = target.with_suffix(".mid")
         midi_path.write_bytes(export_midi_bytes(scaled, include_muted=True, tail_ticks=tail_ticks))
+        sfz_path = patch.path.resolve()
+        release = score.tracks[0].release_seconds
+        if release is not None:
+            # Keep the registered patch and its checksum intact. The score pins the
+            # override, so it already participates in the sampled render cache key.
+            definition = sfz_path.read_text(encoding="utf-8")
+            definition, paths = re.subn(
+                r"(?m)^default_path=([^\r\n]+)$",
+                lambda match: f"default_path={(sfz_path.parent / match[1]).as_posix()}/",
+                definition,
+            )
+            definition, envelopes = re.subn(
+                r"(?m)^ampeg_release=[0-9.]+$", f"ampeg_release={release}", definition
+            )
+            if paths != 1 or envelopes != 1:
+                raise RenderError(f"Sampled patch {patch.id!r} does not support release overrides")
+            sfz_path = target.with_suffix(".sfz").resolve()
+            sfz_path.write_text(definition, encoding="utf-8")
         command = [
             binary,
             "--sfz",
-            str(patch.path.resolve()),
+            str(sfz_path),
             "--midi",
             str(midi_path.resolve()),
             "--wav",
@@ -393,8 +412,9 @@ class Renderer:
             "8",
             "--polyphony",
             "256",
-            "--use-eot",
         ]
+        # Let sfizz render the release after its last MIDI event. The mixer
+        # already pads or trims the result to the requested frame count.
         completed = subprocess.run(
             command, capture_output=True, text=True, timeout=RENDER_TIMEOUT_SECONDS, check=False
         )

@@ -63,6 +63,43 @@ def test_sources_binding_null_and_fallback_export(client, ctx):
     assert ctx.store.load(PID).score.track("flute").sampler is None
 
 
+def test_sustain_endpoint_and_sample_release_are_persisted(client, ctx):
+    install_registry(ctx)
+    path = f"/api/projects/{PID}/tracks/flute"
+    response = client.post(
+        path + "/automation",
+        headers=AUTH,
+        json={
+            "expectedRevision": 3,
+            "lane": "sustain",
+            "startTick": 0,
+            "endTick": 480,
+            "points": [{"tick": 0, "value": 127}, {"tick": 479, "value": 0}],
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert (
+        client.patch(
+            path, headers=AUTH, json={"expectedRevision": 4, "releaseSeconds": 1.2}
+        ).status_code
+        == 400
+    )
+    response = client.patch(
+        path,
+        headers=AUTH,
+        json={"expectedRevision": 4, "sampler": BINDING, "releaseSeconds": 1.2},
+    )
+    assert response.status_code == 200, response.text
+    track = ctx.store.load(PID).score.track("flute")
+    assert track.release_seconds == 1.2
+    assert [p.value for p in track.automation.sustain] == [127, 0]
+    assert (
+        client.patch(path, headers=AUTH, json={"expectedRevision": 5, "sampler": None}).status_code
+        == 200
+    )
+    assert ctx.store.load(PID).score.track("flute").release_seconds is None
+
+
 def test_performance_endpoint_atomic_conflict_validation_lock(client, ctx):
     path = f"/api/projects/{PID}/tracks/flute/performance"
     assert client.post(path, json={"expectedRevision": 3}).status_code == 401
@@ -98,6 +135,7 @@ def test_mcp_source_omission_null_and_performance(ctx):
                 expected_revision=3,
                 track_id="flute",
                 sampler=BINDING,
+                release_seconds=1.2,
             )
             await call(
                 client,
@@ -108,19 +146,29 @@ def test_mcp_source_omission_null_and_performance(ctx):
                 gain_db=-3.0,
             )
             assert ctx.store.load(PID).score.track("flute").sampler is not None
+            assert ctx.store.load(PID).score.track("flute").release_seconds == 1.2
             await call(
                 client,
                 "update_track",
                 project_id=PID,
                 expected_revision=5,
                 track_id="flute",
+                release_seconds=None,
+            )
+            assert ctx.store.load(PID).score.track("flute").release_seconds is None
+            await call(
+                client,
+                "update_track",
+                project_id=PID,
+                expected_revision=6,
+                track_id="flute",
                 sampler=None,
             )
             assert ctx.store.load(PID).score.track("flute").sampler is None
             result = await call(
-                client, "apply_performance", project_id=PID, expected_revision=6, track_id="flute"
+                client, "apply_performance", project_id=PID, expected_revision=7, track_id="flute"
             )
-            assert result["revision"] == 7
+            assert result["revision"] == 8
 
     asyncio.run(scenario())
 

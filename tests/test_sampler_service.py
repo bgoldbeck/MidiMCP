@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from midimcp.model.score import Score
+from midimcp.model.score import SCORE_SCHEMA_VERSION, Score
 from midimcp.service import InvalidOperation, LockViolation
 from midimcp.store.errors import RevisionConflict
 from tests.conftest import lanterns_score_dict
@@ -39,7 +39,7 @@ def test_binding_persist_reset_and_instrument_independence(service):
     service.samplers = Registry()
     service.update_track(PID, expected_revision=3, track_id="flute", changes={"sampler": BINDING})
     snap = service.get_project(PID)
-    assert snap.score.schema_version == "1.2.0"
+    assert snap.score.schema_version == SCORE_SCHEMA_VERSION
     assert snap.score.track("flute").sampler.patch_id == BINDING["patchId"]
     service.update_track(
         PID, expected_revision=4, track_id="flute", changes={"instrument_id": "retro.harp"}

@@ -29,7 +29,7 @@ Store: tonic pitch class (0–11), mode ID, requested spelling, practical displa
 
 ## Document shape (schema 1.1.0)
 
-The current schema is **1.2.0**; 1.0/1.1 documents still load. Schema 1.2 adds optional per-track `sampler` bindings: `{"patchId":"vsco-flute-controlled","patchSha256":"<64 lowercase hex characters>"}`. Null uses the project GM bank. A non-null binding pins all patch/sample content while `instrumentId` remains the MIDI fallback. Older MidiMCP versions cannot load sampler-enabled scores. The example below remains a valid legacy 1.1 document.
+The current schema is **1.3.0** and loads scores from 1.0 onward. Schema 1.2 adds optional per-track `sampler` bindings with `patchId` and `patchSha256`. Null uses the project GM bank. A binding pins the patch and samples, and `instrumentId` remains the MIDI fallback. Schema 1.3 adds the sustain lane and optional `releaseSeconds` on sampled tracks. The release override is 0–2 seconds, with null selecting the patch default. The example below remains a valid legacy 1.1 document.
 
 ```json
 {
@@ -72,10 +72,11 @@ Each track has three controller lanes. A point's value holds until the lane's ne
 | Lane | MIDI | Values | Resting value |
 |---|---|---|---|
 | `expression` | CC11 | 0–127 (127 = full) | 127 |
+| `sustain` | CC64 | 0–63 up, 64–127 down | 0 |
 | `modulation` | CC1 (vibrato depth) | 0–127 | 0 |
 | `pitchBend` | pitch wheel | −8192…8191 (±2 semitones) | 0 |
 
-Ramps are stored as dense points (the `shape_expression` / `set_automation` tools generate them), so playback, export and render are exact. In MIDI files, controller events at a tick come after note-offs and before note-ons. A track with no automation exports exactly the same bytes as under schema 1.0.0. Schema 1.0.0 documents load unchanged (empty automation) and are written as 1.1.0 on their next change. Locks cover automation: whole-track locks freeze every lane, range locks freeze the points inside the range.
+Ramps are stored as dense points. In MIDI, sustain changes precede note-offs at the same tick. Other controller changes follow note-offs and precede note-ons. A track with no automation exports exactly the same bytes as under schema 1.0.0. A saved edit upgrades a legacy score to the current schema. Whole-track locks freeze all lanes. Range locks protect the points within the range and the effective sustain value at its start.
 
 Humanizing (`humanize_notes`) changes notes, not a stored setting: its "randomness" is derived from SHA-256 of (seed, note, purpose), so the same call always gives the same notes.
 

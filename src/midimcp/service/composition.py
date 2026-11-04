@@ -81,6 +81,7 @@ _TRACK_PROPERTIES = {
     "is_percussion",
     "role",
     "sampler",
+    "release_seconds",
 }
 
 
@@ -350,6 +351,8 @@ class CompositionService:
         def change(score: Score, brief: Brief) -> tuple[Score, Brief, tuple[str, ...]]:
             track = _require_track(score, track_id)
             values = {k: float(v) if k in {"gain_db", "pan"} else v for k, v in changes.items()}
+            if "sampler" in values and values["sampler"] is None:
+                values.setdefault("release_seconds", None)
             updated = self._build(Track, **{**track.model_dump(), **values})
             new_instrument = values.get("instrument_id")
             allowed = brief.allowed_instrument_ids
@@ -817,6 +820,7 @@ class CompositionService:
 
         ``points`` are ``{"tick", "value"}``; an empty list clears the range. With
         ``interpolate_ramps`` the points are joined by straight ramps.
+        Sustain range edits restore the previous pedal setting at the end boundary.
         """
         if lane not in AUTOMATION_LANES:
             raise InvalidOperation(f"lane must be one of {', '.join(AUTOMATION_LANES)}")
@@ -826,7 +830,7 @@ class CompositionService:
         for index, raw in enumerate(points):
             tick, value = raw.get("tick"), raw.get("value")
             extra = set(raw) - {"tick", "value"}
-            if not isinstance(tick, int) or not isinstance(value, int) or extra:
+            if type(tick) is not int or type(value) is not int or extra:
                 raise InvalidOperation(f"point {index}: needs integer 'tick' and 'value' only")
             if not start_tick <= tick < end_tick:
                 raise InvalidRange(
@@ -847,6 +851,18 @@ class CompositionService:
             if end_tick > score.timeline.total_ticks:
                 raise InvalidRange(f"endTick {end_tick} is past totalTicks")
             automation = _replace_lane(track.automation, lane, start_tick, end_tick, pairs)
+            if lane == "sustain" and end_tick < score.timeline.total_ticks:
+                # Range edits must not change the pedal setting in later bars.
+                old_value = next(
+                    (p.value for p in reversed(track.automation.sustain) if p.tick <= end_tick), 0
+                )
+                new_value = next(
+                    (p.value for p in reversed(automation.sustain) if p.tick <= end_tick), 0
+                )
+                if old_value != new_value:
+                    automation = _replace_lane(
+                        automation, lane, end_tick, end_tick + 1, [(end_tick, old_value)]
+                    )
             return _replace_track(score, _with(track, automation=automation)), brief, ()
 
         return self._mutate(

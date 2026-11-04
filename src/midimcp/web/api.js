@@ -78,6 +78,9 @@ export class Api {
   applyPerformance(id, trackId, body) {
     return this.request("POST", `/api/projects/${encodeURIComponent(id)}/tracks/${encodeURIComponent(trackId)}/performance`, body);
   }
+  setAutomation(id, trackId, body) {
+    return this.request("POST", `/api/projects/${encodeURIComponent(id)}/tracks/${encodeURIComponent(trackId)}/automation`, body);
+  }
   updateTrack(id, trackId, changes) {
     return this.request(
       "PATCH",

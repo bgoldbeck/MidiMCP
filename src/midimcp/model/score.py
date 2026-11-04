@@ -1,4 +1,4 @@
-"""Canonical score document (schema 1.2.0; 1.0/1.1 documents load unchanged).
+"""Canonical score document (schema 1.3.0; earlier 1.x documents load unchanged).
 
 The score is the project's source of truth. Field names serialize as camelCase
 to match ``docs/reference/03-score-format.md``. Models enforce per-field
@@ -17,9 +17,11 @@ from pydantic.alias_generators import to_camel
 
 from midimcp.music.theory import MODES, normalize_mode, parse_note_name
 
-# 1.1.0 added automation; 1.2.0 adds pinned per-track sampler bindings.
-SCORE_SCHEMA_VERSION: Final = "1.2.0"
-SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset({"1.0.0", "1.1.0", SCORE_SCHEMA_VERSION})
+# 1.3.0 adds sustain automation and a sampled-track release override.
+SCORE_SCHEMA_VERSION: Final = "1.3.0"
+SUPPORTED_SCORE_SCHEMA_VERSIONS: Final = frozenset(
+    {"1.0.0", "1.1.0", "1.2.0", SCORE_SCHEMA_VERSION}
+)
 
 ID_PATTERN: Final = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 TRACK_ROLES: Final = (
@@ -73,6 +75,7 @@ class Note(ScoreModel):
 AUTOMATION_LANES: Final[dict[str, tuple[str, int, int, int]]] = {
     "expression": ("CC11 expression (127 = full volume)", 0, 127, 127),
     "modulation": ("CC1 modulation (vibrato depth, 0 = none)", 0, 127, 0),
+    "sustain": ("CC64 sustain pedal (0-63 up, 64-127 down)", 0, 127, 0),
     "pitchBend": ("pitch bend (8191 = +2 semitones, -8192 = -2)", -8192, 8191, 0),
 }
 
@@ -90,6 +93,7 @@ class Automation(ScoreModel):
     expression: list[ControlPoint] = Field(default_factory=list)
     modulation: list[ControlPoint] = Field(default_factory=list)
     pitch_bend: list[ControlPoint] = Field(default_factory=list)
+    sustain: list[ControlPoint] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _ordered_and_in_range(self) -> Automation:
@@ -108,17 +112,19 @@ class Automation(ScoreModel):
             "expression": self.expression,
             "modulation": self.modulation,
             "pitchBend": self.pitch_bend,
+            "sustain": self.sustain,
         }
 
     @property
     def is_empty(self) -> bool:
-        return not (self.expression or self.modulation or self.pitch_bend)
+        return not (self.expression or self.modulation or self.pitch_bend or self.sustain)
 
 
 LANE_FIELDS: Final = {
     "expression": "expression",
     "modulation": "modulation",
     "pitchBend": "pitch_bend",
+    "sustain": "sustain",
 }
 
 
@@ -141,6 +147,13 @@ class Track(ScoreModel):
     notes: list[Note] = Field(default_factory=list)
     automation: Automation = Field(default_factory=Automation)
     sampler: SamplerBinding | None = None
+    release_seconds: Annotated[float, Field(ge=0.0, le=2.0)] | None = None
+
+    @model_validator(mode="after")
+    def _release_requires_sampler(self) -> Track:
+        if self.release_seconds is not None and self.sampler is None:
+            raise ValueError("releaseSeconds requires a sampled flute source")
+        return self
 
 
 class Meter(ScoreModel):

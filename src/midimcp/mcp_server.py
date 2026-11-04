@@ -54,6 +54,7 @@ explicit null returns the sound source to the project GM bank.
 F = TypeVar("F", bound=Callable[..., Any])
 _UNSET = object()
 _OMITTED_SAMPLER = Field(default_factory=lambda: _UNSET)
+_OMITTED_RELEASE = Field(default_factory=lambda: _UNSET)
 
 
 class NoteIn(BaseModel):
@@ -532,8 +533,11 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         mute: bool | None = None,
         operation_id: str | None = None,
         sampler: SamplerBinding | None = _OMITTED_SAMPLER,
+        release_seconds: Annotated[float, Field(ge=0, le=2)] | None = _OMITTED_RELEASE,
     ) -> dict[str, Any]:
-        """Change track properties. Omit sampler to preserve; null selects the project GM bank."""
+        """Change track properties. Null sampler selects GM. Null release_seconds uses the
+        sampled flute's default release. Omitted fields keep their current settings.
+        """
         changes: dict[str, Any] = {
             k: v
             for k, v in {"name": name, "gain_db": gain_db, "pan": pan, "mute": mute}.items()
@@ -541,6 +545,8 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         }
         if sampler is not _UNSET:
             changes["sampler"] = sampler.model_dump() if sampler is not None else None
+        if release_seconds is not _UNSET:
+            changes["release_seconds"] = release_seconds
         if instrument_id is not None:
             from midimcp.instruments import resolve_instrument
 
@@ -805,7 +811,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         project_id: str,
         expected_revision: int,
         track_id: str,
-        lane: Literal["expression", "modulation", "pitchBend"],
+        lane: Literal["expression", "modulation", "pitchBend", "sustain"],
         points: list[PointIn],
         start_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
         end_bar: Annotated[int | None, Field(description="1-based, inclusive")] = None,
@@ -820,7 +826,10 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
         """Hand-draw one controller curve of a track in a bar/tick range (replaces the points
         there; empty list clears). expression = CC11 volume inside the track (fade in/out,
         swells); modulation = CC1 vibrato depth; pitchBend = slides (+-8191 = +-2 semitones;
-        return to 0 before the next note)."""
+        return to 0 before the next note). Sustain = CC64 pedal: use 127 down, 0 up,
+        with explicit release points around chord changes. The original pedal
+        setting resumes at the end of the edited range.
+        """
         snap = service.get_project(project_id)
         lo, hi = _range(snap.score, start_bar, end_bar, start_tick, end_tick)
         return service.set_automation(

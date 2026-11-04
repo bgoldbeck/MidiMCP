@@ -21,7 +21,8 @@ Routes::
     GET   /api/projects/{id}?revision=
     DELETE /api/projects/{id}                  (moves the song to <data>/trash)
     GET   /api/projects/{id}/revisions
-    PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?}
+    PATCH /api/projects/{id}/tracks/{trackId}   {expectedRevision, name?, instrumentId?, allowInstrument?, gainDb?, pan?, mute?, sampler?, releaseSeconds?}
+    POST  /api/projects/{id}/tracks/{trackId}/automation {expectedRevision, lane, startTick, endTick, points}
     POST  /api/projects/{id}/tracks/{trackId}/reset {expectedRevision, fields?: instrument|volume|pan|mute}
     POST  /api/projects/{id}/notes              {expectedRevision, operations, extendToTick?}
     POST  /api/projects/{id}/locks              {expectedRevision, trackId, startTick?, endTick?}
@@ -452,7 +453,8 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
             expected = _int(data, "expectedRevision", required=True)
             changes: dict[str, Any] = {}
             for key, field in (("name", "name"), ("gainDb", "gain_db"), ("pan", "pan"),
-                               ("mute", "mute"), ("sampler", "sampler")):  # fmt: skip
+                               ("mute", "mute"), ("sampler", "sampler"),
+                               ("releaseSeconds", "release_seconds")):  # fmt: skip
                 if key in data:
                     changes[field] = data[key]
             if "instrumentId" in data:
@@ -469,6 +471,36 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
                 allow_instrument=bool(data.get("allowInstrument", False)), author="user",
             ).to_dict()
         )  # fmt: skip
+
+    @route("/api/projects/{project_id}/tracks/{track_id}/automation", ["POST"])
+    async def automation(request: Request) -> Response:
+        try:
+            data = await _body(request)
+            expected = _int(data, "expectedRevision", required=True)
+            start = _int(data, "startTick", required=True)
+            end = _int(data, "endTick", required=True)
+            lane = data.get("lane")
+            if not isinstance(lane, str):
+                raise ApiError("INVALID_FIELD", "lane must be a string")
+            points = data.get("points")
+            if not isinstance(points, list) or not all(isinstance(point, dict) for point in points):
+                raise ApiError("INVALID_FIELD", "points must be an array of objects")
+            operation_id = _operation_id(data)
+        except Exception as exc:
+            return _error_response(exc)
+        return await _call(
+            lambda: service.set_automation(
+                request.path_params["project_id"],
+                expected_revision=expected,
+                track_id=request.path_params["track_id"],
+                lane=lane,
+                start_tick=start,
+                end_tick=end,
+                points=points,
+                author="user",
+                operation_id=operation_id,
+            ).to_dict()
+        )
 
     @route("/api/sampler-patches", ["GET"])
     async def sampler_patches(request: Request) -> Response:

@@ -60,13 +60,15 @@ A melody with every note on the grid, one velocity and no movement inside held n
 3. **`shape_expression`** on sustaining instruments (flute, recorder, oboe, strings, horn, voice): volume swells across phrases and inside held notes (CC11) plus a delayed vibrato on held notes (CC1, `vibrato_depth` 25–50). Skip plucked/struck parts (lute, harp, harpsichord, piano, mallets).
 4. **`set_automation`** for hand-made gestures: a fade-in on the first bars (`expression` 40→110 with `interpolate`), a pitch-bend scoop into a note (`pitchBend` −1500→0 over ~120 ticks, back at 0 before the next note), a vibrato swell on a final note.
 
-Automation lives with the track: locks protect it, it is exported in MIDI (CC11 / CC1 / pitch wheel) and rendered in WAV/MP3.
+Automation lives with the track. Locks protect it, and MIDI and audio renders carry its controller changes. For piano, use `set_automation` with `lane="sustain"`, value 127 for pedal down and 0 for pedal up. Put the pedal down before the notes end. Lift it at harmony changes and before the loop seam. Use stepped points without interpolation. Leave space in the bass and judge each passage by ear, since a pedal can blur busy writing.
 
 ## Natural sampled flute
 
 For a natural flute request, call `list_sampler_patches`, choose an available source, then `update_track` with its exact `sampler: {patchId, patchSha256}` binding. Sound source is per track; other tracks may keep the project GM bank. Omit `sampler` to preserve it; explicitly pass null to return to GM. Keep a suitable GM `instrument_id` for portable MIDI exports.
 
 Use `vsco-flute-controlled` for restrained adjustable vibrato or `vsco-flute-recorded` for the recorded expressive sustain. The latter's vibrato is baked into the sample and cannot be removed by CC1. Both support phrase expression. Samples cover MIDI 60–96 and have no recorded legato transitions: write convincing breaths and articulation, and do not promise real-player legato.
+
+Set `release_seconds` with `update_track` to adjust the sampled flute's fade after note-off. Try 0.25–0.5 seconds for articulated lines and 0.7–1 second for spacious cadences, then listen to the gaps between phrases. Use null to restore the patch default. Keep breath rests in the notes and use expression to shape the tone before release.
 
 After composing, `apply_performance` provides an atomic alternative to separate humanize/expression calls. Start gently: `timing_ticks=8`, `velocity_variation=4`, `breath_ticks=120`, `base=96`, `peak=112`, `swell=8`, `vibrato_depth=20` (0 for recorded vibrato). Use the latest revision and apply once. If more control is needed, use the individual tools instead of stacking multiple timing passes. User edits to note positions/lengths leave existing curves at their old ticks; inspect and explicitly reshape expression afterwards.
 

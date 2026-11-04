@@ -353,6 +353,48 @@ export class NoteEditor {
       return this.mutate(r => this.api.applyPerformance(this.view.projectId, this.trackId, { expectedRevision: r, ...values, ...(range || {}) }));
     });
     tools.append(el("span", "Selected passage applies to the time range between the first and last selected notes, including other notes in that range. Recorded flute vibrato is baked in; its vibrato-depth setting is ignored. These samples have no recorded legato transitions.", { class: "hint" }));
+    if (this.track?.sampler) {
+      group("Flute release", true);
+      const release = field("Release (seconds)", this.track.releaseSeconds ?? 0.7);
+      release.min = 0;
+      release.max = 2;
+      release.step = 0.05;
+      button("Set flute release", () => {
+        const seconds = Number(release.value);
+        if (release.value === "" || !Number.isFinite(seconds) || seconds < 0 || seconds > 2) {
+          return this.say("Choose a release between 0 and 2 seconds.");
+        }
+        return this.mutate(r => this.api.updateTrack(this.view.projectId, this.trackId, { expectedRevision: r, releaseSeconds: seconds }));
+      });
+      button("Reset flute release", () => this.mutate(r => this.api.updateTrack(this.view.projectId, this.trackId, { expectedRevision: r, releaseSeconds: null })));
+      tools.append(el("span", "Sets how quickly the sampled flute fades after each note ends.", { class: "hint" }));
+    } else if (this.track && !this.track.isPercussion) {
+      group("Sustain pedal", true);
+      const total = this.view.timing.totalTicks;
+      const down = field("Pedal down at tick", 0);
+      const up = field("Pedal up before tick", Math.min(total, this.view.timing.ticksPerBar));
+      down.min = 0;
+      down.max = total - 2;
+      up.min = 2;
+      up.max = total;
+      button("Use selected notes", () => {
+        const range = bounds(this.selection);
+        if (!range) return this.say("Select notes first.");
+        down.value = range.startTick;
+        up.value = Math.min(total, range.endTick + this.step);
+      });
+      const editPedal = enabled => {
+        const startTick = Number(down.value), endTick = Number(up.value);
+        if (down.value === "" || up.value === "" || !Number.isInteger(startTick) || !Number.isInteger(endTick) || startTick < 0 || endTick > total || endTick - startTick < 2) {
+          return this.say("Choose a pedal range of at least two ticks within the song.");
+        }
+        const points = enabled ? [{ tick: startTick, value: 127 }, { tick: endTick - 1, value: 0 }] : [{ tick: startTick, value: 0 }];
+        return this.mutate(r => this.api.setAutomation(this.view.projectId, this.trackId, { expectedRevision: r, lane: "sustain", startTick, endTick, points }));
+      };
+      button("Apply sustain pedal", () => editPedal(true));
+      button("Clear pedal in range", () => editPedal(false));
+      tools.append(el("span", "Lets notes ring after their ends. Lift the pedal around chord changes to keep the harmony clear.", { class: "hint" }));
+    }
     group("Add a note", true);
     const pitch = field("New note pitch", 60), tick = field("New note tick", 0), duration = field("New note length", this.step);
     pitch.min = 0;

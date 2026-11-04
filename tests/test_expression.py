@@ -402,6 +402,44 @@ def test_midi_writes_and_reads_automation(service: CompositionService) -> None:
     assert imported.expression and imported.modulation and imported.pitch_bend
 
 
+def test_sustain_roundtrip_keeps_note_lengths_and_protects_adjacent_pedal_state(service):
+    service.set_automation(
+        PID,
+        expected_revision=3,
+        track_id="flute",
+        lane="sustain",
+        start_tick=0,
+        end_tick=2 * BAR,
+        points=[{"tick": 0, "value": 127}, {"tick": 2 * BAR - 1, "value": 0}],
+    )
+    service.lock(PID, expected_revision=4, track_id="flute", start_tick=BAR, end_tick=2 * BAR)
+    service.set_automation(
+        PID,
+        expected_revision=5,
+        track_id="flute",
+        lane="sustain",
+        start_tick=BAR // 2,
+        end_tick=BAR,
+        points=[{"tick": BAR // 2, "value": 0}],
+    )
+    score = service.get_project(PID).score
+    before = score.tracks[0]
+    after = import_midi_bytes(export_midi_bytes(score), project_id="copy").tracks[0]
+    assert after.automation.sustain == before.automation.sustain
+    assert [p.value for p in after.automation.sustain] == [127, 0, 127, 0]
+    assert [n.duration_ticks for n in after.notes] == [n.duration_ticks for n in before.notes]
+    with pytest.raises(LockViolation):
+        service.set_automation(
+            PID,
+            expected_revision=6,
+            track_id="flute",
+            lane="sustain",
+            start_tick=BAR,
+            end_tick=BAR + 1,
+            points=[{"tick": BAR, "value": 0}],
+        )
+
+
 def test_tracks_without_automation_export_no_controller_curves(
     service: CompositionService,
 ) -> None:

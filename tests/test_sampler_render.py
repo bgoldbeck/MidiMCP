@@ -152,11 +152,14 @@ print(r.render(Score.model_validate(json.loads(Path(sys.argv[1]).read_text())),
                **json.loads(sys.argv[4])).path)
 """
 
-    def render(name, expression=127, modulation=0, gain=0, pan=0, recorded=False, **options):
+    def render(
+        name, expression=127, modulation=0, gain=0, pan=0, recorded=False, release=None, **options
+    ):
         selected = registry.require("vsco-flute-recorded" if recorded else patch.id)
         track["sampler"] = {"patchId": selected.id, "patchSha256": selected.sha256}
         track["gainDb"] = gain
         track["pan"] = pan
+        track["releaseSeconds"] = release
         track["automation"] = {
             "expression": [{"tick": 0, "value": expression}],
             "modulation": [{"tick": 0, "value": modulation}],
@@ -202,6 +205,14 @@ print(r.render(Score.model_validate(json.loads(Path(sys.argv[1]).read_text())),
     recorded_b = render("recorded-second", recorded=True)
     assert recorded_a == recorded_b
     assert rms(recorded_a) > 50
+    # Release needs recorded audio remaining in the sample after note-off.
+    track["notes"][0]["durationTicks"] = 960
+    short_release = render("short-release", release=0.05)
+    long_release = render("long-release", release=1.2)
+    track["notes"][0]["durationTicks"] = 4800
+    after_end = tick_to_frame(960, score, 1.0, 48000) * 2
+    assert rms(long_release[after_end:]) > max(10, 2 * rms(short_release[after_end:]))
+    assert long_release[: after_end - 512] == short_release[: after_end - 512]
     speedy = render("speedy", speed=1.25, tail=False)
     region = render("region", speed=1.25, start_tick=960, end_tick=3840, tail=False)
     first = tick_to_frame(960, score, 1.25, 48000)

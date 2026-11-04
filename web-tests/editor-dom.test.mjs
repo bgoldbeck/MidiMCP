@@ -61,3 +61,40 @@ test('performance applies once and supports undo without changing another track'
   assert.equal(calls[0][2].breathTicks,120);
   assert.deepEqual(e.undo,[1]);
 });
+
+test('pedaling a selected note leaves room after note-off and supports undo', async () => {
+  const editor = setup({api: {
+    setAutomation: async (project, track, body) => {
+      assert.equal(project, 'a');
+      assert.equal(track, 't');
+      assert.deepEqual(body, {
+        expectedRevision: 1, lane: 'sustain', startTick: 0, endTick: 1200,
+        points: [{tick: 0, value: 127}, {tick: 1199, value: 0}],
+      });
+      return {revision: 2};
+    },
+  }});
+  editor.setView(view());
+  editor.selectTrack('t');
+  const buttons = descendants(editor.container);
+  buttons.find(node => node.textContent === 'Use selected notes').onclick();
+  await buttons.find(node => node.textContent === 'Apply sustain pedal').onclick();
+  assert.deepEqual(editor.undo, [1]);
+});
+
+test('sampled flute release reset sends null and supports undo', async () => {
+  const editor = setup({api: {
+    updateTrack: async (project, track, body) => {
+      assert.equal(project, 'a');
+      assert.equal(track, 't');
+      assert.deepEqual(body, {expectedRevision: 1, releaseSeconds: null});
+      return {revision: 2};
+    },
+  }});
+  const song = view();
+  song.score.tracks[0].sampler = {patchId: 'vsco-flute-controlled'};
+  song.score.tracks[0].releaseSeconds = 1.1;
+  editor.setView(song);
+  await descendants(editor.container).find(node => node.textContent === 'Reset flute release').onclick();
+  assert.deepEqual(editor.undo, [1]);
+});

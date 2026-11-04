@@ -1,0 +1,581 @@
+{
+  "$defs": {
+    "Automation": {
+      "additionalProperties": false,
+      "description": "Per-track controller curves (step points; tools add ramps as dense points).",
+      "properties": {
+        "expression": {
+          "items": {
+            "$ref": "#/$defs/ControlPoint"
+          },
+          "title": "Expression",
+          "type": "array"
+        },
+        "modulation": {
+          "items": {
+            "$ref": "#/$defs/ControlPoint"
+          },
+          "title": "Modulation",
+          "type": "array"
+        },
+        "pitchBend": {
+          "items": {
+            "$ref": "#/$defs/ControlPoint"
+          },
+          "title": "Pitchbend",
+          "type": "array"
+        },
+        "sustain": {
+          "items": {
+            "$ref": "#/$defs/ControlPoint"
+          },
+          "title": "Sustain",
+          "type": "array"
+        }
+      },
+      "title": "Automation",
+      "type": "object"
+    },
+    "ControlPoint": {
+      "additionalProperties": false,
+      "description": "A controller value that holds from ``tick`` until the next point of its lane.",
+      "properties": {
+        "tick": {
+          "minimum": 0,
+          "title": "Tick",
+          "type": "integer"
+        },
+        "value": {
+          "maximum": 8191,
+          "minimum": -8192,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tick",
+        "value"
+      ],
+      "title": "ControlPoint",
+      "type": "object"
+    },
+    "HarmonyEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "durationTicks": {
+          "minimum": 1,
+          "title": "Durationticks",
+          "type": "integer"
+        },
+        "romanNumeral": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Romannumeral"
+        },
+        "startTick": {
+          "minimum": 0,
+          "title": "Starttick",
+          "type": "integer"
+        },
+        "symbol": {
+          "maxLength": 20,
+          "minLength": 1,
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "startTick",
+        "durationTicks",
+        "symbol"
+      ],
+      "title": "HarmonyEvent",
+      "type": "object"
+    },
+    "LoopRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "endTick": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Endtick",
+          "type": "integer"
+        },
+        "startTick": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Starttick",
+          "type": "integer"
+        }
+      },
+      "title": "LoopRegion",
+      "type": "object"
+    },
+    "Metadata": {
+      "additionalProperties": false,
+      "properties": {
+        "originality": {
+          "const": "original",
+          "default": "original",
+          "title": "Originality",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "usage": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usage"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "Meter": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "enum": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            32
+          ],
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Numerator",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator"
+      ],
+      "title": "Meter",
+      "type": "object"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "properties": {
+        "durationTicks": {
+          "minimum": 1,
+          "title": "Durationticks",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "pitch": {
+          "maximum": 127,
+          "minimum": 0,
+          "title": "Pitch",
+          "type": "integer"
+        },
+        "startTick": {
+          "minimum": 0,
+          "title": "Starttick",
+          "type": "integer"
+        },
+        "velocity": {
+          "maximum": 127,
+          "minimum": 1,
+          "title": "Velocity",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "pitch",
+        "startTick",
+        "durationTicks",
+        "velocity"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "SamplerBinding": {
+      "additionalProperties": false,
+      "description": "Allowlisted sampled source pinned to the complete patch content.",
+      "properties": {
+        "patchId": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Patchid",
+          "type": "string"
+        },
+        "patchSha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Patchsha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "patchId",
+        "patchSha256"
+      ],
+      "title": "SamplerBinding",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "endTick": {
+          "minimum": 1,
+          "title": "Endtick",
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "startTick": {
+          "minimum": 0,
+          "title": "Starttick",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "startTick",
+        "endTick"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SoundProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "bankId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Bankid",
+          "type": "string"
+        },
+        "bankSha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Banksha256"
+        },
+        "profileId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Profileid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profileId",
+        "bankId"
+      ],
+      "title": "SoundProfile",
+      "type": "object"
+    },
+    "Timeline": {
+      "additionalProperties": false,
+      "properties": {
+        "loop": {
+          "$ref": "#/$defs/LoopRegion"
+        },
+        "meter": {
+          "$ref": "#/$defs/Meter"
+        },
+        "ppq": {
+          "default": 960,
+          "maximum": 15360,
+          "minimum": 24,
+          "title": "Ppq",
+          "type": "integer"
+        },
+        "tempoUsPerQuarter": {
+          "maximum": 6000000,
+          "minimum": 100000,
+          "title": "Tempousperquarter",
+          "type": "integer"
+        },
+        "totalTicks": {
+          "minimum": 1,
+          "title": "Totalticks",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tempoUsPerQuarter",
+        "meter",
+        "totalTicks"
+      ],
+      "title": "Timeline",
+      "type": "object"
+    },
+    "Tonality": {
+      "additionalProperties": false,
+      "properties": {
+        "displaySpelling": {
+          "title": "Displayspelling",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "ionian",
+            "dorian",
+            "phrygian",
+            "lydian",
+            "mixolydian",
+            "aeolian",
+            "locrian"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "requestedSpelling": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requestedspelling"
+        },
+        "tonicPitchClass": {
+          "maximum": 11,
+          "minimum": 0,
+          "title": "Tonicpitchclass",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tonicPitchClass",
+        "mode",
+        "displaySpelling"
+      ],
+      "title": "Tonality",
+      "type": "object"
+    },
+    "Track": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "$ref": "#/$defs/Automation"
+        },
+        "gainDb": {
+          "default": 0.0,
+          "maximum": 12.0,
+          "minimum": -60.0,
+          "title": "Gaindb",
+          "type": "number"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "instrumentId": {
+          "pattern": "^[a-z0-9][a-z0-9_.-]{0,127}$",
+          "title": "Instrumentid",
+          "type": "string"
+        },
+        "isPercussion": {
+          "default": false,
+          "title": "Ispercussion",
+          "type": "boolean"
+        },
+        "mute": {
+          "default": false,
+          "title": "Mute",
+          "type": "boolean"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "notes": {
+          "items": {
+            "$ref": "#/$defs/Note"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "pan": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Pan",
+          "type": "number"
+        },
+        "releaseSeconds": {
+          "anyOf": [
+            {
+              "maximum": 2.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Releaseseconds"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "melody",
+                "countermelody",
+                "accompaniment",
+                "bass",
+                "pad",
+                "percussion"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "sampler": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SamplerBinding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "instrumentId"
+      ],
+      "title": "Track",
+      "type": "object"
+    }
+  },
+  "$id": "midimcp:score:1.3.0",
+  "additionalProperties": false,
+  "properties": {
+    "harmony": {
+      "items": {
+        "$ref": "#/$defs/HarmonyEvent"
+      },
+      "title": "Harmony",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/Metadata"
+    },
+    "projectId": {
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+      "title": "Projectid",
+      "type": "string"
+    },
+    "revision": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schemaVersion": {
+      "default": "1.3.0",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "soundProfile": {
+      "$ref": "#/$defs/SoundProfile"
+    },
+    "timeline": {
+      "$ref": "#/$defs/Timeline"
+    },
+    "tonality": {
+      "$ref": "#/$defs/Tonality"
+    },
+    "tracks": {
+      "items": {
+        "$ref": "#/$defs/Track"
+      },
+      "title": "Tracks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "projectId",
+    "metadata",
+    "timeline",
+    "tonality",
+    "soundProfile"
+  ],
+  "title": "Score",
+  "type": "object"
+}
