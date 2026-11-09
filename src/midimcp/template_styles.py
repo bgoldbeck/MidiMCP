@@ -1311,9 +1311,11 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "retro.lute",
                 -9,
                 0.3,
-                2,
-                "New colour for the last section only: a plucked figure in the harp's register "
-                "(not a new tune), syncopated against the harp's eighths.",
+                4,
+                "New colour for the last section only, fingerpicked (not a new tune): a thumb "
+                "root on the downbeat that rings through the bar, a two-note pinch on beat 2 "
+                "rolled by 20-30 ticks, then a lighter high note; vary the second bar of each "
+                "chord and let notes overlap instead of stopping them short.",
                 low=52,
                 high=69,
             ),
@@ -1325,8 +1327,9 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -8,
                 0.0,
                 1,
-                "One root per bar, struck an eighth before the downbeat and held through the "
-                "bar, so each chord arrives a little early.",
+                "One note per bar, struck an eighth before the downbeat and held through the "
+                "bar, so each chord arrives a little early: the root on a chord's first bar, "
+                "its 3rd or a step toward the next root on the second.",
                 low=36,
                 high=55,
             ),
@@ -1388,8 +1391,9 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             SectionPlan(
                 "Clearing",
                 8,
-                ("i", "bVII", "bVII", "bVII"),
-                "No melody: harp and bass alone, the walk continues.",
+                ("i", "bVI", "iv", "bVII"),
+                "No melody: harp and bass alone; the chords keep moving and the bass walks "
+                "between roots so the bed never repeats one note for long.",
                 chord_bars=2,
                 layers=(_rest("ocarina"), _rest("ocarina2"), _rest("guitar")),
             ),
@@ -1414,7 +1418,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 layers=(
                     _rest("ocarina"),
                     _rest("ocarina2"),
-                    _play("guitar", "syncopated plucked figure; let the last chord ring"),
+                    _play(
+                        "guitar",
+                        "fingerpicked: thumb, rolled pinch, high note; roll the last chord",
+                    ),
                 ),
             ),
         ),
@@ -1446,7 +1453,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "20, vibrato_delay_ticks 480). Keep the second ocarina 6-8 velocity below the first. "
         "Humanize the harp lightly (timing_ticks 6, velocity variation only) so the ostinato "
         "stays steady, with a slightly firmer first eighth. Keep pedal up on the harp and "
-        "bass. Give the guitar a little more timing play than the harp.",
+        "bass. Give the guitar a little more timing play than the harp (timing_ticks 14) and "
+        "keep its thumb notes firmer than the upper strings.",
     ),
 )
 

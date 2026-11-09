@@ -115,6 +115,17 @@ def test_old_realm_forms_are_layered_not_blocks() -> None:
         ), f"{template.id}: no part enters or leaves mid-section"
 
 
+@pytest.mark.parametrize("template_id", [t for t in TEMPLATES if t.startswith("old-realm-")])
+def test_old_realm_sections_never_park_on_one_chord(template_id: str) -> None:
+    """A chord held for more than 4 bars inside a section makes the bed repeat one note."""
+    for section in TEMPLATES[template_id].form:
+        run = longest = 1
+        for i in range(1, section.bars):
+            run = run + 1 if section.numeral_at(i) == section.numeral_at(i - 1) else 1
+            longest = max(longest, run)
+        assert longest <= 4, f"{template_id} {section.label}: one chord for {longest} bars"
+
+
 def test_chord_bars_hold_chords_in_the_scaffold(service: CompositionService) -> None:
     result = service.create_from_template(
         template_id="old-realm-forest", title="Glade", tonic="E", mode="dorian"
