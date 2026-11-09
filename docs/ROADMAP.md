@@ -50,6 +50,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 25 | ✅ Expression + humanize + style templates | `feature/expression-and-humanize` | Score schema 1.1.0 automation (CC11 expression, CC1 vibrato, pitch bend) with MIDI export/import and lock protection; MCP `humanize_notes` (seeded), `shape_expression`, `set_automation`; `MECHANICAL_MELODY` advisory; 9 `old-realm-*` templates (late-90s online fantasy RPG spirit: title/login, town, forest, sailing, dungeon, battle, castle, shrine, wilderness) and 12 `retro-*` game-era templates; per-template expression guidance; help page section |
 | 26 | ✅ Favorites + collections | `feature/favorites-and-collections` | Star songs, user-made collections (create/rename/delete, multi-membership), library filter chips and sorting, `collections.json` outside song revisions, live updates, MCP `list_collections` / `add_to_collection` |
 | 27 | ✅ Natural sampled flute | `main` (current checkout) | Per-track sfizz/GM source selection, pinned licensed VSCO flute patches, atomic performance controls, portable MIDI fallback, mixed rendering and clipping reports; native/browser and Linux mixed-render/determinism checks passed |
+| 28 | 🟨 Layered template sections | `feature/template-section-layers` | Per-section part layers (play / rest / enter / exit with bar and playing note), chord length in bars, layers in scaffolds, charts, MCP and the template editor; Old Realm forms reworked so parts enter and leave instead of four equal blocks |
 
 ## Phase 4 — Editing depth and quality
 
