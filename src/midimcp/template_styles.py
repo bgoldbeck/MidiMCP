@@ -15,9 +15,26 @@ from __future__ import annotations
 
 from typing import Final
 
-from midimcp.templates import SectionPlan, Template, _part
+from midimcp.templates import Layer, SectionPlan, Template, _part
 
 _ORIGINAL = "Don't copy or paraphrase melodies from existing games"
+
+
+def _play(track_id: str, note: str = "") -> Layer:
+    return Layer(track_id, "play", 1, note)
+
+
+def _rest(track_id: str, note: str = "") -> Layer:
+    return Layer(track_id, "rest", 1, note)
+
+
+def _enter(track_id: str, bar: int, note: str = "") -> Layer:
+    return Layer(track_id, "enter", bar, note)
+
+
+def _exit(track_id: str, bar: int, note: str = "") -> Layer:
+    return Layer(track_id, "exit", bar, note)
+
 
 OLD_REALM: Final[tuple[Template, ...]] = (
     Template(
@@ -68,7 +85,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -8,
                 -0.3,
                 3,
-                "Rising eighth-note arpeggios across two octaves, one chord per bar.",
+                "Rising eighth-note arpeggios across two octaves, one pattern per chord.",
                 low=43,
                 high=79,
             ),
@@ -110,24 +127,61 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("Intro", 4, ("i", "bVI", "bVII", "i"), "Horn call over harp and strings."),
+            SectionPlan(
+                "Intro",
+                4,
+                ("i", "bVI", "bVII", "i"),
+                "Horn call over harp; the floor arrives under it.",
+                layers=(
+                    _rest("flute"),
+                    _enter("strings", 2, "fade in under the horn's second phrase"),
+                    _enter("bass", 3, "long tonic, the floor arrives"),
+                    _enter("timpani", 4, "soft roll into A"),
+                ),
+            ),
             SectionPlan(
                 "A",
                 8,
                 ("i", "bVI", "bIII", "bVII", "i", "iv", "bVI", "V"),
-                "The flute presents the main theme.",
+                "The flute presents the main theme; the horn starts answering halfway.",
+                layers=(
+                    _enter("horn", 4, "answer the flute's first phrase end, then keep trading"),
+                    _rest("timpani"),
+                ),
             ),
             SectionPlan(
                 "B",
-                8,
-                ("bVI", "bVII", "bIII", "bVI", "iv", "bVII", "bIII", "V"),
-                "Lift: flute at its highest, horn answers, strings swell.",
+                6,
+                ("bVI", "bVII", "bIII", "bVI", "iv", "V"),
+                "Lift: flute at its highest, horn answers, strings swell; a 6-bar phrase.",
+                layers=(
+                    _play("strings", "crescendo across the section"),
+                    _enter("timpani", 6, "roll into the interlude"),
+                ),
+            ),
+            SectionPlan(
+                "Interlude",
+                4,
+                ("bVI", "bVII"),
+                "No flute: the horn carries a fragment of the theme over long chords.",
+                chord_bars=2,
+                layers=(
+                    _rest("flute"),
+                    _play("horn", "a fragment of the theme, not a new tune"),
+                    _play("harp", "slower arpeggio, quarter notes"),
+                    _rest("timpani"),
+                ),
             ),
             SectionPlan(
                 "A'",
                 8,
                 ("i", "bVI", "bIII", "bVII", "iv", "bVI", "V", "V"),
-                "Theme returns fuller; end on V to loop into the intro.",
+                "Theme returns fuller; it thins at the end so the intro can follow.",
+                layers=(
+                    _play("horn", "harmony a sixth below the flute in bars 5-7"),
+                    _exit("flute", 8, "finish the theme in bar 7; the last bar is harp and horn"),
+                    _enter("timpani", 7, "one stroke, then a soft roll back to the intro"),
+                ),
             ),
         ),
         loop=True,
@@ -220,28 +274,46 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         ),
         form=(
             SectionPlan(
+                "Intro",
+                2,
+                ("I", "bVII"),
+                "Lute and bass set the dance step alone.",
+                layers=(_rest("recorder"), _rest("harpsichord")),
+            ),
+            SectionPlan(
                 "A",
                 8,
                 ("I", "bVII", "I", "V", "I", "bVII", "IV", "I"),
-                "Main dance tune.",
+                "Main dance tune; the harpsichord joins on the second phrase.",
+                layers=(_enter("harpsichord", 5, "answer in the recorder's gaps"),),
             ),
             SectionPlan(
                 "A'",
                 8,
                 ("I", "bVII", "I", "V", "IV", "bVII", "V", "I"),
-                "Tune repeated with harpsichord answers.",
+                "Tune repeated with harpsichord answers at every phrase end.",
+                layers=(_play("harpsichord", "answers at every phrase end, short runs in thirds"),),
             ),
             SectionPlan(
                 "B",
-                8,
-                ("IV", "I", "bVII", "I", "IV", "I", "ii", "V"),
-                "Contrasting strain, more stepwise; recorder lower, harpsichord leads 2 bars.",
+                6,
+                ("IV", "I", "bVII", "I", "ii", "V"),
+                "Contrasting 6-bar strain: the harpsichord leads, then hands the tune back.",
+                layers=(
+                    _play("harpsichord", "leads bars 1-2 with its own tune, then answers"),
+                    _enter("recorder", 3, "back in on a pickup, lower and stepwise"),
+                    _play("lute", "lighter: broken chords only"),
+                ),
             ),
             SectionPlan(
-                "A",
+                "A''",
                 8,
                 ("I", "bVII", "I", "V", "I", "bVII", "IV", "V"),
-                "Return; end on V for the loop.",
+                "Return; the last bar thins to lead back into the intro.",
+                layers=(
+                    _play("harpsichord", "a third below the recorder in bars 1-4, then answers"),
+                    _exit("recorder", 8, "end the tune in bar 7; harpsichord leads the turnaround"),
+                ),
             ),
         ),
         loop=True,
@@ -300,7 +372,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -7,
                 -0.25,
                 1,
-                "Answers the flute an octave lower in B; otherwise rests.",
+                "Answers the flute low from the second phrase of A, leads the start of B and plays "
+                "a countermelody under A'; rests in the intro and the clearing.",
                 low=60,
                 high=81,
             ),
@@ -343,13 +416,54 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         ),
         form=(
             SectionPlan(
-                "A", 8, ("i", "IV", "i", "bVII", "i", "IV", "bIII", "bVII"), "Flute alone."
+                "Intro",
+                4,
+                ("i", "IV"),
+                "Harp and bass alone; the pad fades in. No melody yet.",
+                chord_bars=2,
+                layers=(
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _enter("pad", 3, "fade in from silence"),
+                ),
             ),
             SectionPlan(
-                "B", 8, ("bVI", "bVII", "i", "IV", "bVI", "bVII", "v", "IV"), "Oboe and flute."
+                "A",
+                8,
+                ("i", "IV", "i", "bVII", "i", "IV", "bIII", "bVII"),
+                "Flute theme; the oboe joins for the second phrase.",
+                layers=(_enter("oboe", 5, "answer the flute's phrase ends, low and soft"),),
             ),
             SectionPlan(
-                "A'", 8, ("i", "IV", "i", "bVII", "bIII", "IV", "bVII", "bVII"), "Return; loop."
+                "B",
+                6,
+                ("bVI", "bVII", "i", "IV", "v", "IV"),
+                "The oboe leads two bars, then the flute takes over; 6-bar phrase.",
+                layers=(
+                    _play("oboe", "leads bars 1-2 with its own idea, then answers"),
+                    _enter("flute", 3, "take over on a pickup"),
+                ),
+            ),
+            SectionPlan(
+                "Clearing",
+                4,
+                ("bIII", "IV", "bVII", "bVII"),
+                "No melody: an open harp passage over the pad, room to breathe.",
+                layers=(
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _play("harp", "more open arpeggio, skip notes, let it ring"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "IV", "i", "bVII", "bIII", "IV", "bVII", "bVII"),
+                "Theme returns with the oboe under it; thins out to loop into the intro.",
+                layers=(
+                    _play("oboe", "countermelody under the whole return, a third or sixth below"),
+                    _exit("flute", 8, "finish the theme in bar 7; harp leads back"),
+                ),
             ),
         ),
         loop=True,
@@ -445,12 +559,50 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "bVII", "IV", "I", "I", "bVII", "IV", "V"), "Setting sail."),
             SectionPlan(
-                "B", 8, ("IV", "I", "bVII", "IV", "ii", "IV", "bVII", "V"), "Open water: higher."
+                "Intro",
+                4,
+                ("I", "bVII"),
+                "Pizzicato and bass rock the boat; strings swell in, a harp run casts off.",
+                chord_bars=2,
+                layers=(
+                    _rest("oboe"),
+                    _enter("strings", 3, "swell in"),
+                    _enter("harp", 4, "one rising run into A"),
+                ),
             ),
             SectionPlan(
-                "A'", 8, ("I", "bVII", "IV", "I", "IV", "bVII", "V", "V"), "Return; loop on V."
+                "A",
+                8,
+                ("I", "bVII", "IV", "I", "I", "bVII", "IV", "V"),
+                "Setting sail: the oboe shanty.",
+                layers=(_play("harp", "sparse chords on downbeats only"),),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("IV", "I", "bVII", "IV", "ii", "IV", "bVII", "V"),
+                "Open water: higher; the harp answers each oboe phrase.",
+                layers=(_play("harp", "answer the oboe at phrase ends"),),
+            ),
+            SectionPlan(
+                "Calm",
+                4,
+                ("IV", "I"),
+                "The oboe rests; the harp sings a short tune of its own over slow chords.",
+                chord_bars=2,
+                layers=(
+                    _rest("oboe"),
+                    _play("harp", "lead a short tune of its own"),
+                    _play("strings", "hold and fade"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                6,
+                ("I", "bVII", "IV", "I", "bVII", "V"),
+                "Shortened return; the oboe ends early so the loop restarts on the bed.",
+                layers=(_exit("oboe", 6, "finish the tune in bar 5"),),
             ),
         ),
         loop=True,
@@ -524,7 +676,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -14,
                 0.4,
                 1,
-                "One distant toll every 4 bars.",
+                "A single distant toll, only where the section layers ask for one.",
                 low=60,
                 high=72,
             ),
@@ -542,8 +694,50 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("i", "i", "bII", "i", "i", "biii", "bII", "i"), "Drone + horn."),
-            SectionPlan("B", 8, ("iv", "bII", "iv", "v°", "bII", "i", "bII", "bII"), "Darker."),
+            SectionPlan(
+                "Intro",
+                4,
+                ("i",),
+                "Low pedal and a distant toll; the choir breathes in.",
+                chord_bars=4,
+                layers=(
+                    _rest("eh"),
+                    _rest("tremolo"),
+                    _enter("choir", 3, "drone fades in"),
+                    _play("bells", "one toll on bar 1"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "bII", "biii", "bII"),
+                "Drone + horn; the trembling strings creep in.",
+                chord_bars=2,
+                layers=(_enter("tremolo", 5, "fade in, barely audible"),),
+            ),
+            SectionPlan(
+                "B",
+                6,
+                ("iv", "bII", "iv", "v°", "bII", "bII"),
+                "Darker: the drone shifts a half step, the horn sits lower.",
+                layers=(
+                    _play("eh", "lower, longer silences"),
+                    _play("choir", "shift by a half step"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "Silence",
+                4,
+                ("bII", "i"),
+                "Almost nothing: pedal, choir and one toll lead back to the start.",
+                chord_bars=2,
+                layers=(
+                    _rest("eh"),
+                    _exit("tremolo", 3, "fade away"),
+                    _enter("bells", 3, "a single toll"),
+                ),
+            ),
         ),
         loop=True,
         percussion_allowed=False,
@@ -615,7 +809,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -9,
                 -0.1,
                 2,
-                "Sustained counter-line in B, moving by half steps.",
+                "Sustained counter-line from B on, moving by half steps; rests in A.",
                 low=45,
                 high=70,
             ),
@@ -633,8 +827,55 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("i", "i", "bVI", "bVII", "i", "i", "iv", "V"), "Calls."),
-            SectionPlan("B", 8, ("bVI", "bVII", "i", "i", "bVI", "bVII", "V", "V"), "Climb."),
+            SectionPlan(
+                "Intro",
+                2,
+                ("i",),
+                "The ostinato starts alone; bass and drums crash in.",
+                chord_bars=2,
+                layers=(
+                    _rest("brass"),
+                    _rest("horns"),
+                    _enter("bass", 2, "doubles the ostinato"),
+                    _enter("drums", 2, "fill into A"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "i", "bVI", "bVII", "i", "i", "iv", "V"),
+                "Calls.",
+                layers=(_rest("horns"),),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("bVI", "bVII", "i", "i", "bVI", "bVII", "V", "V"),
+                "Climb: the horns enter with a sustained counter-line.",
+                layers=(
+                    _play("horns", "counter-line moving by half steps"),
+                    _play("brass", "doubled in 5ths at the peak"),
+                ),
+            ),
+            SectionPlan(
+                "Break",
+                4,
+                ("bVI", "bVII"),
+                "Drum break: brass silent, horns hold, the ostinato drives.",
+                chord_bars=2,
+                layers=(
+                    _rest("brass"),
+                    _play("horns", "long held notes"),
+                    _play("drums", "full pattern with fills"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                6,
+                ("i", "i", "bVI", "bVII", "iv", "V"),
+                "Shortened return of the calls; the horns rejoin for the turnaround.",
+                layers=(_enter("horns", 5, "rise into the loop"),),
+            ),
         ),
         loop=True,
         percussion_allowed=True,
@@ -713,9 +954,40 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "V", "vi", "IV", "I", "ii", "V", "I"), "Processional."),
-            SectionPlan("B", 8, ("vi", "iii", "IV", "I", "ii", "V", "I", "V"), "Court dance."),
-            SectionPlan("A'", 8, ("I", "V", "vi", "IV", "ii", "V", "I", "V"), "Grand return."),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "V", "vi", "IV", "I", "ii", "V", "I"),
+                "Processional: horn over continuo; strings join on the second phrase.",
+                layers=(_enter("strings", 5, "sustained harmony"),),
+            ),
+            SectionPlan(
+                "B",
+                6,
+                ("vi", "iii", "IV", "I", "ii", "V"),
+                "Court dance: the harpsichord leads, the horn answers from bar 3.",
+                layers=(
+                    _play("harpsichord", "leads bars 1-2 with a dance figure"),
+                    _enter("horn", 3, "answer the harpsichord"),
+                ),
+            ),
+            SectionPlan(
+                "Interlude",
+                4,
+                ("IV", "I", "ii", "V"),
+                "No horn: the strings carry a fragment of the processional.",
+                layers=(
+                    _rest("horn"),
+                    _play("strings", "carry a fragment of the processional"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("I", "V", "vi", "IV", "ii", "V", "I", "V"),
+                "Grand return; end on V to loop.",
+                layers=(_play("strings", "double the horn a third below"),),
+            ),
         ),
         loop=True,
         percussion_allowed=False,
@@ -806,12 +1078,47 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "II", "I", "II", "IV", "II", "vii°", "I"), "Floating."),
+            SectionPlan(
+                "Intro",
+                2,
+                ("I", "II"),
+                "Harp rolls alone; the choir breathes in.",
+                layers=(
+                    _rest("ocarina"),
+                    _rest("celesta"),
+                    _rest("bass"),
+                    _enter("choir", 2, "open voicing, very soft"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "II", "I", "II", "IV", "II", "vii°", "I"),
+                "Floating ocarina phrases; the bass arrives under the first long note.",
+                layers=(
+                    _rest("celesta"),
+                    _enter("bass", 3, "root under the first long ocarina note"),
+                ),
+            ),
             SectionPlan(
                 "B",
-                8,
-                ("vi", "II", "iii", "II", "IV", "II", "vii°", "V"),
-                "Brighter; V leads home.",
+                6,
+                ("vi", "II", "iii", "II", "IV", "V"),
+                "Brighter: celesta sparkles, harp rolls twice per bar.",
+                layers=(
+                    _play("celesta", "a sparkle once per 2 bars"),
+                    _play("harp", "second roll on beat 3"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                6,
+                ("I", "II", "IV", "II", "vii°", "V"),
+                "Short return; the sparkle and then the melody fall away.",
+                layers=(
+                    _exit("celesta", 5, "last sparkle in bar 4"),
+                    _exit("ocarina", 6, "finish in bar 5; V leads home"),
+                ),
             ),
         ),
         loop=True,
@@ -874,7 +1181,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -15,
                 0.3,
                 3,
-                "Enter in B with soft open chords.",
+                "Rest in A; soft open chords in B and at camp; fade out halfway through A'.",
                 low=45,
                 high=72,
             ),
@@ -892,10 +1199,41 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("i", "i", "bVII", "i", "i", "bVI", "bVII", "i"), "Alone."),
-            SectionPlan("B", 8, ("bVI", "bVII", "i", "v", "bVI", "bIII", "bVII", "bVII"), "Wider."),
             SectionPlan(
-                "A'", 8, ("i", "i", "bVII", "i", "bVI", "bVII", "v", "i"), "Back on the road."
+                "A",
+                8,
+                ("i", "i", "bVII", "i", "i", "bVI", "bVII", "i"),
+                "Alone: recorder over the lute drone; the bass arrives halfway.",
+                layers=(
+                    _rest("strings"),
+                    _enter("bass", 5, "tonic pedal arrives"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("bVI", "bVII", "i", "v", "bVI", "bIII", "bVII", "bVII"),
+                "Wider: soft open string chords enter.",
+                layers=(_play("strings", "soft open chords"),),
+            ),
+            SectionPlan(
+                "Camp",
+                4,
+                ("i", "bVII"),
+                "Resting by the fire: no recorder, slow single lute strums.",
+                chord_bars=2,
+                layers=(
+                    _rest("recorder"),
+                    _play("lute", "slow single strums"),
+                    _play("strings", "hold, then fade"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "i", "bVII", "i", "bVI", "bVII", "v", "i"),
+                "Back on the road; the strings fall away again.",
+                layers=(_exit("strings", 5, "fade out"),),
             ),
         ),
         loop=True,

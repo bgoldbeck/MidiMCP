@@ -24,6 +24,16 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
     return el("ul", {}, items.map((text) => el("li", { text })));
   }
 
+  const LAYER_WORDS = { play: "plays", rest: "rests", enter: "enters at bar", exit: "drops out at bar" };
+
+  function layerText(t, layer) {
+    const part = t.parts.find((p) => p.track_id === layer.trackId);
+    const who = part ? part.name : layer.trackId;
+    const what = layer.action === "enter" || layer.action === "exit"
+      ? `${LAYER_WORDS[layer.action]} ${layer.bar}` : LAYER_WORDS[layer.action] || layer.action;
+    return `${who} ${what}${layer.note ? ` — ${layer.note}` : ""}`;
+  }
+
   async function open(id) {
     current = await api.template(id);
     $("template-empty").hidden = true;
@@ -35,7 +45,7 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
 
   function render(t) {
     const prompt = `Using the midimcp tools, create a song from the "${t.id}" template titled "My ${t.name} Theme". ` +
-      "Fill every section of every track following the chord chart and the template guidance, " +
+      "Fill every section following the chord chart, the section layers (which parts play, rest, enter or exit) and the template guidance, " +
       "then validate, fix the warnings that make sense, and render a preview.";
     const actions = el("div", { class: "buttons" },
       el("button", { class: "secondary", onclick: duplicate }, "Duplicate"),
@@ -58,10 +68,14 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
           el("td", { text: p.guidance }))))),
       el("h3", { text: `Form and chords (in ${t.default_tonic})` }),
       el("table", { class: "tpl-table" },
-        el("thead", {}, el("tr", {}, ["Section", "Bars", "Chords (one per bar, repeating)", "Purpose"].map((h) => el("th", { text: h })))),
+        el("thead", {}, el("tr", {}, ["Section", "Bars", "Chords (repeating)", "Layers (other parts play)", "Purpose"].map((h) => el("th", { text: h })))),
         el("tbody", {}, t.chart.map((s) => el("tr", {},
           el("td", { text: s.label }), el("td", { text: s.bars }),
-          el("td", {}, el("div", { class: "chords", text: s.chords.join("  ") }), el("div", { class: "numerals", text: s.numerals.join("  ") })),
+          el("td", {},
+            el("div", { class: "chords", text: s.chords.join("  ") }),
+            el("div", { class: "numerals", text: s.numerals.join("  ") }),
+            el("div", { class: "meta", text: (s.chordBars || 1) === 1 ? "1 bar each" : `${s.chordBars} bars each` })),
+          el("td", {}, (s.layers || []).length ? list(s.layers.map((x) => layerText(t, x))) : "all play"),
           el("td", { text: s.intent }))))),
       el("h3", { text: "Melody" }), el("p", { text: t.melody }),
       el("h3", { text: "Accompaniment" }), el("p", { text: t.accompaniment }),

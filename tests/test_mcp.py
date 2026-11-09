@@ -487,6 +487,19 @@ def test_templates_via_mcp(ctx: AppContext) -> None:
             ]
             assert created["harmony"][1]["symbol"] == "F"  # bVII in G mixolydian
             assert len(created["partLimits"]) == 4
+            assert [p["label"] for p in created["sectionPlans"]] == [
+                s["label"] for s in created["sections"]
+            ]
+            forest = await call(
+                client, "create_project", title="Glade", template_id="old-realm-forest"
+            )
+            intro, first_a = forest["sectionPlans"][:2]
+            assert intro["chordBars"] == 2 and intro["startBar"] == 1
+            assert {"trackId": "flute", "action": "rest", "bar": 1, "note": ""} in intro["layers"]
+            oboe = next(x for x in first_a["layers"] if x["trackId"] == "oboe")
+            assert (oboe["action"], oboe["bar"]) == ("enter", first_a["startBar"] + 4)
+            detail = await call(client, "get_template", template_id="old-realm-forest")
+            assert detail["chart"][0]["chordBars"] == 2 and detail["chart"][0]["layers"]
             missing = await call_error(client, "create_project", title="Bare")
             assert missing["code"] == "MISSING_ARGUMENT"
             unknown = await call_error(client, "create_project", title="X", template_id="disco")

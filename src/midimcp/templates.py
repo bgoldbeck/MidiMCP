@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
 
@@ -49,12 +49,48 @@ class Part:
     guidance: str
 
 
+LAYER_ACTIONS: Final = ("play", "rest", "enter", "exit")
+
+
+@dataclass(frozen=True)
+class Layer:
+    """What one part does in one section. Parts a section does not list simply play.
+
+    ``enter`` is silent before ``bar`` and plays from it; ``exit`` plays until ``bar``
+    and is silent from it. ``bar`` counts from 1 inside the section."""
+
+    track_id: str
+    action: str  # one of LAYER_ACTIONS
+    bar: int = 1
+    note: str = ""  # how the part plays here (pickup, harmony a third below, ...)
+
+
 @dataclass(frozen=True)
 class SectionPlan:
     label: str
     bars: int
-    progression: tuple[str, ...]  # one chord per bar, repeated to fill the section
+    progression: tuple[str, ...]  # one chord per chord_bars bars, repeated to fill the section
     intent: str
+    chord_bars: int = 1  # how many bars each chord of the progression lasts
+    layers: tuple[Layer, ...] = ()
+
+    def numeral_at(self, bar_index: int) -> str:
+        """Roman numeral sounding in the section's ``bar_index``-th bar (0-based)."""
+        return self.progression[(bar_index // self.chord_bars) % len(self.progression)]
+
+    def fitted(self, length: int) -> SectionPlan:
+        """This section cut to ``length`` bars; enters/exits beyond the cut are resolved."""
+        if length >= self.bars:
+            return self
+        layers = []
+        for layer in self.layers:
+            if layer.action in ("enter", "exit") and layer.bar > length:
+                # the change never happens inside the shortened section
+                action = "rest" if layer.action == "enter" else "play"
+                layers.append(Layer(layer.track_id, action, 1, layer.note))
+            else:
+                layers.append(layer)
+        return replace(self, bars=length, layers=tuple(layers))
 
 
 @dataclass(frozen=True)
@@ -805,9 +841,49 @@ def build_form(template: Template, bars: int) -> list[SectionPlan]:
             if used >= bars:
                 break
             length = min(plan.bars, bars - used)
-            plans.append(SectionPlan(plan.label, length, plan.progression, plan.intent))
+            plans.append(plan.fitted(length))
             used += length
     return plans
+
+
+def _section_ids(plans: list[SectionPlan]) -> list[str]:
+    ids, labels_seen = [], {}
+    for plan in plans:
+        labels_seen[plan.label] = labels_seen.get(plan.label, 0) + 1
+        suffix = f"-{labels_seen[plan.label]}" if labels_seen[plan.label] > 1 else ""
+        ids.append(
+            "section-" + "".join(c if c.isalnum() else "p" for c in plan.label.lower()) + suffix
+        )
+    return ids
+
+
+def section_plans(template: Template, bars: int) -> list[dict[str, Any]]:
+    """The fitted form as the agent should play it: per section its song bars, chord length
+    and part layers, with every enter/exit bar given as a 1-based song bar."""
+    plans = build_form(template, bars)
+    out, start = [], 1
+    for section_id, plan in zip(_section_ids(plans), plans, strict=True):
+        out.append(
+            {
+                "sectionId": section_id,
+                "label": plan.label,
+                "startBar": start,
+                "endBar": start + plan.bars - 1,
+                "intent": plan.intent,
+                "chordBars": plan.chord_bars,
+                "layers": [
+                    {
+                        "trackId": layer.track_id,
+                        "action": layer.action,
+                        "bar": start + layer.bar - 1,
+                        "note": layer.note,
+                    }
+                    for layer in plan.layers
+                ],
+            }
+        )
+        start += plan.bars
+    return out
 
 
 def build_scaffold(
@@ -822,13 +898,8 @@ def build_scaffold(
     per_bar = ticks_per_bar(ppq, *meter)
     sections, harmony = [], []
     bar = 0
-    labels_seen: dict[str, int] = {}
-    for plan in build_form(template, bars):
-        labels_seen[plan.label] = labels_seen.get(plan.label, 0) + 1
-        suffix = f"-{labels_seen[plan.label]}" if labels_seen[plan.label] > 1 else ""
-        section_id = (
-            "section-" + "".join(c if c.isalnum() else "p" for c in plan.label.lower()) + suffix
-        )
+    plans = build_form(template, bars)
+    for section_id, plan in zip(_section_ids(plans), plans, strict=True):
         sections.append(
             {
                 "id": section_id,
@@ -838,7 +909,7 @@ def build_scaffold(
             }
         )
         for i in range(plan.bars):
-            numeral = plan.progression[i % len(plan.progression)]
+            numeral = plan.numeral_at(i)
             chord = parse_roman(numeral, tonic_pc, mode)
             harmony.append(
                 {
@@ -922,6 +993,64 @@ _ID_TEXT = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 
 class TemplateValidationError(TemplateError):
     code = "INVALID_TEMPLATE"
+
+
+def _layers_from_raw(
+    raw: Any, where: str, bars: int | None, parts: list[Part], errors: list[str]
+) -> tuple[Layer, ...] | None:
+    if isinstance(raw, tuple):
+        raw = list(raw)
+    if not isinstance(raw, list):
+        errors.append(f"{where}: 'layers' must be a list")
+        return None
+    track_ids = {p.track_id for p in parts}
+    layers: list[Layer] = []
+    seen: set[str] = set()
+    ok = True
+    for index, item in enumerate(raw):
+        at = f"{where}.layers[{index}]"
+        if not isinstance(item, dict):
+            errors.append(f"{at}: must be an object")
+            ok = False
+            continue
+        unknown = set(item) - {"track_id", "action", "bar", "note"}
+        if unknown:
+            errors.append(f"{at}: unknown fields: {', '.join(sorted(unknown))}")
+            ok = False
+        track_id, action = item.get("track_id"), item.get("action")
+        bar, note = item.get("bar", 1), item.get("note", "")
+        if not isinstance(track_id, str) or track_id not in track_ids:
+            errors.append(f"{at}: track_id must name one of the template's parts")
+            ok = False
+        elif track_id in seen:
+            errors.append(f"{at}: {track_id!r} already has a layer in this section")
+            ok = False
+        else:
+            seen.add(track_id)
+        if action not in LAYER_ACTIONS:
+            errors.append(f"{at}: action must be one of {', '.join(LAYER_ACTIONS)}")
+            ok = False
+        if not isinstance(bar, int) or isinstance(bar, bool) or bar < 1:
+            errors.append(f"{at}: bar must be a whole number from 1")
+            ok = False
+        elif bars is not None and bar > bars:
+            errors.append(f"{at}: bar {bar} is past the end of the {bars}-bar section")
+            ok = False
+        elif action in ("enter", "exit") and bar == 1:
+            errors.append(f"{at}: {action} at bar 1 is the same as {_SAME_AS[action]}; use that")
+            ok = False
+        elif action in ("play", "rest") and bar != 1:
+            errors.append(f"{at}: {action} covers the whole section; leave bar at 1")
+            ok = False
+        if not isinstance(note, str):
+            errors.append(f"{at}: note must be text")
+            ok = False
+        if ok:
+            layers.append(Layer(track_id, action, bar, note))
+    return tuple(layers) if ok else None
+
+
+_SAME_AS = {"enter": "play", "exit": "rest"}
 
 
 def template_from_dict(data: Any) -> Template:
@@ -1054,8 +1183,24 @@ def template_from_dict(data: Any) -> Template:
                     errors.append(
                         f"{where}: cannot read chord {numeral!r} (use I, vi, bVII, V7 ...)"
                     )
-        if None not in (label, bars, progression, intent):
-            form.append(SectionPlan(label, bars, tuple(str(n) for n in progression), intent))
+        chord_bars = raw.get("chord_bars", 1)
+        if not isinstance(chord_bars, int) or isinstance(chord_bars, bool) or chord_bars < 1:
+            errors.append(f"{where}: chord_bars must be a whole number of bars, 1 or more")
+            chord_bars = None
+        elif bars is not None and chord_bars > bars:
+            errors.append(f"{where}: chord_bars cannot be longer than the section")
+        layers = _layers_from_raw(raw.get("layers", []), where, bars, parts, errors)
+        if None not in (label, bars, progression, intent, chord_bars, layers):
+            form.append(
+                SectionPlan(
+                    label,
+                    bars,
+                    tuple(str(n) for n in progression),
+                    intent,
+                    chord_bars,
+                    layers,
+                )
+            )
     if not form and not errors:
         errors.append("template: form needs at least one section")
     loop = need(data, "loop", bool, "template")
@@ -1107,6 +1252,11 @@ def chart_preview(template: Template) -> list[dict[str, Any]]:
             "intent": s.intent,
             "chords": [parse_roman(n, tonic, template.mode).symbol for n in s.progression],
             "numerals": list(s.progression),
+            "chordBars": s.chord_bars,
+            "layers": [
+                {"trackId": x.track_id, "action": x.action, "bar": x.bar, "note": x.note}
+                for x in s.layers
+            ],
         }
         for s in template.form
     ]
