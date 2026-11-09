@@ -26,6 +26,6 @@ def test_old_realm_deep_forest_example(http_server: tuple[str, str]) -> None:  #
         env={"MIDIMCP_URL": base, "MIDIMCP_TOKEN": token, "PATH": "/usr/bin:/bin"},
     )
     assert done.returncode == 0, done.stdout + done.stderr
-    assert "revision 17" in done.stdout
+    assert "revision 18" in done.stdout
     assert "validate: ok=True warnings=['NOTE_OUT_OF_KEY']" in done.stdout
     assert "preview: completed" in done.stdout

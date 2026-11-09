@@ -73,7 +73,7 @@ N = {
     "G1": 31,
 }
 
-# Chords per bar (from the template chart): root name in bass octave, chord tones.
+# This piece's own chart (set with set_arrangement): one chord per bar.
 CHART = [
     "Em",
     "A",
@@ -287,7 +287,7 @@ async def main() -> None:
         raise SystemExit("no token: set MIDIMCP_TOKEN (or run inside the container)")
     http = create_mcp_http_client(headers={"Authorization": f"Bearer {TOKEN}"})
     async with http, Client(streamable_http_client(f"{URL}/mcp", http_client=http)) as c:
-        made = await call(c, "create_project", title=TITLE, template_id="old-realm-forest")
+        made = await call(c, "create_project", title=TITLE, template_id="old-realm-forest", bars=24)
         pid, rev = made["projectId"], made["revision"]
         print(f"created {pid} (revision {rev})")
 
@@ -296,6 +296,25 @@ async def main() -> None:
             r = await call(c, tool, project_id=pid, expected_revision=rev, **args)
             rev = r["revision"]
             print(f"  {label:32s} -> revision {rev}")
+
+        # This piece predates the template's layered form (intro, clearing, uneven
+        # sections): keep its own A / B / A' plan and bar-by-bar chart.
+        await step(
+            "set_arrangement",
+            "A / B / A' sections and chart",
+            sections=[
+                {"id": sid, "label": label, "startTick": a * BAR, "endTick": b * BAR}
+                for sid, label, a, b in (
+                    ("section-a", "A", 0, 8),
+                    ("section-b", "B", 8, 16),
+                    ("section-ap", "A'", 16, 24),
+                )
+            ],
+            harmony=[
+                {"startTick": i * BAR, "durationTicks": BAR, "symbol": symbol}
+                for i, symbol in enumerate(CHART)
+            ],
+        )
 
         # Notes, section by section and track by track, following the chord chart.
         for first, last, part in ((1, 8, FLUTE_A), (9, 16, FLUTE_B), (17, 24, FLUTE_A2)):
@@ -428,7 +447,7 @@ async def main() -> None:
         report = await call(c, "validate_project", project_id=pid)
         codes = sorted({w["code"] for w in report["warnings"]})
         print(f"validate: ok={report['ok']} warnings={codes}")
-        print("  (NOTE_OUT_OF_KEY = the C major chord the template's chart uses in B: intended)")
+        print("  (NOTE_OUT_OF_KEY = the C major chord this chart uses in B: intended)")
         preview = await call(c, "render_preview", project_id=pid, wait_seconds=120)
         print(
             f"preview: {preview.get('status')} {preview.get('render', {}).get('durationSeconds')} s"

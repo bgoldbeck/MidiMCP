@@ -9,12 +9,16 @@ from midimcp.music.theory import parse_roman
 from midimcp.service import CompositionService
 from midimcp.store import ProjectStore
 from midimcp.templates import (
+    LAYER_ACTIONS,
     TEMPLATES,
+    Layer,
+    SectionPlan,
     TemplateError,
     TemplateLibrary,
     build_form,
     get_template,
     list_templates,
+    section_plans,
 )
 
 
@@ -75,10 +79,85 @@ def test_template_is_internally_consistent(template_id: str) -> None:
         span = instrument_range(part.instrument_id)
         assert span is not None, part.instrument_id
         assert span[0] <= part.lowest < part.highest <= span[1], part
+    track_ids = {p.track_id for p in template.parts}
     for section in template.form:
         for numeral in section.progression:
             parse_roman(numeral, 0, template.mode)  # every numeral parses
+        assert 1 <= section.chord_bars <= section.bars
+        layered = [layer.track_id for layer in section.layers]
+        assert len(layered) == len(set(layered)) and set(layered) <= track_ids
+        for layer in section.layers:
+            assert layer.action in LAYER_ACTIONS
+            if layer.action in ("enter", "exit"):
+                assert 2 <= layer.bar <= section.bars, (section.label, layer)
+            else:
+                assert layer.bar == 1
     assert template.to_dict()["ticksPerBar"] > 0
+
+
+def test_old_realm_forms_are_layered_not_blocks() -> None:
+    for template in TEMPLATES.values():
+        if not template.id.startswith("old-realm-"):
+            continue
+        melody = next(p.track_id for p in template.parts if p.role == "melody")
+        sizes = {s.bars for s in template.form}
+        assert len(sizes) > 1, f"{template.id}: every section is the same length"
+        assert any(s.layers for s in template.form), template.id
+        silent = [
+            s.label
+            for s in template.form
+            for layer in s.layers
+            if layer.track_id == melody and layer.action in ("rest", "enter", "exit")
+        ]
+        assert silent, f"{template.id}: the melody never rests, enters or leaves"
+        assert any(
+            layer.action in ("enter", "exit") for s in template.form for layer in s.layers
+        ), f"{template.id}: no part enters or leaves mid-section"
+
+
+def test_chord_bars_hold_chords_in_the_scaffold(service: CompositionService) -> None:
+    result = service.create_from_template(
+        template_id="old-realm-forest", title="Glade", tonic="E", mode="dorian"
+    )
+    score = service.get_project(result.project_id).score
+    assert [h.symbol for h in score.harmony[:6]] == ["Em", "Em", "A", "A", "Em", "A"]
+    intro = SectionPlan("I", 4, ("i", "iv", "V"), "", chord_bars=2)
+    assert [intro.numeral_at(i) for i in range(6)] == ["i", "i", "iv", "iv", "V", "V"]
+
+
+def test_section_plans_give_song_bars() -> None:
+    template = TEMPLATES["old-realm-forest"]
+    plans = section_plans(template, template.form_bars)
+    assert [p["startBar"] for p in plans] == [1, 5, 13, 19, 23]
+    assert plans[-1]["endBar"] == template.form_bars
+    assert plans[1]["layers"] == [
+        {"trackId": "oboe", "action": "enter", "bar": 9, "note": plans[1]["layers"][0]["note"]}
+    ]
+    assert [p["sectionId"] for p in plans][:2] == ["section-intro", "section-a"]
+
+
+def test_cut_sections_resolve_enters_and_exits() -> None:
+    plan = SectionPlan(
+        "A",
+        8,
+        ("i",),
+        "",
+        layers=(
+            Layer("flute", "enter", 6, "late"),
+            Layer("oboe", "exit", 7),
+            Layer("harp", "enter", 3),
+            Layer("pad", "rest"),
+        ),
+    )
+    cut = plan.fitted(4)
+    assert cut.bars == 4
+    assert cut.layers == (
+        Layer("flute", "rest", 1, "late"),
+        Layer("oboe", "play", 1),
+        Layer("harp", "enter", 3),
+        Layer("pad", "rest"),
+    )
+    assert plan.fitted(8) is plan
 
 
 @pytest.mark.parametrize("template_id", list(TEMPLATES))
@@ -182,6 +261,42 @@ def test_library_duplicate_edit_delete(tmp_path: Path) -> None:
         (lambda d: d.update(mode="bebop"), "mode must be"),
         (lambda d: d["parts"][0].update(lowest=90, highest=60), "lowest < highest"),
         (lambda d: d.update(meter=[5, 3]), "meter"),
+        (lambda d: d["form"][0].update(chord_bars=0), "chord_bars"),
+        (lambda d: d["form"][0].update(chord_bars=99), "longer than the section"),
+        (lambda d: d["form"][0].update(layers="flute"), "'layers' must be a list"),
+        (
+            lambda d: d["form"][0].update(layers=[{"track_id": "kazoo", "action": "rest"}]),
+            "track_id must name",
+        ),
+        (
+            lambda d: d["form"][0].update(layers=[{"track_id": "flute", "action": "solo"}]),
+            "action must be",
+        ),
+        (
+            lambda d: d["form"][0].update(
+                layers=[{"track_id": "flute", "action": "enter", "bar": 99}]
+            ),
+            "past the end",
+        ),
+        (
+            lambda d: d["form"][0].update(layers=[{"track_id": "flute", "action": "enter"}]),
+            "same as play",
+        ),
+        (
+            lambda d: d["form"][0].update(
+                layers=[{"track_id": "flute", "action": "rest", "bar": 3}]
+            ),
+            "leave bar at 1",
+        ),
+        (
+            lambda d: d["form"][0].update(
+                layers=[
+                    {"track_id": "flute", "action": "rest"},
+                    {"track_id": "flute", "action": "play"},
+                ]
+            ),
+            "already has a layer",
+        ),
     ],
 )
 def test_template_validation_errors(tmp_path: Path, change, message: str) -> None:
@@ -211,3 +326,23 @@ def test_song_from_custom_template(tmp_path: Path) -> None:
     result = CompositionService(store).create_from_template(template_id="quick-town", title="Q")
     score = CompositionService(store).get_project(result.project_id).score
     assert [h.symbol for h in score.harmony] == ["G", "C", "D", "G"]
+
+
+def test_custom_template_layers_round_trip(tmp_path: Path) -> None:
+    library = TemplateLibrary(tmp_path)
+    library.duplicate("peaceful-town", "layered-town")
+    data = library.detail("layered-town")
+    melody = data["parts"][0]["track_id"]
+    data["form"][0]["chord_bars"] = 2
+    data["form"][0]["layers"] = [
+        {"track_id": melody, "action": "enter", "bar": 3, "note": "pickup into bar 3"}
+    ]
+    library.save("layered-town", data)
+    reloaded = TemplateLibrary(tmp_path).get("layered-town")
+    assert reloaded.form[0].chord_bars == 2
+    assert reloaded.form[0].layers == (Layer(melody, "enter", 3, "pickup into bar 3"),)
+    chart = TemplateLibrary(tmp_path).detail("layered-town")["chart"][0]
+    assert chart["chordBars"] == 2
+    assert chart["layers"] == [
+        {"trackId": melody, "action": "enter", "bar": 3, "note": "pickup into bar 3"}
+    ]

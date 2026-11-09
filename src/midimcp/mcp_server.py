@@ -33,6 +33,7 @@ from midimcp.music.timing import bar_range
 from midimcp.render import RenderError
 from midimcp.soundbanks import DEFAULT_BANK_ID, SoundbankError
 from midimcp.store.errors import StoreError
+from midimcp.templates import section_plans
 from midimcp.validation import MAX_DURATION_SECONDS, MAX_NOTES, MAX_TRACKS, validate_score
 from midimcp.views import export_project as export_project_files
 from midimcp.views import source_issues, timing
@@ -40,8 +41,9 @@ from midimcp.views import source_issues, timing
 INSTRUCTIONS = """\
 MidiMCP composes original fantasy/RPG music using General MIDI or sampled flute. Read the
 resource midimcp://guide first. Workflow: list_templates -> create_project with
-template_id (gives tracks, sections and a chord chart) -> replace_notes (by bar
-range, following the chords) -> humanize_notes + shape_expression on the melody
+template_id (gives tracks, sections, a chord chart and sectionPlans) -> replace_notes
+(by bar range, following the chords; in each section only the parts its layers
+say play, entering and exiting at the given bars) -> humanize_notes + shape_expression on the melody
 (so it sounds played, not typed) -> validate_project -> render_preview. Every
 mutation needs expected_revision (the latest revision you received). Locked
 material is protected: never try to bypass LOCKED errors.
@@ -298,7 +300,9 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
     @_tool_errors
     def get_template(template_id: str) -> dict[str, Any]:
         """Full template guidance: parts (role, instrument, register, what to play), form with
-        chord progressions per section, accompaniment patterns, dos and don'ts."""
+        chord progressions per section (chord_bars = bars each chord lasts) and layers (which
+        parts play, rest, enter or exit in each section; unlisted parts play), accompaniment
+        patterns, dos and don'ts."""
         return ctx.templates.detail(template_id)
 
     @server.tool()
@@ -412,7 +416,7 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
                 operation_id=operation_id,
             )
         snap = service.get_project(result.project_id)
-        return {
+        response = {
             **result.to_dict(),
             "timing": _timing(snap.score),
             "key": snap.score.tonality.to_json_dict(),
@@ -424,6 +428,13 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
             "harmony": [h.to_json_dict() for h in snap.score.harmony],
             "partLimits": [p.to_json_dict() for p in snap.brief.part_limits],
         }
+        if template_id is not None:
+            # who plays where: follow these so parts enter and leave instead of all
+            # playing every bar (the scaffold has exactly one harmony entry per bar)
+            response["sectionPlans"] = section_plans(
+                ctx.templates.get(template_id), len(snap.score.harmony)
+            )
+        return response
 
     @server.tool()
     @_tool_errors
