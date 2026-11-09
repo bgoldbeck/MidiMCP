@@ -1859,6 +1859,258 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "little firmer. Leave the percussion unhumanized so the rolls fade evenly; vary the "
         "woodblock and guitar pan slightly left and right for space.",
     ),
+    Template(
+        id="old-realm-elven-town",
+        name="Old Realm: Elven Town",
+        summary="Brisk 4/4 D-minor town theme for an elven or mage town: a harp root-fifth "
+        "pendulum, a twinkling music-box ostinato, a flute tune answered by a second harp, a "
+        "drone dance with woodblock, a tolling-bell bridge through the flat II and an ocarina "
+        "strain over rippling harp arpeggios.",
+        mood="graceful, mysterious, quietly busy; old magic in daily life",
+        setting="elven town, mage quarter, a moonlit market, a city in the trees",
+        tempo_range=(112, 140),
+        default_tempo=128,
+        meter=(4, 4),
+        mode="aeolian",
+        default_tonic="D",
+        alternative_modes=("dorian", "phrygian"),
+        parts=(
+            _part(
+                "melody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -5,
+                0.15,
+                1,
+                "The tune: a held note on the downbeat, then a quick turn (two sixteenths) "
+                "into a dotted note on beat 3; 2-bar phrases that sigh down by step. In the "
+                "drone dance it plays a light repeated-note tune in the octave above.",
+                low=62,
+                high=88,
+            ),
+            _part(
+                "countermelody",
+                "harp",
+                "Harp Answer",
+                "retro.harp",
+                -8,
+                0.3,
+                2,
+                "Answers the flute with one quick falling figure of four sixteenths on beat 2 "
+                "(top of the chord stepping down), then rests. In the ocarina strain it plays "
+                "rippling sixteenth broken chords instead.",
+                low=58,
+                high=84,
+            ),
+            _part(
+                "accompaniment",
+                "lowharp",
+                "Low Harp",
+                "retro.harp",
+                -8,
+                -0.3,
+                2,
+                "The pulse: quarter notes swinging root, 5th, root, 5th on each chord, plain "
+                "and steady. In the drone dance it stays on the tonic.",
+                low=36,
+                high=62,
+            ),
+            _part(
+                "accompaniment",
+                "musicbox",
+                "Music Box",
+                "retro.music_box",
+                -12,
+                0.4,
+                1,
+                "A twinkling quarter-note ostinato high above everything: 5th, root, 3rd, root "
+                "of the chord, the same shape every bar. Soft.",
+                low=72,
+                high=90,
+            ),
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.lute",
+                -9,
+                -0.1,
+                5,
+                "One slowly rolled open chord per bar (low root, octave, 4th or 5th, octave "
+                "again; eighths apart), every string left ringing to the bar line. Avoid the "
+                "3rd in the drone dance so it rings like an open tuning.",
+                low=40,
+                high=72,
+            ),
+            _part(
+                "countermelody",
+                "ocarina",
+                "Ocarina",
+                "retro.ocarina",
+                -6,
+                0.1,
+                1,
+                "Its own strain, only in C: a short call of pickups into a long note, two "
+                "bars at a time, low and breathy.",
+                low=60,
+                high=81,
+            ),
+            _part(
+                "percussion",
+                "perc",
+                "Woodblock",
+                "retro.woodblock",
+                -12,
+                0.2,
+                1,
+                "Only in the drone dance: two light eighth clicks on beat 2 and its off-beat, "
+                "and again on beat 4 and its off-beat. One pitch.",
+                low=60,
+                high=72,
+            ),
+            _part(
+                "percussion",
+                "bells",
+                "Tubular Bells",
+                "retro.tubular_bells",
+                -8,
+                0.0,
+                1,
+                "Only in the bridge: three tolls rising through the first chord, then one long "
+                "toll on the flat-II chord.",
+                low=60,
+                high=77,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "A",
+                8,
+                ("i", "i", "bVI", "i", "i", "i", "bVII", "i"),
+                "The pulse, the music box and the flute's tune, each bar answered by the harp.",
+                layers=(_rest("guitar"), _rest("ocarina"), _rest("perc"), _rest("bells")),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bII", "i", "bvii", "i", "bII", "i", "bVII"),
+                "The tune again, darkened by the flat II; the guitar takes over the shimmer.",
+                layers=(
+                    _enter("guitar", 2, "one rolled chord per bar"),
+                    _exit("musicbox", 2, "drops out as the colour darkens"),
+                    _rest("ocarina"),
+                    _rest("perc"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                16,
+                ("i", "i", "i", "bVII"),
+                "The drone dance: the bass holds the tonic and the guitar rings open chords; "
+                "halfway in, the flute's light repeated-note tune and the woodblock join.",
+                layers=(
+                    _play("guitar", "rolled open chords, no 3rd"),
+                    _play("lowharp", "tonic drone in quarters"),
+                    _exit("musicbox", 5, "a short sparkle at the start only"),
+                    _exit("harp", 5, "one last answer, then rests"),
+                    _enter("perc", 5, "clicks on 2 and 4 with their off-beats"),
+                    _enter("flute", 5, "repeated-note dance tune, an octave up"),
+                    _rest("ocarina"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "Bridge",
+                4,
+                ("iv", "bVI", "bVII", "bII"),
+                "Everything stops for tolling bells and big held chords that lean on the flat "
+                "II before the tune returns.",
+                layers=(
+                    _play("bells", "three rising tolls, then one long one"),
+                    _play("guitar", "big held chords"),
+                    _play("flute", "one falling line from the top, held"),
+                    _rest("musicbox"),
+                    _rest("harp"),
+                    _rest("perc"),
+                    _rest("ocarina"),
+                ),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i", "i", "bVI", "i", "i", "i", "bVII", "i"),
+                "The opening returns in full: pulse, music box, tune and answers.",
+                layers=(
+                    _rest("guitar"),
+                    _rest("ocarina"),
+                    _rest("perc"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                8,
+                ("bVI", "i", "bVI", "i", "bVI", "i", "iv", "v"),
+                "The ocarina's strain over rippling harp sixteenths; the flute rests.",
+                layers=(
+                    _play("ocarina", "its own strain, two bars at a time"),
+                    _play("harp", "rippling sixteenth broken chords"),
+                    _rest("flute"),
+                    _rest("musicbox"),
+                    _rest("guitar"),
+                    _rest("perc"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "Coda",
+                4,
+                ("i", "bVI", "bVII", "i"),
+                "A last phrase of the tune over the pulse and music box; loops to A.",
+                layers=(
+                    _rest("ocarina"),
+                    _rest("guitar"),
+                    _rest("perc"),
+                    _rest("bells"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=True,
+        melody="Graceful minor tune with quick sixteenth turns into dotted notes; lean on the "
+        "6th (B flat) and touch the flat II (E flat) in A' and the bridge for an old, "
+        "otherworldly colour.",
+        accompaniment="Light and plucked: harp pulse and music box in A, guitar drone and "
+        "woodblock in B, harp ripples under the ocarina. Never a full kit.",
+        dos=(
+            "Keep the low harp's quarter-note pulse going in every tune section",
+            "Answer every bar of the flute with the harp's four-note figure in A",
+            "Stop the texture for the bells in the bridge",
+        ),
+        donts=(
+            "No drum kit",
+            "Don't put a 3rd in the guitar's drone chords",
+            "Don't let the music box play over the ocarina",
+            _ORIGINAL,
+        ),
+        patterns={
+            "low harp pulse (ticks)": "Quarters at 0, 960, 1920, 2880: root, 5th, root, 5th; "
+            "about 700 ticks each.",
+            "harp answer (ticks)": "Four sixteenths at 960, 1200, 1440, 1680 falling by step "
+            "from the chord's top note, about 200 ticks each.",
+            "music box ostinato (ticks)": "Quarters at 0, 960, 1920, 2880 (5th, root, 3rd, "
+            "root, an octave or two up), about 300 ticks each.",
+            "woodblock (ticks)": "Clicks at 960, 1440, 2880, 3360; 100-tick notes.",
+            "guitar roll (ticks)": "Root at 0, octave at 240, 4th or 5th at 480, octave above "
+            "at 720 and 960; each held to the bar line.",
+        },
+        expression="Humanize the flute (timing_ticks 10, velocity variation 6, phrase dynamics "
+        "10) with 120-tick breaths between phrases, and the ocarina the same. Keep the harps and "
+        "music box tight (timing_ticks 6, velocity variation 4). Let the bridge's bells and "
+        "chords ring their full length.",
+    ),
 )
 
 
