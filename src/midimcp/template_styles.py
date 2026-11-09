@@ -1445,8 +1445,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         patterns={
             "harp 3/4 ostinato (ticks)": "Six eighths per bar (every 480): root, 5th, octave, "
             "10th, octave, 5th; 240-tick notes so the harp stays light.",
-            "bass anticipation (ticks)": "Strike the next chord's root 480 ticks before its "
-            "bar line and hold it about 3300 ticks, through the following bar.",
+            "bass anticipation (ticks)": "Strike the next bar's note (root, or the chord's 3rd "
+            "on its second bar) 480 ticks before the bar line and hold it through that bar.",
         },
         expression="On both ocarinas, use humanize_notes (legato 0.9, timing_ticks 10, "
         "breath_ticks 160) and shape_expression (base 88, peak 108, swell 10, vibrato_depth "
@@ -1455,6 +1455,193 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "stays steady, with a slightly firmer first eighth. Keep pedal up on the harp and "
         "bass. Give the guitar a little more timing play than the harp (timing_ticks 14) and "
         "keep its thumb notes firmer than the upper strings.",
+    ),
+    Template(
+        id="old-realm-lament",
+        name="Old Realm: Lament of the Ruins",
+        summary="Slow 6/8 minor lament for ruins and memorials: a harp melody of rippling "
+        "flourishes over a choir that opens alone, rolled nylon-guitar chords in two blocks, "
+        "low-harp arpeggios only at the edges and rare pizzicato punctuation.",
+        mood="mournful, mystical, tender; old grief rather than danger",
+        setting="ruined chapels, graveyards, fallen cities, memorials, a hero's tomb",
+        tempo_range=(54, 76),
+        default_tempo=66,
+        meter=(6, 8),
+        mode="aeolian",
+        default_tonic="E",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "melody",
+                "harp",
+                "Harp",
+                "retro.harp",
+                -5,
+                0.2,
+                2,
+                "The tune is plucked: each phrase starts with a quick rippling flourish of 3-5 "
+                "notes (120-180 ticks each) late in the bar that lands on a held note on the "
+                "next downbeat. Short 1-2 bar phrases in A, one long unbroken phrase in C; "
+                "silent for the last bars of A'.",
+                low=64,
+                high=86,
+            ),
+            _part(
+                "accompaniment",
+                "lowharp",
+                "Low Harp",
+                "retro.harp",
+                -9,
+                -0.25,
+                2,
+                "Steady eighth-note broken chords below the tune. Only at the edges: A, the "
+                "first half of B and the coda.",
+                low=43,
+                high=69,
+            ),
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.lute",
+                -9,
+                0.3,
+                5,
+                "Rolled chords that ring: bass note on the downbeat, then the chord rising string "
+                "by string across the bar (eighths), every note held to the bar line. Only in B "
+                "and A'.",
+                low=40,
+                high=71,
+            ),
+            _part(
+                "pad",
+                "choir",
+                "Choir",
+                "retro.choir",
+                -10,
+                -0.1,
+                2,
+                "Two voices in long notes (dotted halves and longer) moving by step; opens the "
+                "piece alone and stays almost throughout.",
+                low=50,
+                high=74,
+            ),
+            _part(
+                "countermelody",
+                "pizz",
+                "Pizzicato",
+                "retro.pizzicato",
+                -8,
+                0.0,
+                1,
+                "Punctuation only: a single low pluck (sometimes a high one) on a downbeat every "
+                "two to four bars in C and A'. Never a line.",
+                low=36,
+                high=79,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                2,
+                ("i",),
+                "The choir alone; the harp's first flourish at the very end leads into A.",
+                chord_bars=2,
+                layers=(
+                    _enter("harp", 2, "one flourish in the last beat"),
+                    _rest("lowharp"),
+                    _rest("guitar"),
+                    _rest("pizz"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "bVII", "bVI", "V"),
+                "The lament: short harp phrases over low-harp arpeggios and the choir.",
+                layers=(_rest("guitar"), _rest("pizz")),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("i", "bVII", "bVI", "V"),
+                "The guitar enters with rolled chords; the low harp hands over to it halfway.",
+                layers=(
+                    _play("guitar", "rolled chords that ring through each bar"),
+                    _exit("lowharp", 5, "hand the bed to the guitar"),
+                    _play("choir", "thinner: one voice may hold while the other rests"),
+                    _rest("pizz"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                8,
+                ("i", "bVII", "bVI", "i", "i", "bVII", "bVI", "V"),
+                "No guitar or low harp: one long harp phrase, its widest, over both choir voices.",
+                layers=(
+                    _play("harp", "one unbroken phrase reaching its highest note"),
+                    _rest("lowharp"),
+                    _rest("guitar"),
+                    _enter("pizz", 4, "first single low pluck"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                10,
+                ("i", "bVII", "bVI", "V"),
+                "The guitar returns; the melody falls silent for the last bars.",
+                layers=(
+                    _exit("harp", 8, "end the tune in bar 7; guitar and choir alone after"),
+                    _rest("lowharp"),
+                    _play("guitar", "rolled chords, a little fuller than in B"),
+                    _play("pizz", "a pluck every four bars"),
+                ),
+            ),
+            SectionPlan(
+                "Coda",
+                6,
+                ("i", "bVII", "bVI", "V"),
+                "The low harp and a last fragment of the tune return, softer; back to the intro.",
+                layers=(
+                    _enter("harp", 3, "a short fragment of the tune, softer"),
+                    _play("lowharp", "the arpeggios return, slowing in feel"),
+                    _rest("guitar"),
+                    _rest("pizz"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=False,
+        melody="Plucked and ornamental: flourish into a held note, then space. Keep it in a "
+        "narrow band (an octave or so) and let the harmonic-minor leading tone (raised 7th "
+        "over V) carry the sadness.",
+        accompaniment="Choir always there; harp, guitar and low harp take turns as the "
+        "moving bed, never all three at once.",
+        dos=(
+            "Use the major V before returning to i",
+            "Let the guitar's rolled chords ring to the bar line",
+            "Leave the melody silent before the coda",
+        ),
+        donts=(
+            "No percussion",
+            "Don't let the pizzicato play a line",
+            "Don't run guitar and low harp together for long",
+            _ORIGINAL,
+        ),
+        patterns={
+            "harp flourish (ticks)": "From 2 beats before the downbeat: 3-5 notes, 120-180 ticks "
+            "each, rising or turning, into a held note (1440-2880) on the downbeat.",
+            "guitar roll 6/8 (ticks)": "Bass note at 0 held to the bar line, then chord tones "
+            "every 480 rising string by string, each held to the bar line.",
+            "low harp 6/8 (ticks)": "Six eighths per bar (every 480): root, 5th, 10th, 5th, "
+            "octave, 5th; 480-tick notes.",
+        },
+        expression="The original style breathes with tempo rubato; until tempo maps exist, "
+        "suggest it with longer held notes at phrase ends. Humanize the harp melody "
+        "(timing_ticks 16, velocity variation 6, phrase dynamics 12) so flourishes lean into "
+        "their target notes. Humanize the guitar (timing_ticks 12) and keep its bass notes "
+        "firmer. Shape the choir with shape_expression (base 70, peak 100, swell 14, "
+        "vibrato_depth 0) so each long note swells and fades. Keep pedal up throughout.",
     ),
 )
 
