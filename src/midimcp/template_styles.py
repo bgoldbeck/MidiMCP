@@ -1249,6 +1249,205 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "in slowly with CC11 in B and fade out early enough to expose the lone recorder again. "
         "Hold the cello pedal tone with an actual note and taper its end before a chord change.",
     ),
+    Template(
+        id="old-realm-glade",
+        name="Old Realm: Woodland Glade",
+        summary="Gentle wandering theme for open woodland: an ocarina tune over a harp ostinato "
+        "that never stops, a second ocarina joining in thirds, a melody-free clearing and a "
+        "late guitar colour.",
+        mood="calm, curious, sunlit and a little lonely",
+        setting="forest paths, glades and meadows between towns; long stretches of walking",
+        tempo_range=(84, 112),
+        default_tempo=96,
+        meter=(3, 4),
+        mode="aeolian",
+        default_tonic="G",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "melody",
+                "ocarina",
+                "Ocarina",
+                "retro.ocarina",
+                -4,
+                0.1,
+                1,
+                "Long phrases (8-16 bars) in a narrow range (about a 6th to a 9th), mostly "
+                "eighths and quarters with held dotted halves where the chord changes. Starts on "
+                "a pickup, rests in the clearing and the guitar section.",
+                low=64,
+                high=81,
+            ),
+            _part(
+                "countermelody",
+                "ocarina2",
+                "Second Ocarina",
+                "retro.ocarina",
+                -7,
+                -0.15,
+                1,
+                "Only in A': moves with the melody a 3rd (sometimes a 6th) away, joining phrase "
+                "by phrase. Rests everywhere else.",
+                low=64,
+                high=81,
+            ),
+            _part(
+                "accompaniment",
+                "harp",
+                "Harp",
+                "retro.harp",
+                -9,
+                -0.3,
+                2,
+                "The bed: a continuous eighth-note broken-chord ostinato in a narrow mid "
+                "register, the same shape every bar, following the chord. Never stops.",
+                low=53,
+                high=67,
+            ),
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.lute",
+                -9,
+                0.3,
+                2,
+                "New colour for the last section only: a plucked figure in the harp's register "
+                "(not a new tune), syncopated against the harp's eighths.",
+                low=52,
+                high=69,
+            ),
+            _part(
+                "bass",
+                "bass",
+                "Acoustic Bass",
+                "retro.acoustic_bass",
+                -8,
+                0.0,
+                1,
+                "One root per bar, struck an eighth before the downbeat and held through the "
+                "bar, so each chord arrives a little early.",
+                low=36,
+                high=55,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                2,
+                ("i",),
+                "Harp ostinato alone; the bass joins with its first early note.",
+                chord_bars=2,
+                layers=(
+                    _rest("ocarina", "at most a pickup into A at the end of bar 2"),
+                    _rest("ocarina2"),
+                    _rest("guitar"),
+                    _enter("bass", 2, "first anticipated root"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                16,
+                ("i", "bVII"),
+                "The ocarina's tune: two long phrases over the slow two-chord sway.",
+                chord_bars=2,
+                layers=(_rest("ocarina2"), _rest("guitar")),
+            ),
+            SectionPlan(
+                "Turn",
+                2,
+                ("iv",),
+                "A held iv chord: the tune finishes and breathes.",
+                chord_bars=2,
+                layers=(
+                    _exit("ocarina", 2, "finish the phrase in bar 1"),
+                    _rest("ocarina2"),
+                    _rest("guitar"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                16,
+                ("i", "bVII"),
+                "The tune again almost unchanged; the second ocarina is the variation.",
+                chord_bars=2,
+                layers=(
+                    _play("ocarina", "repeat A, change only the phrase endings"),
+                    _play("ocarina2", "a 3rd away from the melody, joining phrase by phrase"),
+                    _rest("guitar"),
+                ),
+            ),
+            SectionPlan(
+                "Turn",
+                2,
+                ("iv",),
+                "The held iv again; both ocarinas let go.",
+                chord_bars=2,
+                layers=(_rest("ocarina"), _rest("ocarina2"), _rest("guitar")),
+            ),
+            SectionPlan(
+                "Clearing",
+                8,
+                ("i", "bVII", "bVII", "bVII"),
+                "No melody: harp and bass alone, the walk continues.",
+                chord_bars=2,
+                layers=(_rest("ocarina"), _rest("ocarina2"), _rest("guitar")),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i", "bVII"),
+                "A fragment of the tune returns, alone, and fades early.",
+                chord_bars=2,
+                layers=(
+                    _exit("ocarina", 8, "one phrase from the tune; end it in bar 7"),
+                    _rest("ocarina2"),
+                    _rest("guitar"),
+                ),
+            ),
+            SectionPlan(
+                "Guitar",
+                12,
+                ("i", "bVII"),
+                "New colour, no tune: the guitar joins the harp; loops back to the intro.",
+                chord_bars=2,
+                layers=(
+                    _rest("ocarina"),
+                    _rest("ocarina2"),
+                    _play("guitar", "syncopated plucked figure; let the last chord ring"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=False,
+        melody="One original tune, long-breathed and narrow, repeated rather than "
+        "developed; variety comes from who plays with it and from the sections without it.",
+        accompaniment="The harp ostinato and the early bass never stop: they are the piece. "
+        "Everything else comes and goes over them.",
+        dos=(
+            "Let chords last two bars",
+            "Keep the harp shape identical bar to bar",
+            "Leave whole sections without a melody",
+        ),
+        donts=(
+            "No percussion",
+            "Don't start every part in bar 1",
+            "Don't write a new tune for the guitar",
+            _ORIGINAL,
+        ),
+        patterns={
+            "harp 3/4 ostinato (ticks)": "Six eighths per bar (every 480): root, 5th, octave, "
+            "10th, octave, 5th; 240-tick notes so the harp stays light.",
+            "bass anticipation (ticks)": "Strike the next chord's root 480 ticks before its "
+            "bar line and hold it about 3300 ticks, through the following bar.",
+        },
+        expression="On both ocarinas, use humanize_notes (legato 0.9, timing_ticks 10, "
+        "breath_ticks 160) and shape_expression (base 88, peak 108, swell 10, vibrato_depth "
+        "20, vibrato_delay_ticks 480). Keep the second ocarina 6-8 velocity below the first. "
+        "Humanize the harp lightly (timing_ticks 6, velocity variation only) so the ostinato "
+        "stays steady, with a slightly firmer first eighth. Keep pedal up on the harp and "
+        "bass. Give the guitar a little more timing play than the harp.",
+    ),
 )
 
 
