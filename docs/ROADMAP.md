@@ -51,6 +51,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 26 | ✅ Favorites + collections | `feature/favorites-and-collections` | Star songs, user-made collections (create/rename/delete, multi-membership), library filter chips and sorting, `collections.json` outside song revisions, live updates, MCP `list_collections` / `add_to_collection` |
 | 27 | ✅ Natural sampled flute | `main` (current checkout) | Per-track sfizz/GM source selection, pinned licensed VSCO flute patches, atomic performance controls, portable MIDI fallback, mixed rendering and clipping reports; native/browser and Linux mixed-render/determinism checks passed |
 | 28 | ✅ Layered template sections | `feature/template-section-layers` | Per-section part layers (play / rest / enter / exit with bar and playing note), chord length in bars, layers in scaffolds, charts, MCP and the template editor; Old Realm forms reworked so parts enter and leave instead of four equal blocks |
+| 29 | ✅ Old Realm woodland glade template | `feature/old-realm-glade-template` | `old-realm-glade`: 3/4 wandering theme built on section layers — never-stopping harp ostinato, anticipated bass, two-bar chords, a second ocarina in thirds, a melody-free clearing and a late guitar colour |
 
 ## Phase 4 — Editing depth and quality
 
