@@ -2111,6 +2111,145 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "music box tight (timing_ticks 6, velocity variation 4). Let the bridge's bells and "
         "chords ring their full length.",
     ),
+    Template(
+        id="old-realm-character-creation",
+        name="Old Realm: Character Creation",
+        summary="Quiet 4/4 D-minor piece for one fingerpicked guitar, for character creation "
+        "and menu screens: steady eighth-note picking around a fixed high tonic pedal over a "
+        "held low bass, a second guitar doubling it a few ticks late on the other side, and a "
+        "sparse singing top line only in the middle.",
+        mood="calm, inward, expectant; a new life about to begin",
+        setting="character creation, a menu screen, a hearth before the journey",
+        tempo_range=(100, 126),
+        default_tempo=120,
+        meter=(4, 4),
+        mode="aeolian",
+        default_tonic="D",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.nylon_guitar",
+                -4,
+                -0.35,
+                4,
+                "The piece itself: a low bass note on beat 1 held for the whole bar, then "
+                "steady eighths that swap between a moving inner chord tone, a top chord tone "
+                "and a fixed pedal on the tonic just above middle C. The pedal never changes; "
+                "the chord moves around it. Over the tonic pedal sections the bass stays on "
+                "the tonic; in B it follows the chord roots.",
+                low=38,
+                high=69,
+            ),
+            _part(
+                "accompaniment",
+                "echo",
+                "Guitar Double",
+                "retro.nylon_guitar",
+                -9,
+                0.35,
+                4,
+                "A second guitar playing exactly the same notes 10-20 ticks late and a little "
+                "softer, panned to the other side: it widens the one guitar into a shimmer. "
+                "Never plays anything the first guitar does not.",
+                low=38,
+                high=69,
+            ),
+            _part(
+                "melody",
+                "voice",
+                "Guitar Voice",
+                "retro.lute",
+                -5,
+                0.0,
+                1,
+                "A sparse singing top line above the picking, only in B: half notes and "
+                "dotted quarters, mostly stepwise, landing on chord tones on beat 1. Leave "
+                "whole bars of rest between phrases.",
+                low=62,
+                high=79,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                2,
+                ("i", "i"),
+                "The guitar alone: low bass and the picking around the pedal.",
+                layers=(_rest("echo"), _rest("voice")),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "bVI", "bVII", "v", "i", "bVI", "bVII", "v"),
+                "Chords move over the tonic bass and the high pedal; halfway in the double "
+                "joins on the other side.",
+                layers=(_enter("echo", 5, "doubles a few ticks late"), _rest("voice")),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVI", "bVII", "v", "iv", "iv", "i", "i"),
+                "The same walk, turning to the iv chord (its own bass) and home.",
+                layers=(_play("echo"), _rest("voice")),
+            ),
+            SectionPlan(
+                "B",
+                12,
+                ("i", "bVI", "bVII", "v", "v", "bVI", "v", "v", "iv", "iv", "i", "i"),
+                "The bass leaves the pedal and follows the chord roots; the singing top line "
+                "enters above the picking.",
+                layers=(_play("echo"), _play("voice", "sparse long notes, rests between")),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i", "bVI", "bVII", "v", "i", "bVI", "bVII", "v"),
+                "Back to the tonic bass; the top line says one last phrase and leaves.",
+                layers=(_play("echo"), _exit("voice", 5, "one last phrase")),
+            ),
+            SectionPlan(
+                "Coda",
+                2,
+                ("i", "i"),
+                "The guitar alone again, ending on a held low tonic with the 5th above; loops "
+                "to the intro.",
+                layers=(_exit("echo", 2, "lets the first guitar end alone"), _rest("voice")),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=False,
+        melody="Most of the tune lives in the picking's top voice; the separate top line is "
+        "rare and slow. Natural minor with the flat VI and flat VII; the 5th (A) is the "
+        "favourite upper note.",
+        accompaniment="One guitar, doubled: bass held the bar, eighths around a fixed tonic "
+        "pedal. No other instruments, no percussion.",
+        dos=(
+            "Keep the eighth-note picking going in every bar but the last",
+            "Keep the high tonic pedal on the same pitch through every chord",
+            "Double the guitar 10-20 ticks late and pan the two apart",
+        ),
+        donts=(
+            "No percussion and no other instruments",
+            "Don't let the top line play in the opening or the coda",
+            "Don't strum: every note is picked on its own",
+            _ORIGINAL,
+        ),
+        patterns={
+            "picking (ticks)": "Bass at 0 held about 3700 ticks; eighths at 480, 960, ... 3360 "
+            "mixing inner chord tone, top chord tone and the tonic pedal (e.g. top, pedal, "
+            "inner, top, pedal, inner, pedal), about 400 ticks each.",
+            "double (ticks)": "Copy every guitar note 10-20 ticks later, velocity about 10 lower.",
+            "last bar (ticks)": "Bass at 0 plus the pedal and the 5th above at 480 and 960, all "
+            "held to the end of the bar.",
+        },
+        expression="Humanize the guitar lightly (timing_ticks 6, velocity variation 5, phrase "
+        "dynamics 6) with the bass a little firmer; humanize the double with a different seed "
+        "so the two never line up exactly. The top line gets timing_ticks 10, velocity "
+        "variation 6, phrase dynamics 10.",
+    ),
 )
 
 
