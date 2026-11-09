@@ -1461,7 +1461,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         name="Old Realm: Lament of the Ruins",
         summary="Slow 6/8 minor lament for ruins and memorials: a harp melody of rippling "
         "flourishes over a choir that opens alone, rolled nylon-guitar chords in two blocks, "
-        "low-harp arpeggios only at the edges and rare pizzicato punctuation.",
+        "low-harp arpeggios only at the edges and a soft low pizzicato bass in the middle.",
         mood="mournful, mystical, tender; old grief rather than danger",
         setting="ruined chapels, graveyards, fallen cities, memorials, a hero's tomb",
         tempo_range=(54, 76),
@@ -1482,7 +1482,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "The tune is plucked: each phrase starts with a quick rippling flourish of 3-5 "
                 "notes (120-180 ticks each) late in the bar that lands on a held note on the "
                 "next downbeat. Short 1-2 bar phrases in A, one long unbroken phrase in C; "
-                "silent for the last bars of A'.",
+                "silent for the last bars of A'. Even in C keep the line mostly stepwise "
+                "with held notes: no broken-chord leaps, and reach the high note only once.",
                 low=64,
                 high=86,
             ),
@@ -1534,10 +1535,11 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -8,
                 0.0,
                 1,
-                "Punctuation only: a single low pluck (sometimes a high one) on a downbeat every "
-                "two to four bars in C and A'. Never a line.",
+                "A soft low bass, never a line: one pluck on the downbeat (velocity 45-55, "
+                "about 1100 ticks) on the chord root or 5th. Every bar in C, where it is the "
+                "only bass; every other bar in A'. No high plucks.",
                 low=36,
-                high=79,
+                high=52,
             ),
         ),
         form=(
@@ -1577,12 +1579,13 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "C",
                 8,
                 ("i", "bVII", "bVI", "i", "i", "bVII", "bVI", "V"),
-                "No guitar or low harp: one long harp phrase, its widest, over both choir voices.",
+                "No guitar or low harp: one long stepwise harp phrase over both choir voices, "
+                "with soft low pizzicato as the bass.",
                 layers=(
-                    _play("harp", "one unbroken phrase reaching its highest note"),
+                    _play("harp", "one unbroken stepwise phrase, peaking once"),
                     _rest("lowharp"),
                     _rest("guitar"),
-                    _enter("pizz", 4, "first single low pluck"),
+                    _play("pizz", "soft low root on every downbeat; the only bass"),
                 ),
             ),
             SectionPlan(
@@ -1594,7 +1597,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                     _exit("harp", 8, "end the tune in bar 7; guitar and choir alone after"),
                     _rest("lowharp"),
                     _play("guitar", "rolled chords, a little fuller than in B"),
-                    _play("pizz", "a pluck every four bars"),
+                    _play("pizz", "a soft low pluck every other bar, under the guitar"),
                 ),
             ),
             SectionPlan(
@@ -1624,7 +1627,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         ),
         donts=(
             "No percussion",
-            "Don't let the pizzicato play a line",
+            "Don't let the pizzicato play a line, go high or pluck loudly",
+            "Don't leave C without a bass",
             "Don't run guitar and low harp together for long",
             _ORIGINAL,
         ),
