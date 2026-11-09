@@ -54,6 +54,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 29 | ✅ Old Realm woodland glade template | `feature/old-realm-glade-template` | `old-realm-glade`: 3/4 wandering theme built on section layers — never-stopping harp ostinato, anticipated bass, two-bar chords, a second ocarina in thirds, a melody-free clearing and a late guitar colour |
 | 30 | ✅ Old Realm lament template | `feature/old-realm-lament-template` | `old-realm-lament`: slow 6/8 minor lament for ruins and memorials — harp flourish melody, choir that opens alone, rolled nylon-guitar chords in two blocks, low-harp arpeggios only at the edges, rare pizzicato punctuation, a melody-silent stretch before the coda |
 | 31 | ✅ Old Realm mining town template | `feature/old-realm-mining-town-template` | `old-realm-mining-town`: 4/4 mixolydian town theme — galloping open-fifth guitar, horn, flute and oboe taking turns on the tune, decaying woodblock rolls and a taiko pair mid-phrase; new `retro.woodblock` alias |
+| 32 | 🟨 Old Realm elven town template | `feature/old-realm-elven-town-template` | `old-realm-elven-town`: brisk 4/4 D-minor town theme — harp root-fifth pendulum, music-box ostinato, flute tune with a harp answer, a drone dance with woodblock, a tolling-bell bridge through the flat II and an ocarina strain over harp arpeggios |
 
 ## Phase 4 — Editing depth and quality
 
