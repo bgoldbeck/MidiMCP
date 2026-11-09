@@ -1647,6 +1647,218 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "firmer. Shape the choir with shape_expression (base 70, peak 100, swell 14, "
         "vibrato_depth 0) so each long note swells and fades. Keep pedal up throughout.",
     ),
+    Template(
+        id="old-realm-mining-town",
+        name="Old Realm: Mining Town",
+        summary="Sturdy 4/4 mixolydian town theme for a mountain mining town: a galloping "
+        "open-fifth guitar that never stops, horn, flute and oboe taking turns on the tune, "
+        "decaying woodblock rolls and a pair of taiko strokes at every phrase's midpoint.",
+        mood="hard-working, proud, steady; a busy town under the mountain",
+        setting="mining town, smithy, forge district, a quarry road, a dwarven hall",
+        tempo_range=(80, 100),
+        default_tempo=90,
+        meter=(4, 4),
+        mode="mixolydian",
+        default_tonic="D",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "melody",
+                "horn",
+                "French Horn",
+                "retro.french_horn",
+                -6,
+                -0.2,
+                1,
+                "The first tune: a proud call in a narrow mid range. A held note, then short "
+                "detached notes (about 150 ticks) leading into a held note on beat 3; dotted "
+                "rhythms, mostly steps and 4ths. 2-bar phrases in question/answer pairs.",
+                low=55,
+                high=77,
+            ),
+            _part(
+                "countermelody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -7,
+                0.3,
+                1,
+                "The second tune, higher and lighter: held quarter notes decorated with quick "
+                "two- or three-note grace pickups (about 100 ticks each) from below; leaves "
+                "space on beats 2 and 4 for the guitar. In A' it plays above the horn.",
+                low=62,
+                high=88,
+            ),
+            _part(
+                "countermelody",
+                "oboe",
+                "Oboe",
+                "retro.oboe",
+                -7,
+                0.15,
+                1,
+                "The third tune, lower and busier: running stepwise eighths that wind down "
+                "through the chord and turn back up, ending each 2-bar phrase on a held note.",
+                low=60,
+                high=74,
+            ),
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.lute",
+                -9,
+                -0.1,
+                3,
+                "The engine, from the second bar to the end: a gallop of three sixteenths "
+                "(root, 5th, octave: open fifths, no 3rd) and a sixteenth rest, four times a "
+                "bar, each note about 720 ticks so they overlap. The chord changes at beat 3 "
+                "when the progression moves, so a bVII bar returns to I halfway.",
+                low=45,
+                high=67,
+            ),
+            _part(
+                "percussion",
+                "perc",
+                "Woodblock",
+                "retro.woodblock",
+                -10,
+                0.0,
+                1,
+                "No kit groove. In tune sections: a woodblock roll of ten sixteenths on one "
+                "pitch from the downbeat, falling from velocity 100 to about 20, then silence "
+                "to the bar line. Under the oboe: one light, higher click on each off-beat "
+                "eighth instead.",
+                low=60,
+                high=84,
+            ),
+            _part(
+                "percussion",
+                "taiko",
+                "Taiko",
+                "retro.taiko",
+                -8,
+                0.0,
+                2,
+                "Only two strokes per 8-bar phrase: a low and a high taiko together on beat 2 "
+                "of bar 5, then again on beat 2 of bar 6. Nothing else.",
+                low=38,
+                high=60,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                2,
+                ("I", "bVII"),
+                "The guitar gallop alone sets the pace.",
+                layers=(
+                    _rest("horn"),
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _rest("perc"),
+                    _rest("taiko"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "bVII", "I", "bVII", "I", "bVII", "v", "I"),
+                "The horn's call over the gallop, with no percussion but the taiko pair.",
+                layers=(
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _rest("perc"),
+                    _enter("taiko", 5, "two strokes, beat 2 of bars 5 and 6"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("I", "bVII", "I", "bVII", "IV", "I", "bVII", "I"),
+                "The flute takes the tune; the woodblock rolls start.",
+                layers=(
+                    _rest("horn"),
+                    _rest("oboe"),
+                    _play("perc", "woodblock roll every bar"),
+                    _play("taiko", "two strokes, beat 2 of bars 5 and 6"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                8,
+                ("I", "bVII", "I", "bVII", "I", "bVII", "bVI", "bVII"),
+                "The oboe's busy turn, lower; the percussion switches to light off-beats.",
+                layers=(
+                    _rest("horn"),
+                    _rest("flute"),
+                    _play("perc", "light off-beat clicks, no rolls"),
+                    _play("taiko", "two strokes, beat 2 of bars 5 and 6"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVII", "i", "bVII", "i", "bVII", "IV", "I"),
+                "The horn's call returns darker (minor 3rd), the flute above it.",
+                layers=(
+                    _play("horn", "the call again over the minor colour"),
+                    _play("flute", "a third or sixth above, or answering in the gaps"),
+                    _rest("oboe"),
+                    _play("perc", "woodblock roll every bar"),
+                    _play("taiko", "two strokes, beat 2 of bars 5 and 6"),
+                ),
+            ),
+            SectionPlan(
+                "C'",
+                8,
+                ("I", "bVII", "I", "bVII", "I", "bVII", "bVI", "bVII"),
+                "Everyone: the oboe's line with horn and flute holding long notes above; "
+                "back to the intro.",
+                layers=(
+                    _play("oboe", "its running line again"),
+                    _play("horn", "long held notes under the flute"),
+                    _play("flute", "long held notes, a few grace pickups"),
+                    _play("perc", "woodblock roll every bar"),
+                    _play("taiko", "two strokes, beat 2 of bars 5 and 6"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=True,
+        melody="Three wind voices take turns, one tune each, never all leading at once: the "
+        "horn proud and dotted, the flute high and ornamented, the oboe low and running. "
+        "Use the flat 7th (C in D) freely; the 3rd may turn minor in A'.",
+        accompaniment="Only the guitar gallop and percussion under the tune; no bass part, the "
+        "guitar's low root is the bass.",
+        dos=(
+            "Keep the guitar gallop going from the second bar to the end",
+            "Hand the tune from horn to flute to oboe",
+            "Make each woodblock roll fade within the bar",
+        ),
+        donts=(
+            "No drum-kit backbeat",
+            "Don't put a 3rd in the guitar gallop",
+            "Don't let two winds play different tunes at once",
+            _ORIGINAL,
+        ),
+        patterns={
+            "guitar gallop 4/4 (ticks)": "Notes at 0, 240, 480 (root, 5th, octave), rest "
+            "720; repeat from 960, 1920, 2880. Each note about 720 ticks long.",
+            "woodblock roll (ticks)": "One pitch every 240 from 0 to 2160 (ten notes), velocity "
+            "100, 100, 90, 90, 80, 80, 70, 60, 50, 40 or similar, 100-tick notes.",
+            "taiko pair (ticks)": "In bars 5 and 6 of a phrase: low and high taiko together "
+            "at 960, about 840 ticks long, velocity 110.",
+            "horn call rhythm (ticks)": "Held note 0-540, short notes at 720, 960, 1440 "
+            "(150-tick staccato), then a held note from 1920 to the bar line.",
+        },
+        expression="Humanize the winds (timing_ticks 12, velocity variation 6, phrase "
+        "dynamics 10, accent downbeats) with breaths of 120 ticks between phrases. Keep the "
+        "guitar tight (timing_ticks 6, velocity variation 4) with the root of each gallop a "
+        "little firmer. Leave the percussion unhumanized so the rolls fade evenly; vary the "
+        "woodblock and guitar pan slightly left and right for space.",
+    ),
 )
 
 

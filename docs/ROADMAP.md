@@ -53,7 +53,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 28 | ✅ Layered template sections | `feature/template-section-layers` | Per-section part layers (play / rest / enter / exit with bar and playing note), chord length in bars, layers in scaffolds, charts, MCP and the template editor; Old Realm forms reworked so parts enter and leave instead of four equal blocks |
 | 29 | ✅ Old Realm woodland glade template | `feature/old-realm-glade-template` | `old-realm-glade`: 3/4 wandering theme built on section layers — never-stopping harp ostinato, anticipated bass, two-bar chords, a second ocarina in thirds, a melody-free clearing and a late guitar colour |
 | 30 | ✅ Old Realm lament template | `feature/old-realm-lament-template` | `old-realm-lament`: slow 6/8 minor lament for ruins and memorials — harp flourish melody, choir that opens alone, rolled nylon-guitar chords in two blocks, low-harp arpeggios only at the edges, rare pizzicato punctuation, a melody-silent stretch before the coda |
-| 31 | 🟨 Old Realm mining town template | `feature/old-realm-mining-town-template` | `old-realm-mining-town`: 4/4 mixolydian town theme — galloping open-fifth guitar, horn, flute and oboe taking turns on the tune, decaying woodblock rolls and taiko accents at phrase ends |
+| 31 | ✅ Old Realm mining town template | `feature/old-realm-mining-town-template` | `old-realm-mining-town`: 4/4 mixolydian town theme — galloping open-fifth guitar, horn, flute and oboe taking turns on the tune, decaying woodblock rolls and a taiko pair mid-phrase; new `retro.woodblock` alias |
 
 ## Phase 4 — Editing depth and quality
 

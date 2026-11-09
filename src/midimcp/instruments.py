@@ -123,6 +123,7 @@ RETRO_ALIASES: Final[dict[str, tuple[int, str, str]]] = {
     "halo_pad": (94, "Halo Pad", "pad"),
     "orchestra_hit": (55, "Orchestra Hit", "percussion-melodic"),
     "steel_drums": (114, "Steel Drums", "percussion-melodic"),
+    "woodblock": (115, "Woodblock", "percussion-melodic"),
     "taiko": (116, "Taiko Drum", "percussion-melodic"),
     "synth_drum": (118, "Synth Drum", "percussion-melodic"),
 }
@@ -209,7 +210,7 @@ INSTRUMENT_RANGES: Final[dict[str, tuple[int, int]]] = {
     "overdrive_guitar": (40, 86), "distortion_guitar": (40, 86), "square_lead": (36, 96),
     "saw_lead": (36, 96), "calliope": (48, 96), "chiff_lead": (48, 96), "new_age_pad": (36, 96),
     "halo_pad": (36, 96), "orchestra_hit": (36, 84), "steel_drums": (52, 88), "taiko": (36, 60),
-    "synth_drum": (36, 72),
+    "synth_drum": (36, 72), "woodblock": (48, 96),
 }  # fmt: skip
 
 
