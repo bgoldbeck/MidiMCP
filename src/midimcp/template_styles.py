@@ -2277,9 +2277,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "The tune, short and staccato: a dotted note on the downbeat curled by a "
                 "chromatic neighbour turn (up a half step, back, down a step), then a "
                 "detached note on beat 2 or 3. Climbs in a short run every fourth bar and "
-                "ends phrases on a shaken half-step trill.",
+                "ends phrases on a shaken half-step trill. Stay mostly between G4 and C6; "
+                "the tune should sparkle, not pierce.",
                 low=67,
-                high=93,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -2289,10 +2290,11 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -9,
                 0.35,
                 1,
-                "Echoes the flute's last bar of each phrase a bar later, an octave up or in "
-                "thirds; very short notes, never more than two bars at a time.",
+                "Echoes the flute's last bar of each phrase a bar later, in the flute's own "
+                "octave or a 3rd above; very short, soft notes, never more than two bars at a "
+                "time. Keep it low in its range so it never shrieks.",
                 low=74,
-                high=93,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -2356,10 +2358,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -14,
                 0.3,
                 2,
-                "A very high, very soft open fifth that shadows the choir an octave or two up; "
-                "only in C and the last A.",
-                low=79,
-                high=96,
+                "A soft open fifth that shadows the choir one octave up (never two); only in C "
+                "and the last A.",
+                low=67,
+                high=84,
             ),
             _part(
                 "percussion",
@@ -2487,6 +2489,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         donts=(
             "No full drum kit: tambourine and triangle only",
             "Don't put 3rds in the choir or high strings",
+            "Keep every part at or below C6 so the high end never turns shrill",
             "Don't let the pizzicato play on the last eighth of the bar",
             _ORIGINAL,
         ),
