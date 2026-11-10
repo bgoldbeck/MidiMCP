@@ -2768,6 +2768,287 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "phrase peaks a touch late. Keep guitar and harpsichord tight (timing_ticks 6, "
         "velocity variation 4); the harp gets velocity variation 6 and phrase dynamics 8.",
     ),
+    Template(
+        id="old-realm-island-town",
+        name="Old Realm: Island Town",
+        summary="Driving 4/4 A-minor theme for a mystic island town: two harps in canon on a "
+        "rising three-note figure, a high ocarina call, bells on the downbeat, low string "
+        "drones, a timpani ostinato over long tonic and subdominant pedals, a flute side tune "
+        "and bongo eighths in the outro.",
+        mood="mysterious, restless, hopeful; sea wind and old magic",
+        setting="an island town of mages and rangers, a misty harbour, a ruined college",
+        tempo_range=(156, 184),
+        default_tempo=172,
+        meter=(4, 4),
+        mode="aeolian",
+        default_tonic="A",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "melody",
+                "ocarina",
+                "Ocarina",
+                "retro.ocarina",
+                -5,
+                0.1,
+                1,
+                "The call: a high note on the downbeat, a drop of a 4th or 5th, then quick "
+                "eighths that climb and turn back; every other bar ends on a long note. "
+                "Stay between E4 and C6.",
+                low=64,
+                high=84,
+            ),
+            _part(
+                "countermelody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -7,
+                -0.3,
+                1,
+                "A woody side voice: in A it answers with slow rising three-note steps (one "
+                "per beat); in C and the outro it carries its own tune of long notes "
+                "ornamented by a quick neighbour turn.",
+                low=64,
+                high=81,
+            ),
+            _part(
+                "accompaniment",
+                "harp1",
+                "Harp",
+                "retro.harp",
+                -8,
+                -0.35,
+                1,
+                "The canon's leader: three rising eighths from a chord tone on beat 1 (for "
+                "example the 2nd, 3rd and 4th of the scale), then rest; the next bar answers "
+                "it a step lower or falls back.",
+                low=59,
+                high=76,
+            ),
+            _part(
+                "accompaniment",
+                "harp2",
+                "Harp Echo",
+                "retro.harp",
+                -10,
+                0.35,
+                1,
+                "The canon's follower: the same three-note figure two beats later (on beat 3), "
+                "panned to the other side, so the bar ripples left then right.",
+                low=59,
+                high=79,
+            ),
+            _part(
+                "pad",
+                "pad",
+                "Halo Pad",
+                "retro.halo_pad",
+                -12,
+                0.0,
+                4,
+                "The misty bed: in the intro it plays the chords with a slow falling line on "
+                "top together with the harpsichord; later it holds soft chords, two to four "
+                "voices, entering on the downbeat.",
+                low=45,
+                high=76,
+            ),
+            _part(
+                "bass",
+                "strings",
+                "Low Strings",
+                "retro.warm_strings",
+                -9,
+                0.0,
+                2,
+                "Very low held roots in octaves, a bar or a whole pedal at a time; they carry "
+                "the long tonic and subdominant pedals.",
+                low=33,
+                high=52,
+            ),
+            _part(
+                "percussion",
+                "timpani",
+                "Timpani",
+                "retro.timpani",
+                -8,
+                0.0,
+                1,
+                "Only over the pedals: the root on beat 1 and the 'and' of 2, the 3rd or 5th on "
+                "beat 4, with a four-sixteenth roll into every second bar.",
+                low=45,
+                high=52,
+            ),
+            _part(
+                "percussion",
+                "bells",
+                "Tubular Bells",
+                "retro.tubular_bells",
+                -10,
+                0.15,
+                1,
+                "A toll on the root at the downbeat of every second bar in the tune sections, "
+                "sometimes a second toll an octave up on beat 3.",
+                low=60,
+                high=77,
+            ),
+            _part(
+                "accompaniment",
+                "harpsichord",
+                "Harpsichord",
+                "retro.harpsichord",
+                -10,
+                0.2,
+                4,
+                "Only in the intro and the second half of the outro: the chords and the slow "
+                "falling line, doubled with the pad.",
+                low=45,
+                high=76,
+            ),
+            _part(
+                "percussion",
+                "bongos",
+                "Bongos",
+                "gm.drums",
+                -9,
+                0.25,
+                1,
+                "GM drum kit, outro only: running eighths alternating a high bongo (60) and a "
+                "muted conga (62), the first of each beat a little louder.",
+                low=60,
+                high=62,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                8,
+                ("i", "bVI", "i", "bVII", "i", "bVI", "V", "V"),
+                "Harpsichord and pad together: chords with a slow falling line on top.",
+                layers=(
+                    _rest("ocarina"),
+                    _rest("flute"),
+                    _rest("harp1"),
+                    _rest("harp2"),
+                    _rest("strings"),
+                    _rest("timpani"),
+                    _rest("bells"),
+                    _rest("bongos"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                16,
+                (
+                    "i",
+                    "bVI",
+                    "i",
+                    "bVII",
+                    "i",
+                    "bVI",
+                    "V",
+                    "V",
+                    "i",
+                    "bVI",
+                    "i",
+                    "bVII",
+                    "i",
+                    "bVI",
+                    "V",
+                    "V",
+                ),
+                "The harps' canon starts, the low strings and bells come in and the ocarina "
+                "calls; halfway the flute answers with slow rising steps.",
+                layers=(
+                    _exit("harpsichord", 2, "lets the harps take over"),
+                    _enter("flute", 9, "slow rising answers"),
+                    _rest("timpani"),
+                    _rest("bongos"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                12,
+                ("i", "i", "i", "i", "iv", "iv", "i", "i", "bVII", "bVI", "V", "V"),
+                "The tonic pedal: the timpani ostinato drives under shorter ocarina calls and "
+                "the canon; the pad holds.",
+                layers=(
+                    _play("timpani", "ostinato over the pedal"),
+                    _rest("flute"),
+                    _rest("harpsichord"),
+                    _rest("bongos"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                8,
+                ("iv", "iv", "iv", "iv", "bVII", "bVII", "i", "i"),
+                "The subdominant pedal: the flute's own tune of long notes; the ocarina and the "
+                "echo harp rest, the timpani keep going.",
+                layers=(
+                    _play("flute", "its own tune"),
+                    _rest("ocarina"),
+                    _rest("harp2"),
+                    _rest("harpsichord"),
+                    _rest("bongos"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVI", "i", "bVII", "i", "bVI", "V", "V"),
+                "The ocarina's call returns over the full canon and bells.",
+                layers=(
+                    _rest("timpani"),
+                    _rest("harpsichord"),
+                    _rest("bongos"),
+                ),
+            ),
+            SectionPlan(
+                "Outro",
+                12,
+                ("iv", "bVII", "i", "i", "iv", "bVII", "i", "i", "iv", "bVII", "i", "i"),
+                "Bongo eighths drive the flute's tune over the canon; the harpsichord returns "
+                "and the ocarina gives a last call before the loop.",
+                layers=(
+                    _play("bongos", "running eighths"),
+                    _enter("harpsichord", 5, "the chords return"),
+                    _exit("ocarina", 9, "a last call"),
+                    _rest("timpani"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=True,
+        melody="A short restless call built on a drop and a climb; harmonic minor (G sharp "
+        "over the V chord) for an old, eastern-tinged colour.",
+        accompaniment="Two harps in canon are the engine; long low pedals, timpani and bells "
+        "give it weight. The bongos only in the outro.",
+        dos=(
+            "Keep the harp canon going in every tune section",
+            "Hold the low strings through each pedal",
+            "Raise the 7th (G sharp) over the V chord",
+        ),
+        donts=(
+            "No drum kit: timpani, bells and bongos only",
+            "Keep every part at or below C6 so the high end never turns shrill",
+            "Don't let the flute and ocarina play tunes at the same time",
+            _ORIGINAL,
+        ),
+        patterns={
+            "harp canon (ticks)": "Leader: three eighths at 0, 480, 960 (about 400 each). "
+            "Echo: the same three at 1920, 2400, 2880.",
+            "timpani (ticks)": "Root at 0 and 1440, 3rd or 5th at 2880; roll of sixteenths at "
+            "2880, 3120, 3360, 3600 into every second bar.",
+            "bells (ticks)": "Root at 0 of every second bar (about 600); optional octave at 1920.",
+            "bongos (ticks)": "Eighths at 0, 480, ... 3360 alternating 60 and 62, about 100 "
+            "each; louder on each beat.",
+        },
+        expression="Humanize the ocarina and flute (timing_ticks 10, velocity variation 6, "
+        "phrase dynamics 10) with 120-tick breaths. Keep both harps tight (timing_ticks 4, "
+        "velocity variation 5) with different seeds. Timpani and bongos: timing_ticks 4, "
+        "velocity variation 6. Leave pad and low strings unhumanized.",
+    ),
 )
 
 
