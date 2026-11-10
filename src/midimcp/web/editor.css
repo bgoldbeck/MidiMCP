@@ -26,3 +26,8 @@
 .editor-prompt { width: 100%; min-height: 100px; background: var(--bg); color: var(--ink); }
 .editor-status { min-height: 1.5em; color: var(--muted); }
 .editor-locks { display: flex; flex-wrap: wrap; gap: 10px; }
+.revert-panel { flex-basis: 100%; border: 1px solid var(--danger); border-radius: 7px; padding: 8px 12px; margin-top: 4px; }
+.revert-panel .hint { margin: 0 0 8px; }
+.revert-options { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
+.revert-option { display: flex; gap: 8px; align-items: baseline; cursor: pointer; }
+.revert-option input { flex: none; }

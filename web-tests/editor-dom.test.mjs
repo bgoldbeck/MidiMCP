@@ -120,51 +120,43 @@ test('octave refuses to leave the MIDI range', () => {
   assert.match(editor.message, /MIDI range/);
 });
 
-test('revert picker lists earlier revisions newest first and reverts the whole song', async () => {
+const tick = () => new Promise(resolve => setImmediate(resolve));
+const button = (editor, label) => descendants(editor.container).find(node => node.tagName === 'BUTTON' && node.textContent === label);
+const revisions = [
+  {revision: 1, author: 'agent', summary: 'Created "Song"'},
+  {revision: 2, author: 'agent', summary: 'Track: 1 notes added in measures 1-1; Bass, Drums unchanged'},
+  {revision: 3, author: 'user', summary: 'Track: 1 notes modified in measures 1-1; Bass, Drums unchanged'},
+];
+
+test('revert panel lists earlier song versions in plain words and reverts every track', async () => {
   const calls = [];
   const editor = setup({api: {
-    revisions: async () => ({revisions: [
-      {revision: 1, author: 'agent', summary: 'Created'},
-      {revision: 2, author: 'user', summary: 'Octave down'},
-      {revision: 3, author: 'user', summary: 'Current'},
-    ]}),
+    revisions: async () => ({revisions}),
     restore: async (...args) => { calls.push(args); return {revision: 4}; },
   }});
   editor.setView(view('a', 3));
-  await new Promise(resolve => setImmediate(resolve));
-  const options = editor.revertPicker.children.map(o => o.getAttribute('value'));
-  assert.deepEqual(options, ['2', '1']);
-  assert.equal(editor.revertPicker.value, '2');
-  assert.equal(editor.revertButton.disabled, false);
-  editor.revertPicker.value = '1';
-  editor.revertPicker.onchange();
-  const asked = [];
-  globalThis.confirm = message => { asked.push(message); return true; };
-  try {
-    await descendants(editor.container).find(node => node.textContent === 'Revert song').onclick();
-  } finally {
-    delete globalThis.confirm;
-  }
-  assert.match(asked[0], /revision 1/);
+  assert.equal(descendants(editor.container).some(n => n.getAttribute?.('class') === 'revert-panel'), false);
+  await button(editor, 'Revert song...').onclick();
+  const radios = descendants(editor.container).filter(n => n.getAttribute?.('type') === 'radio');
+  assert.deepEqual(radios.map(r => r.value), ['2', '1']);
+  assert.equal(radios[0].checked, true);
+  const text = descendants(editor.container).map(n => n.textContent || '').join('\n');
+  assert.match(text, /Just before the last change \(the AI\): after Track: 1 notes added in measures 1-1/);
+  assert.doesNotMatch(text, /unchanged/);
+  radios[1].onchange();
+  await button(editor, 'Revert song').onclick();
   assert.deepEqual(calls, [['a', 3, 1]]);
   assert.deepEqual(editor.undo, [3]);
-  assert.match(editor.message, /Reverted the song to revision 1/);
+  assert.equal(editor.revertOpen, false);
+  assert.match(editor.message, /back to revision 1/);
 });
 
-test('revert does nothing when cancelled or when there is no earlier revision', async () => {
-  const editor = setup({api: {
-    revisions: async () => ({revisions: [{revision: 1, summary: 'Created'}]}),
-    restore: async () => assert.fail('must not restore'),
-  }});
+test('revert panel with no earlier version offers nothing to revert, and cancel closes it', async () => {
+  const editor = setup({api: {revisions: async () => ({revisions: revisions.slice(0, 1)}), restore: async () => assert.fail('must not restore')}});
   editor.setView(view('a', 1));
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(editor.revertButton.disabled, true);
-  editor.setView(view('a', 2));
-  await new Promise(resolve => setImmediate(resolve));
-  globalThis.confirm = () => false;
-  try {
-    await editor.revert();
-  } finally {
-    delete globalThis.confirm;
-  }
+  await button(editor, 'Revert song...').onclick();
+  assert.equal(button(editor, 'Revert song'), undefined);
+  assert.ok(descendants(editor.container).some(n => n.textContent === 'This song has no earlier versions.'));
+  button(editor, 'Cancel').onclick();
+  assert.equal(editor.revertOpen, false);
 });

@@ -12,6 +12,21 @@ function svg(tag, attrs) {
   for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
   return n;
 }
+function ago(iso) {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "Earlier";
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return "Just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return new Date(t).toLocaleString();
+}
+/** A revision summary in plain words, without the list of tracks that did not change. */
+function describe(summary = "") {
+  const parts = summary.split("; ").filter((part) => part && !part.endsWith(" unchanged"));
+  const text = (parts.join("; ") || summary || "a change").replace(/^Restored revision (\d+)$/, "reverting to revision $1");
+  return text.length > 140 ? `${text.slice(0, 137)}...` : text;
+}
 export class NoteEditor {
   constructor({ container, api, onChange = () => {
   }, onPreview = () => {
@@ -64,6 +79,7 @@ export class NoteEditor {
       this.redo = [];
     }
     if (!same) this.selected.clear();
+    if (!same || view?.revision !== this.view?.revision) this.revertOpen = false;
     this.view = view;
     if (!view) {
       this.cursor = null;
@@ -118,7 +134,6 @@ export class NoteEditor {
   updateHistoryButtons() {
     if (this.undoButton) this.undoButton.disabled = this.pending || !this.undo.length;
     if (this.redoButton) this.redoButton.disabled = this.pending || !this.redo.length;
-    if (this.revertButton) this.revertButton.disabled = this.pending || !this.revertPicker?.value;
   }
   async mutate(action, history = true) {
     if (this.pending || !this.view) return;
@@ -169,46 +184,66 @@ export class NoteEditor {
       this.updateHistoryButtons();
     }
   }
-  /** Fetch the song's revision list once per revision, then refresh the revert picker. */
-  async loadRevisions() {
-    const v = this.view;
-    if (!v || !this.api.revisions) return this.fillRevisions();
-    const key = `${v.projectId}@${v.revision}`;
-    if (this.revisionsKey === key) return this.fillRevisions();
-    this.revisionsKey = key;
+  /** Open or close the revert panel; opening loads the song's revision list. */
+  async toggleRevert() {
+    if (this.revertOpen) {
+      this.revertOpen = false;
+      return this.render();
+    }
+    if (!this.view || !this.api.revisions) return;
+    Object.assign(this, { revertOpen: true, songRevisions: null, revertChoice: undefined });
+    this.render();
+    const { projectId, revision } = this.view, generation = this.generation;
     try {
-      const { revisions } = await this.api.revisions(v.projectId);
-      if (this.revisionsKey !== key) return;
-      this.revisions = revisions || [];
+      const { revisions } = await this.api.revisions(projectId);
+      if (this.generation !== generation || this.view?.revision !== revision || !this.revertOpen) return;
+      this.songRevisions = revisions || [];
     } catch (error) {
-      this.revisionsKey = undefined;
-      this.revisions = [];
+      this.revertOpen = false;
       this.onError(error);
     }
-    this.fillRevisions();
+    this.render();
   }
-  fillRevisions() {
-    const picker = this.revertPicker;
-    if (!picker || !this.view) return;
-    const older = (this.revisions || []).filter((r) => r.revision < this.view.revision).sort((a, b) => b.revision - a.revision);
-    picker.replaceChildren(...older.map((r) => {
-      const summary = (r.summary || "").length > 60 ? `${r.summary.slice(0, 57)}...` : r.summary || "";
-      return el("option", `Revision ${r.revision}${r.author ? ` (${r.author})` : ""}${summary ? `: ${summary}` : ""}`, { value: r.revision, title: r.createdAt || "" });
-    }));
-    if (!older.length) picker.append(el("option", "No earlier revisions", { value: "" }));
-    const keep = older.some((r) => String(r.revision) === this.revertChoice);
-    picker.value = keep ? this.revertChoice : String(older[0]?.revision ?? "");
-    picker.disabled = !older.length;
-    this.updateHistoryButtons();
+  revertPanel() {
+    const panel = el("div", "", { class: "revert-panel", role: "group", "aria-label": "Revert the song" });
+    const actions = el("div", "", { class: "editor-tools" });
+    const close = el("button", "Cancel", { type: "button", class: "secondary" });
+    close.onclick = () => this.toggleRevert();
+    panel.append(el("p", "Pick how the song sounded before. Every track goes back to that moment. Your current version stays in the history, so Undo or another revert brings it back.", { class: "hint" }));
+    const list = this.songRevisions;
+    const earlier = (list || []).filter((r) => r.revision < this.view.revision).sort((a, b) => b.revision - a.revision);
+    if (!list || !earlier.length) {
+      panel.append(el("p", list ? "This song has no earlier versions." : "Loading the song's history...", { class: "hint" }), actions);
+      actions.append(close);
+      return panel;
+    }
+    if (!earlier.some((r) => String(r.revision) === this.revertChoice)) this.revertChoice = String(earlier[0].revision);
+    const options = el("div", "", { class: "revert-options" });
+    earlier.forEach((r, i) => {
+      const label = el("label", "", { class: "revert-option" });
+      const radio = el("input", "", { type: "radio", name: "revert-choice", value: r.revision });
+      radio.checked = String(r.revision) === this.revertChoice;
+      radio.onchange = () => { this.revertChoice = String(r.revision); };
+      const who = r.author === "user" ? "you" : r.author === "agent" ? "the AI" : r.author;
+      const when = i === 0 ? "Just before the last change" : ago(r.createdAt);
+      label.append(radio, el("span", `${when} (${who}): after ${describe(r.summary)}`, { title: `Revision ${r.revision}, ${r.createdAt || ""}` }));
+      options.append(label);
+    });
+    const go = el("button", "Revert song", { type: "button", class: "danger" });
+    go.onclick = () => this.revertSong();
+    actions.append(go, close);
+    panel.append(options, actions);
+    return panel;
   }
-  async revert() {
-    const target = Number(this.revertPicker?.value);
+  async revertSong() {
+    const target = Number(this.revertChoice);
     if (!target || this.pending || !this.view) return;
-    const ask = globalThis.confirm;
-    if (typeof ask === "function" && !ask(`Revert the whole song to revision ${target}? Every track goes back to how it was then. This saves a new revision, so Undo brings your current version back.`)) return;
-    this.revertChoice = undefined;
     const result = await this.mutate((r) => this.api.restore(this.view.projectId, r, target));
-    if (result) this.say(`Reverted the song to revision ${target}. Undo brings back what you had.`);
+    if (result) {
+      this.revertOpen = false;
+      this.render();
+      this.say(`The song is back to revision ${target}. Undo reverses this.`);
+    }
     return result;
   }
   apply(notes, remove = false) {
@@ -300,16 +335,9 @@ export class NoteEditor {
     button("Select entire track", () => this.selectTrack(this.trackId));
     this.undoButton = button("Undo", () => this.history("undo"));
     this.redoButton = button("Redo", () => this.history("redo"));
-    this.revertPicker = el("select", "", { "aria-label": "Revert to revision" });
-    this.revertPicker.onchange = () => {
-      this.revertChoice = this.revertPicker.value;
-      this.updateHistoryButtons();
-    };
-    tools.append(this.revertPicker);
-    this.revertButton = button("Revert song", () => this.revert());
-    this.revertButton.setAttribute("class", "danger");
-    this.revertButton.title = "Put the whole song back to the revision chosen in the list. Saved as a new revision, so Undo reverses it.";
-    this.loadRevisions();
+    const revert = button(this.revertOpen ? "Close revert" : "Revert song...", () => this.toggleRevert());
+    revert.setAttribute("class", "revert-song");
+    revert.title = "Put every track back to how the song was earlier";
     this.updateHistoryButtons();
     const grid = field("Snap ticks", this.step);
     grid.min = 1;
@@ -331,6 +359,7 @@ export class NoteEditor {
       this.allowExtension = this.extend.checked;
     };
     if (Object.values(this.track?.automation || {}).some((points) => Array.isArray(points) && points.length)) this.container.append(el("p", "This track has expression/controller curves. Note moves and time stretching leave those curves at their original ticks.", { class: "editor-warning" }));
+    if (this.revertOpen) tools.append(this.revertPanel());
     group("Selection and transforms");
     if (this.mode === "phrase") {
       const start = field("First bar", 1), end = field("Last bar", Math.ceil(this.view.timing.totalTicks / this.view.timing.ticksPerBar));
