@@ -2250,6 +2250,261 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "so the two never line up exactly. The top line gets timing_ticks 10, velocity "
         "variation 6, phrase dynamics 10.",
     ),
+    Template(
+        id="old-realm-bazaar",
+        name="Old Realm: Bazaar",
+        summary="Brisk 3/4 G-minor market theme: a pizzicato pulse on the tonic, a tremolo "
+        "drone, choir and high strings in open fifths, a staccato flute tune full of "
+        "chromatic neighbour notes that the horn takes over an octave down, piccolo echoes, "
+        "tolling bells near the end and a tambourine shaking on beats 2 and 3 of every bar.",
+        mood="bustling, sly, a little exotic; haggling under bright awnings",
+        setting="a bazaar, a busy market square, a desert or port town, a traders' quarter",
+        tempo_range=(138, 168),
+        default_tempo=150,
+        meter=(3, 4),
+        mode="aeolian",
+        default_tonic="G",
+        alternative_modes=("phrygian", "dorian"),
+        parts=(
+            _part(
+                "melody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -5,
+                0.2,
+                1,
+                "The tune, short and staccato: a dotted note on the downbeat curled by a "
+                "chromatic neighbour turn (up a half step, back, down a step), then a "
+                "detached note on beat 2 or 3. Climbs in a short run every fourth bar and "
+                "ends phrases on a shaken half-step trill.",
+                low=67,
+                high=93,
+            ),
+            _part(
+                "countermelody",
+                "piccolo",
+                "Piccolo",
+                "retro.piccolo",
+                -9,
+                0.35,
+                1,
+                "Echoes the flute's last bar of each phrase a bar later, an octave up or in "
+                "thirds; very short notes, never more than two bars at a time.",
+                low=74,
+                high=93,
+            ),
+            _part(
+                "countermelody",
+                "horn",
+                "Horn",
+                "retro.french_horn",
+                -6,
+                -0.2,
+                1,
+                "Takes the tune an octave below the flute in B over the subdominant, the "
+                "same curled neighbour-note figure; joins the flute an octave down in the "
+                "last A for weight.",
+                low=55,
+                high=74,
+            ),
+            _part(
+                "bass",
+                "pizz",
+                "Pizzicato",
+                "retro.pizzicato",
+                -6,
+                -0.1,
+                1,
+                "The pulse: five even eighths on the chord's root, very low, starting on the "
+                "downbeat and leaving the last eighth of the bar empty. In C it plays every "
+                "other bar only.",
+                low=31,
+                high=50,
+            ),
+            _part(
+                "pad",
+                "drone",
+                "Tremolo Drone",
+                "retro.tremolo_strings",
+                -12,
+                0.0,
+                1,
+                "One very low tremolo note held for whole phrases (four to twelve bars) on the "
+                "section's home note; changes only when the bass's root changes for good.",
+                low=31,
+                high=50,
+            ),
+            _part(
+                "pad",
+                "choir",
+                "Choir",
+                "retro.choir",
+                -10,
+                -0.3,
+                2,
+                "Open fifths only (root and 5th, no 3rd): a long held fifth for two bars, then "
+                "a one-beat fifth on beat 3 that slides a step or a 3rd up and back.",
+                low=55,
+                high=76,
+            ),
+            _part(
+                "pad",
+                "highstrings",
+                "High Strings",
+                "retro.strings",
+                -14,
+                0.3,
+                2,
+                "A very high, very soft open fifth that shadows the choir an octave or two up; "
+                "only in C and the last A.",
+                low=79,
+                high=96,
+            ),
+            _part(
+                "percussion",
+                "bells",
+                "Tubular Bells",
+                "retro.tubular_bells",
+                -10,
+                0.1,
+                1,
+                "Only in the last A and the coda: one short toll on the 5th of the key on "
+                "the downbeat of every second bar.",
+                low=60,
+                high=77,
+            ),
+            _part(
+                "percussion",
+                "tamb",
+                "Tambourine",
+                "gm.drums",
+                -8,
+                0.25,
+                1,
+                "GM drum kit. Tambourine (note 54) shakes four eighths on beats 2, 2-and, 3 "
+                "and 3-and, each softer than the last; an open triangle (81) lightly marks "
+                "the downbeat. Every fourth bar the tambourine shakes from the downbeat "
+                "instead, as a small fill.",
+                low=54,
+                high=81,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                4,
+                ("i", "i", "i", "i"),
+                "The market wakes: tambourine, pizzicato pulse, drone and the choir's first fifth.",
+                layers=(
+                    _rest("flute"),
+                    _rest("piccolo"),
+                    _rest("horn"),
+                    _rest("highstrings"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                12,
+                ("i", "i", "bII", "i", "i", "i", "bII", "i", "iv", "iv", "V", "i"),
+                "The flute's curled tune over the pulse; the piccolo starts echoing in the "
+                "second half.",
+                layers=(
+                    _enter("piccolo", 9, "echoes the flute's phrase ends"),
+                    _rest("horn"),
+                    _rest("highstrings"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                12,
+                ("iv", "iv", "iv", "iv", "bII", "bII", "i", "i", "iv", "iv", "V", "V"),
+                "The horn takes the tune an octave down over the subdominant; the flute rests.",
+                layers=(
+                    _play("horn", "the tune, an octave down"),
+                    _rest("flute"),
+                    _rest("piccolo"),
+                    _rest("highstrings"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                12,
+                ("i", "bIII", "i", "bIII", "v", "bVI", "v", "bVI", "V", "iv", "V", "V"),
+                "The street between the stalls: no tune, just the choir's sliding fifths, the "
+                "pizzicato every other bar and the tambourine; the high strings shimmer in "
+                "halfway.",
+                layers=(
+                    _enter("highstrings", 5, "soft fifths far above the choir"),
+                    _rest("flute"),
+                    _rest("piccolo"),
+                    _rest("horn"),
+                    _rest("bells"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                12,
+                ("i", "i", "bII", "i", "i", "i", "bII", "i", "iv", "iv", "V", "i"),
+                "The tune returns with everything: the horn doubles an octave down, bells "
+                "toll every second bar, the piccolo echoes.",
+                layers=(
+                    _play("horn", "doubles the flute an octave down"),
+                    _play("bells", "a toll every second bar"),
+                    _play("highstrings"),
+                    _exit("piccolo", 9, "falls away before the coda"),
+                ),
+            ),
+            SectionPlan(
+                "Coda",
+                4,
+                ("i", "bII", "V", "i"),
+                "The flute's half-step trill over the last tolls; the pulse stops on a "
+                "downbeat and the market loops back to its wake-up.",
+                layers=(
+                    _rest("piccolo"),
+                    _rest("horn"),
+                    _exit("tamb", 4, "one last shake on the downbeat"),
+                ),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=True,
+        melody="Short staccato phrases built from one curled figure: a note, its upper "
+        "chromatic neighbour, back, then a step down. G minor with the raised 7th (F sharp) "
+        "and the flat 2nd (A flat) as colour; end phrases on a shaken half-step trill.",
+        accompaniment="Everything is open fifths, drones and a five-eighth pizzicato pulse; "
+        "the tambourine gives the bar its lilt. No chordal comping and no drum kit beyond "
+        "the tambourine and triangle.",
+        dos=(
+            "Keep the tambourine shaking on beats 2 and 3 in every bar except the last",
+            "Voice the choir and high strings in bare fifths",
+            "Hand the tune to the horn in B so the flute can rest",
+        ),
+        donts=(
+            "No full drum kit: tambourine and triangle only",
+            "Don't put 3rds in the choir or high strings",
+            "Don't let the pizzicato play on the last eighth of the bar",
+            _ORIGINAL,
+        ),
+        patterns={
+            "tambourine (ticks)": "Note 54 at 960, 1440, 1920, 2400 with falling velocities "
+            "(about 70, 60, 50, 35), 100 ticks each; open triangle 81 at 0, soft. Fill bar: "
+            "54 at 0, 480, 960, 1920.",
+            "pizzicato pulse (ticks)": "The root at 0, 480, 960, 1440, 1920; about 200 ticks "
+            "each; nothing at 2400.",
+            "choir fifths (ticks)": "A fifth held from 0 for two bars (about 5700 ticks), "
+            "then a one-beat fifth at 1920 of the second bar a step or a 3rd higher.",
+            "bells (ticks)": "One toll at 0 of every second bar, about 400 ticks.",
+        },
+        expression="Humanize the flute, piccolo and horn (timing_ticks 8, velocity variation "
+        "6, phrase dynamics 10) and keep them detached (legato 0.6). Keep the pizzicato and "
+        "tambourine tight (timing_ticks 4, velocity variation 5) so the lilt stays crisp. "
+        "Leave the drone, choir and high strings unhumanized and soft.",
+    ),
 )
 
 
