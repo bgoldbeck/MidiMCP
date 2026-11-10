@@ -39,7 +39,7 @@ def test_builtin_templates_listed() -> None:
     ]
     old_realm = [i for i in ids if i.startswith("old-realm-")]
     retro = [i for i in ids if i.startswith("retro-")]
-    assert len(old_realm) == 16 and len(retro) == 12
+    assert len(old_realm) == 17 and len(retro) == 12
     assert {"old-realm-title", "old-realm-town", "old-realm-sailing", "old-realm-forest"} <= set(
         old_realm
     )
@@ -51,7 +51,7 @@ def test_builtin_templates_listed() -> None:
         "wayfarer-village",
         "wayfarer-desert",
     }
-    assert len(ids) == len(set(ids)) == 6 + 16 + 12 + 6
+    assert len(ids) == len(set(ids)) == 6 + 17 + 12 + 6
     with pytest.raises(TemplateError):
         get_template("disco")
 
