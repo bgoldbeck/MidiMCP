@@ -357,3 +357,11 @@ def test_custom_template_layers_round_trip(tmp_path: Path) -> None:
     assert chart["layers"] == [
         {"trackId": melody, "action": "enter", "bar": 3, "note": "pickup into bar 3"}
     ]
+
+
+def test_bazaar_keeps_the_high_end_down() -> None:
+    """Owner feedback: the piccolo and high strings at B-flat 6 sounded shrill."""
+    template = TEMPLATES["old-realm-bazaar"]
+    for part in template.parts:
+        if part.role != "percussion":
+            assert part.highest <= 84, part
