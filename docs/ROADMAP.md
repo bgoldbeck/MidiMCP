@@ -56,6 +56,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 31 | ✅ Old Realm mining town template | `feature/old-realm-mining-town-template` | `old-realm-mining-town`: 4/4 mixolydian town theme — galloping open-fifth guitar, horn, flute and oboe taking turns on the tune, decaying woodblock rolls and a taiko pair mid-phrase; new `retro.woodblock` alias |
 | 32 | ✅ Old Realm elven town template | `feature/old-realm-elven-town-template` | `old-realm-elven-town`: brisk 4/4 D-minor town theme — harp root-fifth pendulum, music-box ostinato, flute tune with a harp answer, a drone dance with woodblock, a tolling-bell bridge through the flat II and an ocarina strain over harp arpeggios |
 | 33 | ✅ Old Realm character creation template | `feature/old-realm-character-creation-template` | `old-realm-character-creation`: quiet 4/4 D-minor fingerpicked guitar for character creation and menus — picking around a fixed high tonic pedal, a held low bass, a second guitar doubling a few ticks late on the other side, and a sparse singing top line in the middle |
+| 34 | 🟨 Old Realm bazaar template | `feature/old-realm-bazaar-template` | `old-realm-bazaar`: brisk 3/4 G-minor market theme with chromatic neighbour-note ornaments — pizzicato tonic pulse, tremolo drone, choir and high strings in open fifths, flute tune handed to the horn, piccolo echoes, tolling bells and a tambourine shaking on beats 2 and 3; `gm.drums` gets the GM percussion key range |
 
 ## Phase 4 — Editing depth and quality
 
