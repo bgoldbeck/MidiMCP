@@ -14,6 +14,14 @@ export function move(notes, dt, dp) {
   dp = Math.max(-Math.min(...notes.map(n => n.pitch)), Math.min(Math.round(dp), 127 - Math.max(...notes.map(n => n.pitch))));
   return notes.map(n => ({ ...n, startTick: n.startTick + dt, pitch: n.pitch + dp }));
 }
+export function octave(notes, steps) {
+  // Whole octaves only; null when any note would leave MIDI 0..127, so intervals never squash.
+  if (!Number.isInteger(steps)) throw new Error('Octave steps must be a whole number.');
+  if (!notes.length) return [];
+  const dp = 12 * steps, low = Math.min(...notes.map(n => n.pitch)), high = Math.max(...notes.map(n => n.pitch));
+  if (low + dp < 0 || high + dp > 127) return null;
+  return notes.map(n => ({ ...n, pitch: n.pitch + dp }));
+}
 export function resize(notes, delta) {
   if (!Number.isFinite(delta)) throw new Error('Resize amount must be finite.');
   if (!notes.length) return [];
