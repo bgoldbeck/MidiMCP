@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {move,resize,scale,locked,boxSelect,prompt} from '../src/midimcp/web/editor-model.js';
+import {move,octave,resize,scale,locked,boxSelect,prompt} from '../src/midimcp/web/editor-model.js';
 const notes=[{id:'a',pitch:2,startTick:10,durationTicks:20,velocity:80},{id:'b',pitch:126,startTick:30,durationTicks:10,velocity:90}];
 test('movement clamps the group, preserving intervals and offsets',()=>{const result=move(notes,-40,10);assert.deepEqual(result.map(n=>[n.startTick,n.pitch]),[[0,3],[20,127]]);});
 test('resize caps shared delta at shortest duration',()=>assert.deepEqual(resize(notes,-100).map(n=>n.durationTicks),[11,1]));
@@ -10,3 +10,4 @@ test('box includes overlapping notes within pitch limits',()=>{assert.deepEqual(
 test('prompt identifies exact project revision and note selection',()=>{const text=prompt({projectId:'song',revision:5},'t',[notes[0]],'Make calmer');assert.match(text,/expected revision: 5/);assert.match(text,/"id": "a"/);assert.doesNotMatch(text,/"id": "b"/);assert.match(text,/Make calmer/);});
 test('empty transforms and invalid numeric inputs are handled explicitly',()=>{assert.deepEqual(move([],0,0),[]);assert.deepEqual(resize([],3),[]);assert.deepEqual(scale([],2,true),[]);assert.throws(()=>move(notes,NaN,0));assert.throws(()=>resize(notes,Infinity));assert.throws(()=>scale(notes,NaN));});
 test('prompt includes explicit half-open selection bounds',()=>assert.match(prompt({projectId:'p',revision:1},'t',notes,''),/\[10, 40\)/));
+test('octave moves whole octaves and refuses to squash intervals at the MIDI edge',()=>{const mid=[{id:'x',pitch:60,startTick:0,durationTicks:10,velocity:80},{id:'y',pitch:67,startTick:5,durationTicks:10,velocity:80}];assert.deepEqual(octave(mid,-1).map(n=>n.pitch),[48,55]);assert.deepEqual(octave(mid,2).map(n=>n.pitch),[84,91]);assert.equal(octave(notes,1),null);assert.equal(octave(notes,-1),null);assert.deepEqual(octave([],1),[]);assert.throws(()=>octave(mid,0.5));});

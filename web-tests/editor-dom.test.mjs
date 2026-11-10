@@ -98,3 +98,24 @@ test('sampled flute release reset sends null and supports undo', async () => {
   await descendants(editor.container).find(node => node.textContent === 'Reset flute release').onclick();
   assert.deepEqual(editor.undo, [1]);
 });
+
+test('octave down with nothing selected moves the whole track by 12 semitones', async () => {
+  const editor = setup({api: {
+    editNotes: async (project, body) => {
+      assert.equal(project, 'a');
+      assert.deepEqual(body.operations, [{op: 'update', noteId: 'n', startTick: 0, durationTicks: 960, pitch: 62, velocity: 80}]);
+      return {revision: 2};
+    },
+  }});
+  editor.setView(view());
+  editor.selected.clear();
+  await descendants(editor.container).find(node => node.textContent === 'Octave down').onclick();
+  assert.deepEqual(editor.undo, [1]);
+});
+
+test('octave refuses to leave the MIDI range', () => {
+  const editor = setup({api: {editNotes: async () => assert.fail('must not edit')}});
+  editor.setView(view('a', 1, 120));
+  editor.shiftOctave(1);
+  assert.match(editor.message, /MIDI range/);
+});

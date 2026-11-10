@@ -1,4 +1,4 @@
-import { bounds, locked, move, resize, scale, boxSelect, snap, prompt } from "./editor-model.js";
+import { bounds, locked, move, octave, resize, scale, boxSelect, snap, prompt } from "./editor-model.js";
 import { copyText } from "./clipboard.js";
 const NS = "http://www.w3.org/2000/svg";
 function el(tag, text, attrs = {}) {
@@ -177,6 +177,12 @@ export class NoteEditor {
     const operations = remove ? this.selection.map((n) => ({ op: "delete", noteId: n.id })) : notes.map((n) => ({ op: "update", noteId: n.id, startTick: n.startTick, durationTicks: n.durationTicks, pitch: n.pitch, velocity: n.velocity }));
     return this.mutate((r) => this.api.editNotes(this.view.projectId, { expectedRevision: r, operations, ...extend ? { extendToTick: extend } : {} }));
   }
+  shiftOctave(steps) {
+    if (!this.selection.length) this.selected = new Set(this.notes.map((n) => n.id));
+    const moved = octave(this.selection, steps);
+    if (!moved) return this.say("Can't move a whole octave: a note would leave the MIDI range.");
+    return this.apply(moved);
+  }
   key(e) {
     if (["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) return;
     const mod = e.ctrlKey || e.metaKey;
@@ -198,6 +204,7 @@ export class NoteEditor {
     } else if (e.key.startsWith("Arrow")) {
       e.preventDefault();
       const dt = e.key === "ArrowRight" ? this.step : e.key === "ArrowLeft" ? -this.step : 0, dp = e.key === "ArrowUp" ? 1 : e.key === "ArrowDown" ? -1 : 0;
+      if (e.shiftKey && dp) return this.shiftOctave(dp);
       this.apply(e.shiftKey && dt ? resize(this.selection, dt) : move(this.selection, dt, dp));
     }
   }
@@ -297,6 +304,9 @@ export class NoteEditor {
     tools.append(notePicker);
     const dt = field("Move ticks", 0), dp = field("Move semitones", 0);
     button("Move selection", () => this.apply(move(this.selection, +dt.value || 0, +dp.value || 0)));
+    button("Octave down", () => this.shiftOctave(-1));
+    button("Octave up", () => this.shiftOctave(1));
+    tools.append(el("span", "Octave buttons move the selection, or the whole track when nothing is selected (Shift + up/down arrow does the same).", { class: "hint" }));
     const length = field("Resize by ticks", this.step);
     button("Resize selected lengths", () => this.apply(resize(this.selection, +length.value || 0)));
     const factor = field("Factor", 2);
