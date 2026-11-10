@@ -2114,17 +2114,17 @@ OLD_REALM: Final[tuple[Template, ...]] = (
     Template(
         id="old-realm-character-creation",
         name="Old Realm: Character Creation",
-        summary="Quiet 4/4 D-minor piece for one fingerpicked guitar, for character creation "
-        "and menu screens: steady eighth-note picking around a fixed high tonic pedal over a "
-        "held low bass, a second guitar doubling it a few ticks late on the other side, and a "
-        "sparse singing top line only in the middle.",
+        summary="Quiet 3/4 E-minor piece for one fingerpicked guitar, for character creation "
+        "and menu screens: a low bass held for the bar under a rolling arpeggio that climbs "
+        "and falls back, every string left to ring, a second guitar doubling it a few ticks "
+        "late on the other side, and a sparse singing top line only in the middle.",
         mood="calm, inward, expectant; a new life about to begin",
         setting="character creation, a menu screen, a hearth before the journey",
-        tempo_range=(100, 126),
-        default_tempo=120,
-        meter=(4, 4),
+        tempo_range=(84, 108),
+        default_tempo=96,
+        meter=(3, 4),
         mode="aeolian",
-        default_tonic="D",
+        default_tonic="E",
         alternative_modes=("dorian",),
         parts=(
             _part(
@@ -2135,13 +2135,12 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -4,
                 -0.35,
                 4,
-                "The piece itself: a low bass note on beat 1 held for the whole bar, then "
-                "steady eighths that swap between a moving inner chord tone, a top chord tone "
-                "and a fixed pedal on the tonic just above middle C. The pedal never changes; "
-                "the chord moves around it. Over the tonic pedal sections the bass stays on "
-                "the tonic; in B it follows the chord roots.",
-                low=38,
-                high=69,
+                "The piece itself: the chord's root low on beat 1, held for the bar, then a "
+                "rolling arpeggio of eighths that climbs (5th, 3rd, top note) and falls back "
+                "down. Let every note ring until that string is picked again, so three or four "
+                "notes always sound together. In B the thumb adds the 5th on beat 3.",
+                low=40,
+                high=71,
             ),
             _part(
                 "accompaniment",
@@ -2154,8 +2153,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "A second guitar playing exactly the same notes 10-20 ticks late and a little "
                 "softer, panned to the other side: it widens the one guitar into a shimmer. "
                 "Never plays anything the first guitar does not.",
-                low=38,
-                high=69,
+                low=40,
+                high=71,
             ),
             _part(
                 "melody",
@@ -2165,10 +2164,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -5,
                 0.0,
                 1,
-                "A sparse singing top line above the picking, only in B: half notes and "
-                "dotted quarters, mostly stepwise, landing on chord tones on beat 1. Leave "
-                "whole bars of rest between phrases.",
-                low=62,
+                "A sparse singing top line above the picking, only in B: dotted halves and "
+                "quarter-note pickups, mostly stepwise, landing on chord tones on beat 1. "
+                "Leave whole bars of rest between phrases.",
+                low=64,
                 high=79,
             ),
         ),
@@ -2177,73 +2176,74 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "Intro",
                 2,
                 ("i", "i"),
-                "The guitar alone: low bass and the picking around the pedal.",
+                "The guitar alone: low bass and the rolling arpeggio.",
                 layers=(_rest("echo"), _rest("voice")),
             ),
             SectionPlan(
                 "A",
                 8,
-                ("i", "bVI", "bVII", "v", "i", "bVI", "bVII", "v"),
-                "Chords move over the tonic bass and the high pedal; halfway in the double "
-                "joins on the other side.",
+                ("i", "bIII", "bVII", "iv", "i", "bVI", "iv", "V"),
+                "The chords climb to the relative major and fall back to a major V; halfway "
+                "in the double joins on the other side.",
                 layers=(_enter("echo", 5, "doubles a few ticks late"), _rest("voice")),
             ),
             SectionPlan(
                 "A'",
                 8,
-                ("i", "bVI", "bVII", "v", "iv", "iv", "i", "i"),
-                "The same walk, turning to the iv chord (its own bass) and home.",
+                ("i", "bIII", "bVII", "iv", "bVI", "bIII", "iv", "V"),
+                "The same climb, turning through the flat VI before the V.",
                 layers=(_play("echo"), _rest("voice")),
             ),
             SectionPlan(
                 "B",
                 12,
-                ("i", "bVI", "bVII", "v", "v", "bVI", "v", "v", "iv", "iv", "i", "i"),
-                "The bass leaves the pedal and follows the chord roots; the singing top line "
-                "enters above the picking.",
+                ("iv", "iv", "i", "i", "bVI", "bVII", "bIII", "bIII", "iv", "V", "i", "i"),
+                "Starts away from home on iv; the thumb adds a second bass note and the "
+                "singing top line enters above the picking.",
                 layers=(_play("echo"), _play("voice", "sparse long notes, rests between")),
             ),
             SectionPlan(
                 "A''",
                 8,
-                ("i", "bVI", "bVII", "v", "i", "bVI", "bVII", "v"),
-                "Back to the tonic bass; the top line says one last phrase and leaves.",
+                ("i", "bIII", "bVII", "iv", "i", "bVI", "iv", "V"),
+                "The opening climb returns; the top line says one last phrase and leaves.",
                 layers=(_play("echo"), _exit("voice", 5, "one last phrase")),
             ),
             SectionPlan(
                 "Coda",
                 2,
                 ("i", "i"),
-                "The guitar alone again, ending on a held low tonic with the 5th above; loops "
-                "to the intro.",
+                "The guitar alone again, ending on a held low tonic with the 5th and the "
+                "octave ringing; loops to the intro.",
                 layers=(_exit("echo", 2, "lets the first guitar end alone"), _rest("voice")),
             ),
         ),
         loop=True,
         percussion_allowed=False,
-        melody="Most of the tune lives in the picking's top voice; the separate top line is "
-        "rare and slow. Natural minor with the flat VI and flat VII; the 5th (A) is the "
-        "favourite upper note.",
-        accompaniment="One guitar, doubled: bass held the bar, eighths around a fixed tonic "
-        "pedal. No other instruments, no percussion.",
+        melody="Most of the tune lives in the arpeggio's top note; the separate top line is "
+        "rare and slow. Natural minor with the relative major (bIII) and a major V (raised "
+        "7th) at phrase ends.",
+        accompaniment="One guitar, doubled: bass held the bar, a rolling arpeggio above it, "
+        "every note left to ring. No other instruments, no percussion.",
         dos=(
-            "Keep the eighth-note picking going in every bar but the last",
-            "Keep the high tonic pedal on the same pitch through every chord",
+            "Keep the arpeggio going in every bar but the last",
+            "Let each picked note ring until its string is picked again",
             "Double the guitar 10-20 ticks late and pan the two apart",
         ),
         donts=(
             "No percussion and no other instruments",
+            "Don't hold one fixed pedal note through the chord changes",
             "Don't let the top line play in the opening or the coda",
             "Don't strum: every note is picked on its own",
             _ORIGINAL,
         ),
         patterns={
-            "picking (ticks)": "Bass at 0 held about 3700 ticks; eighths at 480, 960, ... 3360 "
-            "mixing inner chord tone, top chord tone and the tonic pedal (e.g. top, pedal, "
-            "inner, top, pedal, inner, pedal), about 400 ticks each.",
+            "picking (ticks)": "Root at 0 held about 2800; eighths at 480, 960, 1440, 1920, "
+            "2400 climbing 5th, 3rd, top, then falling 3rd, 5th; each rings until that "
+            "pitch is picked again or the bar ends (about 900-2300 ticks).",
+            "B thumb (ticks)": "Add the 5th below the arpeggio at 1920, ringing to the bar end.",
             "double (ticks)": "Copy every guitar note 10-20 ticks later, velocity about 10 lower.",
-            "last bar (ticks)": "Bass at 0 plus the pedal and the 5th above at 480 and 960, all "
-            "held to the end of the bar.",
+            "last bar (ticks)": "Root at 0, 5th at 480, octave at 960, all held to the bar end.",
         },
         expression="Humanize the guitar lightly (timing_ticks 6, velocity variation 5, phrase "
         "dynamics 6) with the bass a little firmer; humanize the double with a different seed "
