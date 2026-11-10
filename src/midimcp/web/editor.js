@@ -118,6 +118,7 @@ export class NoteEditor {
   updateHistoryButtons() {
     if (this.undoButton) this.undoButton.disabled = this.pending || !this.undo.length;
     if (this.redoButton) this.redoButton.disabled = this.pending || !this.redo.length;
+    if (this.revertButton) this.revertButton.disabled = this.pending || !this.revertPicker?.value;
   }
   async mutate(action, history = true) {
     if (this.pending || !this.view) return;
@@ -167,6 +168,48 @@ export class NoteEditor {
       to.push(current);
       this.updateHistoryButtons();
     }
+  }
+  /** Fetch the song's revision list once per revision, then refresh the revert picker. */
+  async loadRevisions() {
+    const v = this.view;
+    if (!v || !this.api.revisions) return this.fillRevisions();
+    const key = `${v.projectId}@${v.revision}`;
+    if (this.revisionsKey === key) return this.fillRevisions();
+    this.revisionsKey = key;
+    try {
+      const { revisions } = await this.api.revisions(v.projectId);
+      if (this.revisionsKey !== key) return;
+      this.revisions = revisions || [];
+    } catch (error) {
+      this.revisionsKey = undefined;
+      this.revisions = [];
+      this.onError(error);
+    }
+    this.fillRevisions();
+  }
+  fillRevisions() {
+    const picker = this.revertPicker;
+    if (!picker || !this.view) return;
+    const older = (this.revisions || []).filter((r) => r.revision < this.view.revision).sort((a, b) => b.revision - a.revision);
+    picker.replaceChildren(...older.map((r) => {
+      const summary = (r.summary || "").length > 60 ? `${r.summary.slice(0, 57)}...` : r.summary || "";
+      return el("option", `Revision ${r.revision}${r.author ? ` (${r.author})` : ""}${summary ? `: ${summary}` : ""}`, { value: r.revision, title: r.createdAt || "" });
+    }));
+    if (!older.length) picker.append(el("option", "No earlier revisions", { value: "" }));
+    const keep = older.some((r) => String(r.revision) === this.revertChoice);
+    picker.value = keep ? this.revertChoice : String(older[0]?.revision ?? "");
+    picker.disabled = !older.length;
+    this.updateHistoryButtons();
+  }
+  async revert() {
+    const target = Number(this.revertPicker?.value);
+    if (!target || this.pending || !this.view) return;
+    const ask = globalThis.confirm;
+    if (typeof ask === "function" && !ask(`Revert the whole song to revision ${target}? Every track goes back to how it was then. This saves a new revision, so Undo brings your current version back.`)) return;
+    this.revertChoice = undefined;
+    const result = await this.mutate((r) => this.api.restore(this.view.projectId, r, target));
+    if (result) this.say(`Reverted the song to revision ${target}. Undo brings back what you had.`);
+    return result;
   }
   apply(notes, remove = false) {
     if (!this.selection.length) return this.say("Select notes first.");
@@ -257,6 +300,16 @@ export class NoteEditor {
     button("Select entire track", () => this.selectTrack(this.trackId));
     this.undoButton = button("Undo", () => this.history("undo"));
     this.redoButton = button("Redo", () => this.history("redo"));
+    this.revertPicker = el("select", "", { "aria-label": "Revert to revision" });
+    this.revertPicker.onchange = () => {
+      this.revertChoice = this.revertPicker.value;
+      this.updateHistoryButtons();
+    };
+    tools.append(this.revertPicker);
+    this.revertButton = button("Revert song", () => this.revert());
+    this.revertButton.setAttribute("class", "danger");
+    this.revertButton.title = "Put the whole song back to the revision chosen in the list. Saved as a new revision, so Undo reverses it.";
+    this.loadRevisions();
     this.updateHistoryButtons();
     const grid = field("Snap ticks", this.step);
     grid.min = 1;

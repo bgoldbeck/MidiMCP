@@ -119,3 +119,52 @@ test('octave refuses to leave the MIDI range', () => {
   editor.shiftOctave(1);
   assert.match(editor.message, /MIDI range/);
 });
+
+test('revert picker lists earlier revisions newest first and reverts the whole song', async () => {
+  const calls = [];
+  const editor = setup({api: {
+    revisions: async () => ({revisions: [
+      {revision: 1, author: 'agent', summary: 'Created'},
+      {revision: 2, author: 'user', summary: 'Octave down'},
+      {revision: 3, author: 'user', summary: 'Current'},
+    ]}),
+    restore: async (...args) => { calls.push(args); return {revision: 4}; },
+  }});
+  editor.setView(view('a', 3));
+  await new Promise(resolve => setImmediate(resolve));
+  const options = editor.revertPicker.children.map(o => o.getAttribute('value'));
+  assert.deepEqual(options, ['2', '1']);
+  assert.equal(editor.revertPicker.value, '2');
+  assert.equal(editor.revertButton.disabled, false);
+  editor.revertPicker.value = '1';
+  editor.revertPicker.onchange();
+  const asked = [];
+  globalThis.confirm = message => { asked.push(message); return true; };
+  try {
+    await descendants(editor.container).find(node => node.textContent === 'Revert song').onclick();
+  } finally {
+    delete globalThis.confirm;
+  }
+  assert.match(asked[0], /revision 1/);
+  assert.deepEqual(calls, [['a', 3, 1]]);
+  assert.deepEqual(editor.undo, [3]);
+  assert.match(editor.message, /Reverted the song to revision 1/);
+});
+
+test('revert does nothing when cancelled or when there is no earlier revision', async () => {
+  const editor = setup({api: {
+    revisions: async () => ({revisions: [{revision: 1, summary: 'Created'}]}),
+    restore: async () => assert.fail('must not restore'),
+  }});
+  editor.setView(view('a', 1));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.revertButton.disabled, true);
+  editor.setView(view('a', 2));
+  await new Promise(resolve => setImmediate(resolve));
+  globalThis.confirm = () => false;
+  try {
+    await editor.revert();
+  } finally {
+    delete globalThis.confirm;
+  }
+});

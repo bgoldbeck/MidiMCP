@@ -60,6 +60,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 35 | ✅ Old Realm noble city template | `feature/old-realm-noble-city-template` | `old-realm-noble-city`: stately 3/4 A-minor waltz for a proud walled city — rolled nylon-guitar chords with a harpsichord's broken eighths, an ocarina tune of long notes and quick pickups answered by flute and oboe, falling harp sequences, a bright dorian section on the major IV with congas, and a tambourine shake into every other downbeat; every part kept at or below C6 |
 | 36 | ✅ Old Realm island town template | `feature/old-realm-island-town-template` | `old-realm-island-town`: driving 4/4 A-harmonic-minor theme for a mystic island town — two harps in canon on a rising three-note figure, a high ocarina call, bells on the downbeat, low string drones, a timpani ostinato over tonic and subdominant pedals, a flute side tune and bongo eighths in the outro; every part at or below C6 |
 | 37 | ✅ Octave transpose in the note editor | `feature/octave-transpose-controls` | **Octave down** / **Octave up** buttons and Shift + up/down arrow move the selection (or the whole track when nothing is selected) by whole octaves in one revision; refuses moves that would push a note outside MIDI 0-127 |
+| 38 | ✅ Revert button in the note editor | `feature/editor-revert-button` | **Revert to revision** list (newest first, with author and summary) and a **Revert song** button beside Undo; asks first, restores the whole song as a new revision, so Undo reverses it |
 
 ## Phase 4 — Editing depth and quality
 
