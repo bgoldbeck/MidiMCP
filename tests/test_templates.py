@@ -365,3 +365,12 @@ def test_bazaar_keeps_the_high_end_down() -> None:
     for part in template.parts:
         if part.role != "percussion":
             assert part.highest <= 84, part
+
+
+def test_character_creation_stays_away_from_its_source() -> None:
+    """Owner feedback: the first version kept the source's chord loop and fixed pedal."""
+    template = TEMPLATES["old-realm-character-creation"]
+    assert template.meter == (3, 4) and template.default_tonic == "E"
+    for section in template.form:
+        chords = " ".join(section.progression)
+        assert "i bVI bVII v" not in chords, section.label
