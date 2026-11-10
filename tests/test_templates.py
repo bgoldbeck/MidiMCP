@@ -374,3 +374,10 @@ def test_character_creation_stays_away_from_its_source() -> None:
     for section in template.form:
         chords = " ".join(section.progression)
         assert "i bVI bVII v" not in chords, section.label
+
+
+def test_character_creation_asks_for_a_moving_top_line() -> None:
+    """Owner feedback: the plain repeated arpeggio sounded boring."""
+    template = TEMPLATES["old-realm-character-creation"]
+    assert "top tune (ticks)" in template.patterns
+    assert any("tune" in d for d in template.dos)

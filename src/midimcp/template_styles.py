@@ -2135,10 +2135,13 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -4,
                 -0.35,
                 4,
-                "The piece itself: the chord's root low on beat 1, held for the bar, then a "
-                "rolling arpeggio of eighths that climbs (5th, 3rd, top note) and falls back "
-                "down. Let every note ring until that string is picked again, so three or four "
-                "notes always sound together. In B the thumb adds the 5th on beat 3.",
+                "The piece itself: the chord's root low on beat 1, then a rolling arpeggio of "
+                "eighths that climbs and falls back. The two highest picks in each bar (beat "
+                "2-and and 3-and) are a tune of their own: they move from bar to bar, never the "
+                "same pair twice in a row. Let every note ring until its string is picked "
+                "again (at most four at once); walk the bass by step into the next chord on "
+                "beat 3 where it can; flick up a step and back on the last eighth every fourth "
+                "bar. In B the thumb adds the 5th on beat 3.",
                 low=40,
                 high=71,
             ),
@@ -2164,9 +2167,9 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -5,
                 0.0,
                 1,
-                "A sparse singing top line above the picking, only in B: dotted halves and "
-                "quarter-note pickups, mostly stepwise, landing on chord tones on beat 1. "
-                "Leave whole bars of rest between phrases.",
+                "A singing top line above the picking, only in B: built on one hook rhythm "
+                "(dotted quarter, eighth, quarter) answered at other pitches, with a held "
+                "dotted half every second or fourth bar; land on chord tones on beat 1.",
                 low=64,
                 high=79,
             ),
@@ -2227,6 +2230,8 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "every note left to ring. No other instruments, no percussion.",
         dos=(
             "Keep the arpeggio going in every bar but the last",
+            "Make the arpeggio's top notes a tune that moves from the first bar",
+            "Swell each four-bar phrase and play B a little louder",
             "Let each picked note ring until its string is picked again",
             "Double the guitar 10-20 ticks late and pan the two apart",
         ),
@@ -2242,6 +2247,14 @@ OLD_REALM: Final[tuple[Template, ...]] = (
             "2400 climbing 5th, 3rd, top, then falling 3rd, 5th; each rings until that "
             "pitch is picked again or the bar ends (about 900-2300 ticks).",
             "B thumb (ticks)": "Add the 5th below the arpeggio at 1920, ringing to the bar end.",
+            "top tune (ticks)": "The picks at 1440 and 2400 carry the melody (chord tones or "
+            "passing tones, a 2nd to a 4th apart, changing every bar).",
+            "bass walk (ticks)": "A passing bass note at 1920 a step from the next root, e.g. "
+            "E-F#-G or C-B-A.",
+            "flourish (ticks)": "Every fourth bar: the step above the last top note at 2640 and "
+            "back at 2760, short.",
+            "top line hook": "In B the top line repeats one rhythm cell: dotted quarter, eighth, "
+            "quarter, answered at other pitches.",
             "double (ticks)": "Copy every guitar note 10-20 ticks later, velocity about 10 lower.",
             "last bar (ticks)": "Root at 0, 5th at 480, octave at 960, all held to the bar end.",
         },
