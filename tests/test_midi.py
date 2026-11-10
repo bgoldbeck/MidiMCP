@@ -9,6 +9,7 @@ from midimcp.instruments import (
     UnknownInstrument,
     builtin_instruments,
     instrument_for_program,
+    instrument_range,
     resolve_instrument,
 )
 from midimcp.midi import (
@@ -51,6 +52,11 @@ def test_instrument_resolution() -> None:
     assert instrument_for_program(3) == "gm.003"
     ids = [i.id for i in builtin_instruments()]
     assert "retro.lute" in ids and "gm.drums" in ids
+
+
+def test_drum_kit_range_is_the_gm_percussion_key_map() -> None:
+    assert instrument_range("gm.drums") == (35, 81)  # bass drum .. open triangle
+    assert instrument_range("gm.024") is None
 
 
 def test_conversions() -> None:

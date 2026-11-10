@@ -55,6 +55,8 @@ GM_PROGRAM_NAMES: Final = (
 
 PERCUSSION_BANK: Final = 128
 DRUMS_ID: Final = "gm.drums"
+# General MIDI Level 1 percussion key map: Acoustic Bass Drum (35) to Open Triangle (81).
+GM_PERCUSSION_KEYS: Final = (35, 81)
 
 # Curated fantasy-RPG palette: alias -> (GM program, display name, family).
 RETRO_ALIASES: Final[dict[str, tuple[int, str, str]]] = {
@@ -216,6 +218,8 @@ INSTRUMENT_RANGES: Final[dict[str, tuple[int, int]]] = {
 
 
 def instrument_range(instrument_id: str) -> tuple[int, int] | None:
+    if instrument_id == DRUMS_ID:
+        return GM_PERCUSSION_KEYS
     if instrument_id.startswith("retro."):
         return INSTRUMENT_RANGES.get(instrument_id.removeprefix("retro."))
     return None
