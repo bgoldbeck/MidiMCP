@@ -2508,6 +2508,266 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         "tambourine tight (timing_ticks 4, velocity variation 5) so the lilt stays crisp. "
         "Leave the drone, choir and high strings unhumanized and soft.",
     ),
+    Template(
+        id="old-realm-noble-city",
+        name="Old Realm: Noble City",
+        summary="Stately 3/4 A-minor waltz for a proud walled city: rolled nylon-guitar "
+        "chords with a harpsichord's broken eighths, an ocarina tune of long held notes and "
+        "quick pickups answered by flute and oboe, falling harp sequences, a brighter "
+        "section on the major IV with congas, and a tambourine shake into every other "
+        "downbeat.",
+        mood="proud, graceful, a little wistful; banners over white stone",
+        setting="a walled city of knights, a palace courtyard, a city of honour and pageantry",
+        tempo_range=(132, 160),
+        default_tempo=148,
+        meter=(3, 4),
+        mode="aeolian",
+        default_tonic="A",
+        alternative_modes=("dorian",),
+        parts=(
+            _part(
+                "melody",
+                "ocarina",
+                "Ocarina",
+                "retro.ocarina",
+                -5,
+                0.15,
+                1,
+                "The tune: long notes held a bar or more, reached by quick stepwise eighth "
+                "pickups on beats 2 and 3; it leans on the 5th and the 9th. Keep it between E4 "
+                "and C6.",
+                low=64,
+                high=84,
+            ),
+            _part(
+                "countermelody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -7,
+                -0.25,
+                1,
+                "Answers while the ocarina holds: a short eighth-note scale run up into a "
+                "held note, then silence until the next long ocarina note.",
+                low=62,
+                high=81,
+            ),
+            _part(
+                "countermelody",
+                "oboe",
+                "Oboe",
+                "retro.oboe",
+                -6,
+                0.3,
+                1,
+                "Takes the tune in the bright section: scale runs up to a long note, then a "
+                "slow step down; joins again for the last return.",
+                low=60,
+                high=79,
+            ),
+            _part(
+                "accompaniment",
+                "guitar",
+                "Guitar",
+                "retro.nylon_guitar",
+                -6,
+                -0.15,
+                5,
+                "The waltz bed: the root low on beat 1 held for the bar, a rolled triad above "
+                "it (strings 30-60 ticks apart), the 5th on beat 2 and two upper chord tones "
+                "on beat 3.",
+                low=40,
+                high=69,
+            ),
+            _part(
+                "accompaniment",
+                "harpsichord",
+                "Harpsichord",
+                "retro.harpsichord",
+                -10,
+                0.2,
+                3,
+                "Six even eighths a bar that swing between the chord's upper notes and one "
+                "fixed note in the middle (the 4th or 5th of the key), like a lute drone. "
+                "Quiet, under the guitar.",
+                low=50,
+                high=74,
+            ),
+            _part(
+                "countermelody",
+                "harp",
+                "Harp",
+                "retro.harp",
+                -9,
+                0.0,
+                1,
+                "Falling sequences of eighths: a three-note climb and a step back (for example "
+                "up, up, down, up, up), each bar starting a step lower than the last. In C it "
+                "turns into a rising arpeggio and a step down.",
+                low=55,
+                high=84,
+            ),
+            _part(
+                "pad",
+                "strings",
+                "Strings",
+                "retro.warm_strings",
+                -12,
+                0.0,
+                2,
+                "Only in the bright section, C and the coda: low held notes, a root and the "
+                "3rd or 5th, a bar or two each, swelling in.",
+                low=38,
+                high=62,
+            ),
+            _part(
+                "percussion",
+                "perc",
+                "Tambourine & Congas",
+                "gm.drums",
+                -8,
+                0.25,
+                1,
+                "GM drum kit. Tambourine (54) on the downbeat of every other bar, with a quick "
+                "three-note shake on the last beat of the bar before it. In the bright section "
+                "congas (62 muted, 63 open) answer on beats 2 and 3.",
+                low=54,
+                high=63,
+            ),
+        ),
+        form=(
+            SectionPlan(
+                "Intro",
+                2,
+                ("i", "i"),
+                "Guitar and harpsichord set the waltz; the tambourine shakes in.",
+                layers=(
+                    _rest("ocarina"),
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _rest("harp"),
+                    _rest("strings"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "bVI", "bVI", "bVII", "i", "bVI", "bVI", "bVII"),
+                "The ocarina's tune; the flute answers in its held notes.",
+                layers=(
+                    _enter("flute", 3, "answers the long notes"),
+                    _rest("oboe"),
+                    _rest("harp"),
+                    _rest("strings"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVI", "bVI", "bVII", "i", "bVI", "iv", "V"),
+                "The tune again with the harp's falling sequences underneath.",
+                layers=(
+                    _enter("harp", 3, "falling eighth sequences"),
+                    _rest("oboe"),
+                    _rest("strings"),
+                ),
+            ),
+            SectionPlan(
+                "B",
+                16,
+                (
+                    "IV",
+                    "IV",
+                    "bVI",
+                    "bVII",
+                    "IV",
+                    "IV",
+                    "bVI",
+                    "bVII",
+                    "IV",
+                    "IV",
+                    "bVI",
+                    "bVII",
+                    "IV",
+                    "IV",
+                    "bVI",
+                    "V",
+                ),
+                "Brighter, on the major IV (the dorian raised 6th): the oboe takes the tune, "
+                "the strings swell in and congas answer the tambourine; the ocarina rests.",
+                layers=(
+                    _play("oboe", "the tune"),
+                    _enter("strings", 5, "low held swells"),
+                    _rest("ocarina"),
+                    _rest("harp"),
+                    _exit("flute", 9, "one last answer"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                12,
+                ("I", "I", "iv", "iv", "bVI", "iv", "iv", "iv", "bVI", "bVII", "iv", "V"),
+                "A major-chord lift, then the subdominant: the ocarina's second strain over the "
+                "harp's rising arpeggios and held strings.",
+                layers=(
+                    _play("ocarina", "a second strain, higher and longer"),
+                    _play("harp", "rising arpeggios"),
+                    _play("strings"),
+                    _rest("flute"),
+                    _rest("oboe"),
+                ),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i", "bVI", "bVI", "bVII", "i", "bVI", "bVI", "bVII"),
+                "The tune returns with the flute's answers and the oboe doubling below.",
+                layers=(
+                    _play("oboe", "doubles the tune a 3rd or 6th below"),
+                    _rest("harp"),
+                    _exit("strings", 3, "fades out"),
+                ),
+            ),
+            SectionPlan(
+                "Coda",
+                6,
+                ("iv", "bVI", "bVII", "V", "i", "i"),
+                "A slow cadence; the ocarina holds the last tonic and the tambourine gives one "
+                "final shake; loops to the intro.",
+                layers=(_rest("flute"), _rest("oboe"), _rest("harp")),
+            ),
+        ),
+        loop=True,
+        percussion_allowed=True,
+        melody="Long held notes approached by quick stepwise pickups; natural minor with the "
+        "dorian raised 6th (F sharp) in the bright section and a major I before C.",
+        accompaniment="A real waltz: guitar bass on 1, chord on 2 and 3, the harpsichord's "
+        "eighths underneath; harp sequences add motion between the tune's long notes.",
+        dos=(
+            "Roll every guitar chord a little, low to high",
+            "Let a counter-line move only while the tune holds a long note",
+            "Shake the tambourine into every other downbeat",
+        ),
+        donts=(
+            "No drum kit beyond tambourine and congas",
+            "Keep every part at or below C6 so the high end never turns shrill",
+            "Don't let the harp and the flute run at the same time",
+            _ORIGINAL,
+        ),
+        patterns={
+            "guitar (ticks)": "Root at 0 held about 2700; triad at 30, 60, 90 held about 1800; "
+            "5th at 960 (about 900); two upper chord tones at 1920 (about 700).",
+            "harpsichord (ticks)": "Eighths at 0, 480, ... 2400 alternating an upper chord "
+            "tone and one fixed middle note; about 420 ticks each.",
+            "tambourine (ticks)": "Note 54 at 0 of every odd bar; a shake at 2400, 2560, 2720 "
+            "of the bar before; about 120 ticks each.",
+            "congas (ticks)": "In B: 62 at 960 and 63 at 1920 (or 1440 and 1920), soft.",
+        },
+        expression="Humanize the ocarina, flute and oboe (timing_ticks 10, velocity variation "
+        "6, phrase dynamics 12) with 120-tick breaths; the source sways its tempo, so push "
+        "phrase peaks a touch late. Keep guitar and harpsichord tight (timing_ticks 6, "
+        "velocity variation 4); the harp gets velocity variation 6 and phrase dynamics 8.",
+    ),
 )
 
 
