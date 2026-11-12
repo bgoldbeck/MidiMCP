@@ -381,3 +381,39 @@ def test_character_creation_asks_for_a_moving_top_line() -> None:
     template = TEMPLATES["old-realm-character-creation"]
     assert "top tune (ticks)" in template.patterns
     assert any("tune" in d for d in template.dos)
+
+
+CHIP_AND_16BIT = [
+    "retro-8bit-overworld",
+    "retro-8bit-dungeon",
+    "retro-16bit-jrpg-town",
+    "retro-16bit-jrpg-battle",
+    "retro-16bit-boss",
+    "retro-16bit-world-map",
+    "retro-platformer-stage",
+]
+
+
+@pytest.mark.parametrize("template_id", CHIP_AND_16BIT)
+def test_8bit_and_16bit_templates_carry_the_old_realm_lessons(template_id: str) -> None:
+    """Owner request: the console templates get intros, layering and tamer registers."""
+    template = TEMPLATES[template_id]
+    melody = next(p.track_id for p in template.parts if p.role == "melody")
+    intro = template.form[0]
+    assert intro.label == "Intro"
+    assert any(layer.track_id == melody and layer.action == "rest" for layer in intro.layers)
+    assert len({s.bars for s in template.form}) > 1
+    assert any(layer.action in ("enter", "exit") for s in template.form for layer in s.layers)
+    for part in template.parts:
+        if part.role != "percussion":
+            assert part.highest <= 84, part
+    assert any("(ticks)" in name for name in template.patterns)
+    assert any("fill" in name or "walk" in name for name in template.patterns) or any(
+        "walk" in d.lower() for d in template.dos
+    )
+    for section in template.form:
+        run = longest = 1
+        for i in range(1, section.bars):
+            run = run + 1 if section.numeral_at(i) == section.numeral_at(i - 1) else 1
+            longest = max(longest, run)
+        assert longest <= 4, section.label
