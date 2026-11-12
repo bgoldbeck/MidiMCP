@@ -3069,8 +3069,10 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
     Template(
         id="retro-8bit-overworld",
         name="8-bit Overworld Adventure",
-        summary="Chiptune adventure theme in the 8-bit console style: two square-wave "
-        "channels, a triangle-like bass, a noise-style drum, bouncy and heroic.",
+        summary="Chiptune adventure theme in the 8-bit console style: a square-wave hook, a "
+        "second square that changes job each section (harmony, echo, arpeggios), a walking "
+        "triangle-style bass and a noise-channel kit, with an intro groove, a break and a "
+        "turnaround into the loop.",
         mood="bright, brave, bouncy",
         setting="an overworld map, the first adventure",
         tempo_range=(130, 168),
@@ -3088,10 +3090,11 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -6,
                 0.1,
                 1,
-                "One note at a time (chip channel). Syncopated, dotted rhythms; heroic leaps "
-                "of a 4th/5th; short repeated notes for energy.",
+                "One note at a time (chip channel). The hook: dotted quarter, eighth, two "
+                "quarters, answered at other pitches; heroic 4th/5th leaps, short repeated "
+                "notes for energy, a long note to end every second bar. Stay between C4 and C6.",
                 low=60,
-                high=88,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -3099,63 +3102,134 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 "Square Lead 2",
                 "retro.square_lead",
                 -11,
-                -0.15,
+                -0.25,
                 1,
-                "Second chip channel: harmony a 3rd/6th below the melody, or fast chord "
-                "arpeggios when the melody rests.",
+                "The second chip channel changes job each section: a 3rd or 6th under the "
+                "hook in A, an echo of the lead an eighth late in A', fast chord arpeggios in "
+                "the intro, B and the break.",
                 low=52,
                 high=79,
             ),
             _part(
                 "bass",
                 "triangle",
-                "Synth Bass",
+                "Triangle Bass",
                 "retro.synth_bass",
                 -6,
                 0.0,
                 1,
-                "Bouncing octaves and root-5th eighths, like a triangle channel.",
+                "Triangle-channel bass: root eighths jumping the octave, walking by step into "
+                "the next chord on the last beat.",
                 low=33,
                 high=57,
             ),
             _part(
                 "percussion",
                 "noise",
-                "Synth Drum",
-                "retro.synth_drum",
+                "Noise Drums",
+                "gm.drums",
                 -12,
                 0.0,
                 1,
-                "Noise-channel beat: low hit on 1 and 3, high hit on 2 and 4, eighth ticks.",
+                "GM drum kit standing in for the noise channel, one hit at a time: kick 36, "
+                "snare 38, closed hat 42, open hat 46.",
                 low=36,
-                high=60,
+                high=46,
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "V", "vi", "IV", "I", "V", "IV", "V"), "Main theme."),
-            SectionPlan("B", 8, ("IV", "V", "iii", "vi", "IV", "V", "bVI", "bVII"), "Bridge."),
-            SectionPlan("A", 8, ("I", "V", "vi", "IV", "I", "V", "IV", "V"), "Theme; loop."),
+            SectionPlan(
+                "Intro",
+                4,
+                ("I", "IV", "I", "V"),
+                "The groove before the tune: square-2 arpeggios and the triangle bass, hats "
+                "joining in bar 3.",
+                layers=(_rest("pulse1"), _enter("noise", 3, "hat ticks, snare fill into A")),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "V", "vi", "IV", "I", "V", "IV", "V"),
+                "The hook; square 2 harmonises a 3rd or 6th below.",
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("I", "V", "vi", "IV", "I", "iii", "IV", "V"),
+                "The hook again with a new ending; square 2 becomes an echo an eighth late.",
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("IV", "V", "iii", "vi", "IV", "V", "bVI", "bVII"),
+                "Bridge, louder: the lead climbs to its peak, square 2 arpeggiates; the "
+                "bVI-bVII lift launches the return.",
+            ),
+            SectionPlan(
+                "Break",
+                4,
+                ("vi", "IV", "ii", "V"),
+                "The lead rests: square 2 plays a fragment of the hook over the walking bass; "
+                "the drums drop out and come back with a snare roll.",
+                layers=(_rest("pulse1"), _enter("noise", 4, "snare roll into the return")),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("I", "V", "vi", "IV", "I", "V", "IV", "I"),
+                "The hook a last time, square 2 back on harmony.",
+            ),
+            SectionPlan(
+                "Turnaround",
+                2,
+                ("IV", "V"),
+                "Both squares run up the scale in 3rds into bar 1 of the loop.",
+            ),
         ),
         loop=True,
         percussion_allowed=True,
-        melody="Catchy 2-bar motif with a rhythmic hook; the bVI-bVII lift at the end of B "
-        "is a classic 8-bit move into the return.",
-        accompaniment="Only 4 voices total, like the hardware: every part is one note at a time.",
-        dos=("Keep every part monophonic", "Use fast arpeggios to imply chords"),
-        donts=("No pads or sustained chords", _ORIGINAL),
+        melody="Catchy 2-bar hook with a rhythm you can whistle; vary its ending each time and "
+        "save the highest note for B.",
+        accompaniment="Only 4 voices, like the hardware: every part one note at a time. Square "
+        "2 never doubles the lead in unison.",
+        dos=(
+            "Keep every part monophonic",
+            "Start with an intro groove before the tune",
+            "Give square 2 a new job each section: harmony, echo, arpeggio",
+            "Walk the bass by step into each new chord",
+            "Fill with the snare at the end of every fourth bar",
+            "Play B louder than A",
+        ),
+        donts=(
+            "No pads or sustained chords",
+            "Keep every pitched part at or below C6 so the squares never turn shrill",
+            "Don't let both squares play the same note at the same time",
+            _ORIGINAL,
+        ),
         patterns={
-            "pulse2 arpeggio (ticks)": "every 120: root, 3rd, 5th, octave repeating — 110 long",
-            "noise drum (ticks)": "0 low, 960 high, 1920 low, 2880 high; extra low at 2400",
+            "lead hook (ticks)": "Bar 1: 0 (1440), 1440 (480), 1920 (960), 2880 (960). Bar 2: "
+            "the same rhythm a step higher, or one long note from 0 (about 3600).",
+            "square 2 arpeggio (ticks)": "Every 120: root, 3rd, 5th, octave repeating, 110 long.",
+            "square 2 echo (ticks)": "Copy the lead 240 ticks late, 25 softer.",
+            "triangle bass (ticks)": "Eighths: root at 0, 960, 1920; octave above at 480, "
+            "1440, 2400; at 2880 and 3360 two steps walking to the next root.",
+            "noise kit (ticks)": "Kick 36 at 0 and 1920, snare 38 at 960 and 2880, closed hat "
+            "42 on the other eighths; open hat 46 at 3360 every second bar.",
+            "fill (ticks)": "Every fourth bar: snare 38 at 2880, 3120, 3360, 3600.",
+            "turnaround (ticks)": "Eight eighths from 0 climbing the scale; square 2 a 3rd under.",
         },
         expression="Chip music is tight: humanize only velocity (timing_ticks 0, "
-        "velocity_variation 4, phrase_dynamics 6). Optional pitchBend slides into long lead "
-        "notes with set_automation (-2048 -> 0 over 90 ticks).",
+        "velocity_variation 4, phrase_dynamics 8) with four-bar swells. On lead notes of a "
+        "half note or longer, add a delayed vibrato with set_automation on modulation (0 for "
+        "the first 240 ticks, then 40) and an optional pitchBend scoop (-2048 to 0 over 90 "
+        "ticks).",
     ),
     Template(
         id="retro-8bit-dungeon",
         name="8-bit Dungeon / Cave",
-        summary="Tense chiptune maze music: minor square-wave riff, chromatic bass, "
-        "nervous arpeggios.",
+        summary="Tense chiptune maze music: a minor square-wave riff over a creeping bass and "
+        "nervous arpeggios, opening on a heartbeat intro, with a phrygian B, a bare break "
+        "and a short tag back into the loop.",
         mood="tense, puzzling, claustrophobic",
         setting="dungeon, cave, labyrinth",
         tempo_range=(110, 140),
@@ -3173,8 +3247,8 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -7,
                 0.1,
                 1,
-                "Short riff-like phrases with chromatic neighbour notes; repeats with small "
-                "changes.",
+                "Short riff-like phrases with chromatic neighbour notes; the riff repeats with "
+                "one note changed each time. Stay at or below C6.",
                 low=57,
                 high=84,
             ),
@@ -3184,55 +3258,118 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 "Square Arpeggio",
                 "retro.square_lead",
                 -13,
-                -0.15,
+                -0.25,
                 1,
-                "Continuous sixteenth-note arpeggios of the bar's chord.",
+                "Sixteenth-note arpeggios of the bar's chord; in A' it echoes the riff an "
+                "eighth late instead.",
                 low=52,
                 high=76,
             ),
             _part(
                 "bass",
                 "triangle",
-                "Synth Bass",
+                "Triangle Bass",
                 "retro.synth_bass",
                 -6,
                 0.0,
                 1,
-                "Steady eighths creeping by half steps between chord roots.",
+                "Steady eighths creeping by half steps between chord roots; never a leap "
+                "bigger than a 4th.",
                 low=28,
                 high=52,
             ),
             _part(
                 "percussion",
                 "noise",
-                "Synth Drum",
-                "retro.synth_drum",
+                "Noise Drums",
+                "gm.drums",
                 -13,
                 0.0,
                 1,
-                "Sparse: a hit on 1 and the and of 3.",
+                "GM drum kit as the noise channel, sparse: a heartbeat of kick 36, a snare 38 "
+                "on the and of 3, closed hat 42 ticks.",
                 low=36,
-                high=60,
+                high=46,
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("i", "i", "bVI", "V", "i", "i", "iv", "V"), "Riff."),
-            SectionPlan("B", 8, ("iv", "iv", "i", "i", "bVI", "bII", "V", "V"), "Deeper."),
+            SectionPlan(
+                "Intro",
+                4,
+                ("i", "i", "bVI", "V"),
+                "A heartbeat kick and the creeping bass; the arpeggio slides in at bar 3.",
+                layers=(_rest("pulse1"), _enter("pulse2", 3, "arpeggios slide in")),
+            ),
+            SectionPlan("A", 8, ("i", "i", "bVI", "V", "i", "i", "iv", "V"), "The riff."),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVI", "iv", "V", "i", "bVI", "bII", "V"),
+                "The riff varied; square 2 echoes it an eighth late.",
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("iv", "iv", "i", "i", "bVI", "bII", "V", "V"),
+                "Deeper and louder: the riff moves down a 4th, the bII adds menace.",
+            ),
+            SectionPlan(
+                "Break",
+                4,
+                ("i", "bII", "i", "bII"),
+                "Only the arpeggio and the bass; the riff returns in the last bar.",
+                layers=(
+                    _rest("noise"),
+                    _enter("pulse1", 4, "a pickup back into the riff"),
+                ),
+            ),
+            SectionPlan("A''", 8, ("i", "i", "bVI", "V", "i", "i", "iv", "V"), "The riff."),
+            SectionPlan(
+                "Tag",
+                2,
+                ("bII", "V"),
+                "Both squares fall chromatically onto the dominant; bar 1 of the loop follows.",
+            ),
         ),
         loop=True,
         percussion_allowed=True,
-        melody="Minor riff with a hooky rhythm; the bII (phrygian colour) in B adds menace.",
-        accompaniment="Arpeggios never rest; the bass never leaps more than a 4th.",
-        dos=("Keep every part monophonic", "Loop seamlessly — the player hears it for minutes"),
-        donts=(_ORIGINAL,),
+        melody="A minor riff with a hooky rhythm; one changed note per repeat keeps it alive.",
+        accompaniment="The arpeggio never stops outside the intro; the bass never leaps more "
+        "than a 4th.",
+        dos=(
+            "Keep every part monophonic",
+            "Open with the heartbeat intro before the riff",
+            "Fill with the snare at the end of every fourth bar",
+            "Change one note of the riff each time it repeats",
+            "Play B louder than A",
+            "Loop seamlessly: the player hears it for minutes",
+        ),
+        donts=(
+            "Keep every pitched part at or below C6",
+            "Don't let both squares play the same note at the same time",
+            _ORIGINAL,
+        ),
+        patterns={
+            "riff (ticks)": "Eighths at 0, 480, 960, a quarter at 1440, a chromatic neighbour "
+            "at 2400 and back at 2880 (about 420 each).",
+            "arpeggio (ticks)": "Every 240: root, 3rd, 5th, 3rd; 220 long.",
+            "bass (ticks)": "Eighths from 0; on the last two eighths (2880, 3360) creep by "
+            "half steps to the next root.",
+            "heartbeat (ticks)": "Kick 36 at 0 and 240, again at 1920 and 2160; snare 38 at "
+            "2400; hat 42 at 960 and 2880.",
+            "tag (ticks)": "Four quarters from 0 falling by half steps onto the 5th.",
+            "fill (ticks)": "Every fourth bar: snare 38 at 3120 and 3600, kick 36 at 3360.",
+        },
         expression="Keep chip parts tight: humanize velocity only (timing_ticks 0, "
-        "velocity_variation 3).",
+        "velocity_variation 3, phrase_dynamics 6) with four-bar swells. Delayed vibrato on "
+        "long lead notes with set_automation on modulation (0 for 240 ticks, then 30).",
     ),
     Template(
         id="retro-16bit-jrpg-town",
         name="16-bit JRPG Village",
-        summary="Cosy 16-bit era role-playing village: flute tune, pizzicato and harp, "
-        "marimba answers, warm strings.",
+        summary="Cosy 16-bit era role-playing village: a music-box and harp intro, a flute "
+        "tune answered by oboe and marimba, ringing harp arpeggios, pizzicato oom-pah, warm "
+        "strings in the bridge and a walking bass.",
         mood="cosy, homely, a little bittersweet",
         setting="hometown village, inn, item shop",
         tempo_range=(92, 120),
@@ -3250,31 +3387,58 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -4,
                 0.1,
                 1,
-                "Sweet, singable tune in 4-bar phrases; swung or dotted eighths.",
+                "Sweet, singable tune in 4-bar phrases built on one hook rhythm (dotted "
+                "quarter, eighth, two quarters); a long note ends each phrase. Stay at or "
+                "below C6.",
                 low=65,
-                high=91,
+                high=84,
+            ),
+            _part(
+                "countermelody",
+                "oboe",
+                "Oboe",
+                "retro.oboe",
+                -9,
+                -0.25,
+                1,
+                "Answers the flute in the gaps of A' and sings a slow line under it in B.",
+                low=60,
+                high=79,
             ),
             _part(
                 "countermelody",
                 "marimba",
                 "Marimba",
                 "retro.marimba",
-                -10,
-                0.3,
+                -11,
+                0.35,
                 2,
-                "Short answers between flute phrases.",
+                "Short two-note answers at phrase ends; carries the tune in the interlude.",
                 low=60,
                 high=84,
+            ),
+            _part(
+                "accompaniment",
+                "harp",
+                "Harp",
+                "retro.harp",
+                -10,
+                -0.35,
+                4,
+                "Rising broken chords in eighths; every note rings until it is plucked again "
+                "or the bar ends.",
+                low=48,
+                high=79,
             ),
             _part(
                 "accompaniment",
                 "pizz",
                 "Pizzicato Strings",
                 "retro.pizzicato",
-                -9,
-                -0.2,
+                -10,
+                0.2,
                 3,
-                "Oom-pah: bass note on 1 and 3, chord on 2 and 4.",
+                "Oom-pah: bass note on 1 and 3, a short chord on 2 and 4.",
                 low=48,
                 high=72,
             ),
@@ -3282,11 +3446,11 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 "pad",
                 "strings",
                 "Strings",
-                "retro.strings",
+                "retro.warm_strings",
                 -14,
                 0.0,
                 3,
-                "Soft sustained chords in B only.",
+                "Soft held chords in B and under the last A only.",
                 low=48,
                 high=76,
             ),
@@ -3298,32 +3462,134 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -9,
                 0.0,
                 1,
-                "Root-5th quarter notes with walking approach notes.",
+                "Root-5th quarter notes that walk by step into each new chord.",
                 low=28,
                 high=52,
             ),
+            _part(
+                "accompaniment",
+                "musicbox",
+                "Music Box",
+                "retro.music_box",
+                -13,
+                0.3,
+                1,
+                "A sparkling line of eighths in the intro and interlude, quarter-note "
+                "sparkles at the end.",
+                low=72,
+                high=84,
+            ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "vi", "IV", "V", "I", "vi", "ii", "V"), "Village tune."),
             SectionPlan(
-                "B", 8, ("IVmaj7", "iii7", "vi", "I", "IVmaj7", "iii7", "ii7", "Vsus4"), "Warmth."
+                "Intro",
+                4,
+                ("IVmaj7", "iii7", "ii7", "Vsus4"),
+                "Music box and ringing harp alone; the bass steps in at bar 3.",
+                layers=(
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _rest("marimba"),
+                    _rest("pizz"),
+                    _rest("strings"),
+                    _enter("bass", 3),
+                ),
             ),
-            SectionPlan("A'", 8, ("I", "vi", "IV", "V", "IV", "V", "I", "V"), "Return; loop."),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "vi", "IV", "V", "I", "vi", "ii", "V"),
+                "The village tune over pizzicato and harp; marimba answers at phrase ends.",
+                layers=(
+                    _exit("musicbox", 2, "hands over to the flute"),
+                    _rest("oboe"),
+                    _rest("strings"),
+                ),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("I", "vi", "IV", "V", "I", "iii", "IV", "V"),
+                "The tune again with a new ending; the oboe answers in its gaps.",
+                layers=(_rest("musicbox"), _rest("strings"), _rest("marimba")),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("IVmaj7", "iii7", "vi", "I", "IVmaj7", "iii7", "ii7", "Vsus4"),
+                "Warmth: strings come in, the flute climbs to its highest note, the oboe "
+                "sings under it; a little louder.",
+                layers=(_rest("musicbox"), _rest("pizz"), _rest("marimba")),
+            ),
+            SectionPlan(
+                "Interlude",
+                4,
+                ("vi", "IV", "ii", "V"),
+                "The flute rests: marimba and music box trade the hook over the harp.",
+                layers=(
+                    _rest("flute"),
+                    _rest("oboe"),
+                    _rest("strings"),
+                    _rest("pizz"),
+                ),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("I", "vi", "IV", "V", "IV", "V", "I", "V"),
+                "Everyone home: the tune with strings underneath.",
+                layers=(_rest("musicbox"),),
+            ),
+            SectionPlan(
+                "Coda",
+                2,
+                ("IVmaj7", "Vsus4"),
+                "Music box sparkles over held chords; the loop begins again.",
+                layers=(_rest("flute"), _rest("oboe"), _rest("pizz")),
+            ),
         ),
         loop=True,
         percussion_allowed=False,
-        melody="Simple and warm; the major 7th chords in B give the 16-bit era sweetness.",
-        accompaniment="Bouncy and light; nothing louder than the flute.",
-        dos=("Use maj7 and sus4 colours", "Keep the loop around 45-70 seconds"),
-        donts=("No drums", _ORIGINAL),
-        expression="Flute: humanize (legato 0.85, timing_ticks 12, breath_ticks 160) and "
-        "shape_expression (vibrato_depth 30). Pizzicato: humanize timing_ticks 8.",
+        melody="Simple and warm, one hook rhythm answered at other pitches; the major 7th "
+        "chords in B give the 16-bit era sweetness.",
+        accompaniment="Bouncy and light: harp rings, pizzicato bounces, nothing louder than "
+        "the flute.",
+        dos=(
+            "Open with the music box and harp before the tune",
+            "Let every harp note ring until it is plucked again",
+            "Walk the bass by step into each new chord",
+            "Use maj7 and sus4 colours",
+            "Let the oboe and marimba answer, never talk over the flute",
+            "Keep the loop around 60-90 seconds",
+        ),
+        donts=(
+            "No drums",
+            "Keep every part at or below C6 so the flute and music box never turn shrill",
+            "Don't let flute and oboe play tunes at the same time",
+            _ORIGINAL,
+        ),
+        patterns={
+            "flute hook (ticks)": "0 (1440), 1440 (480), 1920 (960), 2880 (960); the next bar "
+            "answers it at another pitch or holds one long note.",
+            "harp (ticks)": "Eighths at 0, 480 ... 3360 rising root, 5th, octave, 3rd, then "
+            "falling; each rings to the bar end or until re-plucked, at most four at once.",
+            "pizzicato (ticks)": "Bass note at 0 and 1920, chord at 960 and 2880, about 300 long.",
+            "bass walk (ticks)": "Root at 0, 5th at 1920 (900 each); at 2880 a step toward "
+            "the next root.",
+            "marimba answer (ticks)": "Two notes at 2880 and 3360 in the bar a flute phrase ends.",
+            "music box (ticks)": "Eighths from 0, chord tones and passing notes, 400 long.",
+        },
+        expression="Flute: humanize (legato 0.85, timing_ticks 12, breath_ticks 160, "
+        "phrase_dynamics 10) and shape_expression (vibrato_depth 30) with four-bar swells. "
+        "Oboe the same with another seed. Harp, pizzicato and marimba: humanize timing_ticks "
+        "6, velocity_variation 5. Leave strings unhumanized.",
     ),
     Template(
         id="retro-16bit-jrpg-battle",
         name="16-bit JRPG Battle",
-        summary="Driving 16-bit era turn-based battle theme: synth brass hook, slap-like "
-        "synth bass, overdrive guitar stabs, orchestral drums.",
+        summary="Driving 16-bit era turn-based battle theme: an orchestra-hit and drum-roll "
+        "intro, a synth-brass hook, overdrive guitar stabs, synth-string runs, octave synth "
+        "bass and a full drum kit with fills, a breakdown and a turnaround into the loop.",
         mood="exciting, energetic, confident",
         setting="random encounters, standard battles",
         tempo_range=(150, 176),
@@ -3341,7 +3607,8 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -5,
                 0.1,
                 2,
-                "Punchy hook: syncopated eighths, a held note at each phrase peak.",
+                "Punchy hook: syncopated eighths rising in sequence, a held note at each phrase "
+                "peak. Stay at or below C6.",
                 low=58,
                 high=84,
             ),
@@ -3353,7 +3620,8 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -10,
                 -0.3,
                 2,
-                "Power-chord stabs (root + 5th) on the off-beats.",
+                "Power-chord stabs (root + 5th) on the off-beats; palm-muted eighths in the "
+                "breakdown.",
                 low=40,
                 high=67,
             ),
@@ -3365,7 +3633,8 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -13,
                 0.3,
                 3,
-                "Fast ascending runs into each section; held chords otherwise.",
+                "A fast scale run into every section, held chords otherwise; the tune in the "
+                "breakdown.",
                 low=48,
                 high=84,
             ),
@@ -3377,46 +3646,129 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -6,
                 0.0,
                 1,
-                "Driving octave-jumping eighths.",
+                "Driving octave-jumping eighths, walking into each new chord.",
                 low=26,
                 high=52,
             ),
             _part(
                 "percussion",
                 "drums",
-                "Taiko",
-                "retro.taiko",
+                "Drum Kit",
+                "gm.drums",
                 -9,
                 0.0,
-                2,
-                "Kick-like low hits on 1 and the and of 2, high hits on 2 and 4; "
-                "fills every 4 bars.",
-                low=41,
-                high=55,
+                3,
+                "GM drum kit: kick 36, snare 38, closed hat 42, toms 45, 47, 48, 50 for fills, "
+                "crash 49 on section downbeats.",
+                low=36,
+                high=50,
+            ),
+            _part(
+                "accompaniment",
+                "hits",
+                "Orchestra Hit",
+                "retro.orchestra_hit",
+                -12,
+                0.0,
+                3,
+                "Chord stabs in the intro and on the downbeat of each new section.",
+                low=48,
+                high=72,
             ),
         ),
         form=(
-            SectionPlan("Intro", 2, ("i", "bVII"), "Run-up into the fight."),
-            SectionPlan("A", 8, ("i", "bVII", "bVI", "bVII", "i", "bVII", "bVI", "V"), "Hook."),
             SectionPlan(
-                "B", 8, ("iv", "bVII", "bIII", "bVI", "iv", "bVII", "V", "V"), "Counter-attack."
+                "Intro",
+                4,
+                ("i", "bVII", "bVI", "V"),
+                "Orchestra hits and a snare build, a string run in the last bar; the hook waits.",
+                layers=(_rest("brass"), _rest("guitar"), _enter("bass", 3, "eighths start")),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i", "bVII", "bVI", "bVII", "i", "bVII", "bVI", "V"),
+                "The hook over the full band.",
+                layers=(_exit("hits", 2),),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bVII", "bVI", "bVII", "iv", "bVII", "bVI", "V"),
+                "The hook a step higher in sequence, a new ending.",
+                layers=(_rest("hits"),),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("iv", "bVII", "bIII", "bVI", "iv", "bVII", "V", "V"),
+                "Counter-attack, louder: long brass notes over driving bass and drums.",
+                layers=(_exit("hits", 2),),
+            ),
+            SectionPlan(
+                "Breakdown",
+                4,
+                ("bVI", "bVII", "bVI", "bVII"),
+                "The brass rests: strings take a short tune over palm-muted guitar and toms.",
+                layers=(_rest("brass"), _rest("hits")),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i", "bVII", "bVI", "bVII", "i", "bVII", "bVI", "V"),
+                "The hook a last time.",
+                layers=(_exit("hits", 2),),
+            ),
+            SectionPlan(
+                "Turnaround",
+                2,
+                ("bVI", "V"),
+                "Unison run and a tom fill back to A (the intro plays once).",
+                layers=(_rest("hits"),),
             ),
         ),
         loop=True,
         percussion_allowed=True,
-        melody="A hook you remember after one fight: repeated rhythm, rising sequence.",
-        accompaniment="Bass and drums lock together; guitar fills the off-beats.",
-        dos=("Loop from the end of B back to A (skip the intro)", "Use the bVI-bVII-i drive"),
-        donts=(_ORIGINAL,),
-        expression="Brass: humanize (legato 0.75, timing_ticks 6) and shape_expression on held "
-        "peak notes (long_note_ticks 960, vibrato_depth 30). Bass and drums: humanize "
-        "timing_ticks 3 (tight).",
+        melody="A hook you remember after one fight: repeated rhythm, rising sequence, held "
+        "peak notes.",
+        accompaniment="Bass and kick lock together; guitar fills the off-beats; strings run "
+        "into every section.",
+        dos=(
+            "Build the intro from hits and a snare roll before the hook",
+            "Loop from the end of the turnaround back to A (skip the intro)",
+            "Use the bVI-bVII-i drive",
+            "Tom or snare fill at the end of every fourth bar",
+            "Crash on every section downbeat",
+            "Play B louder than A",
+        ),
+        donts=(
+            "Keep every pitched part at or below C6",
+            "Don't let the strings and brass play tunes at the same time",
+            _ORIGINAL,
+        ),
+        patterns={
+            "brass hook (ticks)": "Eighths at 0, 480, 1440, 1920 (420 each), a held note at "
+            "2400 (1300); the next bar repeats the rhythm a step higher.",
+            "guitar stabs (ticks)": "Root + 5th at 480, 1440, 2400, 3360 (about 300).",
+            "bass (ticks)": "Eighths from 0 alternating root and octave; the last two "
+            "eighths walk to the next root.",
+            "kit (ticks)": "Kick 36 at 0, 1440, 1920; snare 38 at 960 and 2880; hat 42 every "
+            "eighth; crash 49 at 0 of each section.",
+            "fill (ticks)": "Every fourth bar: toms 50, 48, 47, 45 at 2880, 3120, 3360, 3600.",
+            "string run (ticks)": "In the bar before a section: sixteenths from 1920 up the "
+            "scale an octave.",
+        },
+        expression="Brass: humanize (legato 0.75, timing_ticks 6, phrase_dynamics 10) and "
+        "shape_expression on held peak notes (long_note_ticks 960, vibrato_depth 30). Bass "
+        "and drums: humanize timing_ticks 3, velocity_variation 6 (tight). Strings: "
+        "shape_expression swells into each section.",
     ),
     Template(
         id="retro-16bit-boss",
         name="16-bit Boss Battle",
-        summary="Climactic boss fight: church organ, choir, distorted guitar riff, "
-        "pounding drums, in dark phrygian.",
+        summary="Climactic boss fight in dark phrygian: tolling bells and choir in the intro, "
+        "church organ theme, galloping distortion-guitar riff, war taiko under a full kit, a "
+        "bare riff break and a slam back into the loop.",
         mood="epic, menacing, desperate",
         setting="final boss, demon lord, the tower's top",
         tempo_range=(132, 168),
@@ -3434,7 +3786,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -6,
                 0.0,
                 3,
-                "Grand theme in octaves and 5ths; long notes over the riff.",
+                "Grand theme in octaves and 5ths; long notes over the riff. Stay at or below C6.",
                 low=48,
                 high=84,
             ),
@@ -3458,7 +3810,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -10,
                 0.3,
                 4,
-                "Choir 'aah' chords on section changes and peaks.",
+                "Choir 'aah' chords in the intro, on section changes and at peaks.",
                 low=48,
                 high=76,
             ),
@@ -3477,38 +3829,135 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
             _part(
                 "percussion",
                 "drums",
+                "Drum Kit",
+                "gm.drums",
+                -9,
+                0.0,
+                3,
+                "GM drum kit: double-time kick 36 and snare 38, crash 49 on downbeats, toms "
+                "45-50 for fills.",
+                low=36,
+                high=50,
+            ),
+            _part(
+                "percussion",
+                "taiko",
                 "Taiko",
                 "retro.taiko",
-                -8,
+                -9,
                 0.0,
-                2,
-                "Double-time pounding with crashes (orchestra hits allowed) on downbeats.",
-                low=41,
+                1,
+                "War drums: low hits on 1 and 3 in the intro and the C section.",
+                low=36,
                 high=55,
+            ),
+            _part(
+                "percussion",
+                "bells",
+                "Tubular Bells",
+                "retro.tubular_bells",
+                -10,
+                0.2,
+                1,
+                "A doom toll on the root in the intro and at the start of C.",
+                low=60,
+                high=72,
             ),
         ),
         form=(
             SectionPlan(
-                "A", 8, ("i", "bII", "i", "bII", "i", "bVII", "bVI", "bII"), "Riff + organ."
+                "Intro",
+                4,
+                ("i", "bII", "i", "bII"),
+                "Bells toll over choir and taiko; the guitar riff starts at bar 3.",
+                layers=(
+                    _rest("organ"),
+                    _rest("bass"),
+                    _rest("drums"),
+                    _enter("guitar", 3, "the riff starts"),
+                ),
             ),
             SectionPlan(
-                "B", 8, ("iv", "bII", "bVII", "i", "iv", "bVI", "v°", "bII"), "Choir rises."
+                "A",
+                8,
+                ("i", "bII", "i", "bII", "i", "bVII", "bVI", "bII"),
+                "Riff and organ theme.",
+                layers=(_rest("taiko"), _rest("bells"), _exit("choir", 2)),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i", "bII", "i", "bVII", "i", "bVI", "bVII", "bII"),
+                "The organ theme in octaves, the choir answers its peaks.",
+                layers=(_rest("taiko"), _rest("bells")),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("iv", "bII", "bVII", "i", "iv", "bVI", "v°", "bII"),
+                "The choir rises; louder.",
+                layers=(_rest("taiko"), _rest("bells")),
+            ),
+            SectionPlan(
+                "Break",
+                4,
+                ("i", "i", "bII", "bII"),
+                "Only the riff, bass and kick; the organ comes back in the last bar.",
+                layers=(
+                    _rest("choir"),
+                    _rest("taiko"),
+                    _rest("bells"),
+                    _enter("organ", 4, "a rising pickup"),
+                ),
+            ),
+            SectionPlan(
+                "C",
+                8,
+                ("bVI", "bVII", "i", "i", "bVI", "bVII", "bII", "bII"),
+                "Desperate peak: bells toll again, taiko under the kit, organ at its highest.",
+            ),
+            SectionPlan(
+                "Slam",
+                2,
+                ("bII", "i"),
+                "Everyone hits the b2 then the root together and slams back into bar 1.",
+                layers=(_rest("bells"),),
             ),
         ),
         loop=True,
         percussion_allowed=True,
-        melody="Big intervals (octaves, 5ths, tritone once), slow against a fast riff.",
-        accompaniment="Riff + bass + drums form one machine; the choir only punctuates.",
-        dos=("Use the b2 (Db in C) everywhere", "Make the last bar slam back into bar 1"),
-        donts=("No sweet major chords", _ORIGINAL),
-        expression="Guitar, bass, drums: humanize timing_ticks 3, velocity_variation 6. Choir: "
-        "shape_expression (base 80, peak 125, swell 20, vibrato_depth 20).",
+        melody="Big intervals (octaves, 5ths, a tritone once), slow against a fast riff.",
+        accompaniment="Riff, bass and kick form one machine; the choir and bells only punctuate.",
+        dos=(
+            "Open with bells, choir and taiko before the riff",
+            "Use the b2 (Db in C) everywhere",
+            "Fill with toms at the end of every fourth bar",
+            "Make the last bar slam back into bar 1",
+        ),
+        donts=(
+            "No sweet major chords",
+            "Keep every pitched part at or below C6",
+            _ORIGINAL,
+        ),
+        patterns={
+            "gallop riff (ticks)": "Each beat: eighth at 0, sixteenths at 480 and 720 (about "
+            "200 each); b2 neighbour on the last sixteenth of beats 2 and 4.",
+            "kit (ticks)": "Kick 36 every eighth, snare 38 at 960 and 2880, crash 49 at 0 of "
+            "each section.",
+            "taiko (ticks)": "Low hits at 0 and 1920; a double at 2880 and 3120 every second bar.",
+            "bells (ticks)": "Root at 0 of every second bar, about 1500 long.",
+            "fill (ticks)": "Every fourth bar: toms 50, 48, 47, 45 at 2880, 3120, 3360, 3600.",
+        },
+        expression="Guitar, bass, drums: humanize timing_ticks 3, velocity_variation 6. Organ: "
+        "humanize timing_ticks 4, phrase_dynamics 10. Choir: shape_expression (base 80, peak "
+        "125, swell 20, vibrato_depth 20).",
     ),
     Template(
         id="retro-16bit-world-map",
         name="16-bit World Map",
-        summary="Sweeping 16-bit era world-map theme: heroic horn melody, string runs, "
-        "brass answers, timpani.",
+        summary="Sweeping 16-bit era world-map theme: a ringing harp and timpani-roll intro, "
+        "heroic horn melody, running strings, brass fanfare answers, a flute countermelody "
+        "in the bridge and a lift back into the loop.",
         mood="sweeping, heroic, open",
         setting="the airship / world map, setting off on the big journey",
         tempo_range=(100, 128),
@@ -3526,7 +3975,8 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -3,
                 0.1,
                 1,
-                "Heroic theme: rising 4ths and 5ths, long notes at phrase peaks.",
+                "Heroic theme: rising 4ths and 5ths, one hook rhythm answered at other "
+                "pitches, long notes at phrase peaks.",
                 low=53,
                 high=77,
             ),
@@ -3538,9 +3988,22 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -9,
                 -0.2,
                 3,
-                "Fanfare-like answers in triads at phrase ends.",
+                "Fanfare answers in triads at phrase ends.",
                 low=48,
                 high=76,
+            ),
+            _part(
+                "countermelody",
+                "flute",
+                "Flute",
+                "retro.wooden_flute",
+                -8,
+                0.35,
+                1,
+                "A soaring counter-line of long notes over the horn in B; the tune in the "
+                "interlude.",
+                low=65,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -3552,7 +4015,19 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 3,
                 "Running eighths (arpeggios and scale runs) that keep the journey moving.",
                 low=48,
-                high=88,
+                high=84,
+            ),
+            _part(
+                "accompaniment",
+                "harp",
+                "Harp",
+                "retro.harp",
+                -11,
+                -0.35,
+                4,
+                "Rolled chords in the intro and interlude, every note left to ring.",
+                low=43,
+                high=79,
             ),
             _part(
                 "bass",
@@ -3562,7 +4037,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -9,
                 0.0,
                 1,
-                "Half-note roots with scale passing notes.",
+                "Half-note roots walking by step into each new chord.",
                 low=28,
                 high=50,
             ),
@@ -3574,31 +4049,103 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -10,
                 0.0,
                 1,
-                "Root and 5th on downbeats of phrase starts; a roll into B.",
+                "Root and 5th on the downbeats of phrase starts; a roll into A and B.",
                 low=40,
                 high=55,
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("I", "bVII", "IV", "I", "I", "bVII", "IV", "V"), "Departure."),
-            SectionPlan("B", 8, ("vi", "IV", "I", "V", "vi", "IV", "bVI", "bVII"), "Horizon."),
-            SectionPlan("A'", 8, ("I", "bVII", "IV", "I", "IV", "bVII", "V", "V"), "Onward; loop."),
+            SectionPlan(
+                "Intro",
+                4,
+                ("I", "bVII", "IV", "V"),
+                "Ringing harp chords and a string swell; a timpani roll in the last bar.",
+                layers=(
+                    _rest("horn"),
+                    _rest("brass"),
+                    _rest("flute"),
+                    _enter("timpani", 4, "roll into A"),
+                ),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("I", "bVII", "IV", "I", "I", "bVII", "IV", "V"),
+                "Departure: the horn theme over running strings.",
+                layers=(_rest("brass"), _rest("flute"), _exit("harp", 2)),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("I", "bVII", "IV", "I", "vi", "bVII", "IV", "V"),
+                "The theme again with brass fanfares answering each phrase.",
+                layers=(_rest("flute"), _rest("harp")),
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("vi", "IV", "I", "V", "vi", "IV", "bVI", "bVII"),
+                "Horizon, louder: the horn climbs to its peak, the flute soars above.",
+                layers=(_rest("harp"),),
+            ),
+            SectionPlan(
+                "Interlude",
+                4,
+                ("IV", "bVII", "IV", "V"),
+                "The horn rests: flute tune over harp and soft strings.",
+                layers=(_rest("horn"), _rest("brass"), _rest("timpani")),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("I", "bVII", "IV", "I", "IV", "bVII", "V", "V"),
+                "Onward: the full theme with fanfares.",
+                layers=(_rest("flute"), _rest("harp")),
+            ),
+            SectionPlan(
+                "Lift",
+                2,
+                ("bVI", "bVII"),
+                "Brass and strings rise on bVI-bVII into the loop's first I.",
+                layers=(_rest("flute"), _rest("harp")),
+            ),
         ),
         loop=True,
         percussion_allowed=True,
         melody="Heroic and wide; the bVII-IV-I mixolydian motion is the 'open sky' sound.",
-        accompaniment="Strings never stop moving; brass only answers.",
-        dos=("Climb to the melody's highest note in B", "Use bVI-bVII-I for the big lift"),
-        donts=(_ORIGINAL,),
+        accompaniment="Strings never stop moving; brass only answers; the harp rings in the "
+        "quiet sections.",
+        dos=(
+            "Open with ringing harp and a timpani roll before the horn",
+            "Climb to the melody's highest note in B",
+            "Use bVI-bVII-I for the big lift",
+            "Walk the bass by step into each new chord",
+        ),
+        donts=(
+            "Keep every part at or below C6",
+            "Don't let the flute and horn both play the tune at once",
+            _ORIGINAL,
+        ),
+        patterns={
+            "horn hook (ticks)": "0 (1440), 1440 (480), 1920 (1900); the next bar answers a "
+            "4th or 5th higher.",
+            "strings (ticks)": "Eighths from 0: arpeggio up then a scale run down, 440 each.",
+            "harp roll (ticks)": "Chord notes at 0, 60, 120, 180 from the bottom, each "
+            "ringing to the bar end.",
+            "brass answer (ticks)": "Triads at 2880 and 3360 of each phrase's last bar.",
+            "timpani (ticks)": "Root at 0, 5th at 1920 at phrase starts; roll of sixteenths "
+            "from 2880 in the bar before A and B.",
+        },
         expression="Horn: humanize (legato 0.92, timing_ticks 10, breath_ticks 160) and "
-        "shape_expression (base 92, peak 124, swell 12, vibrato_depth 30). Strings: humanize "
-        "timing_ticks 6.",
+        "shape_expression (base 92, peak 124, swell 12, vibrato_depth 30). Flute the same "
+        "with another seed. Strings and harp: humanize timing_ticks 6.",
     ),
     Template(
         id="retro-platformer-stage",
         name="16-bit Platformer Stage",
-        summary="Upbeat side-scrolling stage music: catchy synth lead, funky synth bass, "
-        "electric piano chords, steel-drum answers.",
+        summary="Upbeat side-scrolling stage music: a drum-and-bass intro groove, a catchy "
+        "saw lead, funky synth bass, electric piano stabs, steel-drum answers, a full drum "
+        "kit, a bass breakdown and a turnaround into the loop.",
         mood="fast, sunny, cheeky",
         setting="a green hills / beach / carnival stage",
         tempo_range=(132, 160),
@@ -3616,9 +4163,10 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -7,
                 0.1,
                 1,
-                "Syncopated hook with sixteenth pickups and a held peak note per phrase.",
+                "Syncopated hook with sixteenth pickups and a held peak note per phrase. Stay "
+                "at or below C6.",
                 low=60,
-                high=88,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -3652,37 +4200,102 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 -6,
                 0.0,
                 1,
-                "Funky octave-jumping sixteenths with ghost notes.",
+                "Funky octave-jumping sixteenths with ghost notes; slides into each new chord.",
                 low=28,
                 high=55,
             ),
             _part(
                 "percussion",
                 "drums",
-                "Synth Drum",
-                "retro.synth_drum",
+                "Drum Kit",
+                "gm.drums",
                 -10,
                 0.0,
-                2,
-                "Backbeat on 2 and 4, busy eighth ticks.",
+                3,
+                "GM drum kit: kick 36, snare 38, closed hat 42, open hat 46, crash 49, toms 45-50.",
                 low=36,
-                high=64,
+                high=50,
             ),
         ),
         form=(
-            SectionPlan("A", 8, ("i7", "IV7", "i7", "IV7", "bIII", "IV", "v7", "IV"), "Hook."),
             SectionPlan(
-                "B", 8, ("bVImaj7", "bVII", "i7", "IV7", "bVImaj7", "bVII", "IV", "V"), "Run!"
+                "Intro",
+                4,
+                ("i7", "IV7", "i7", "IV7"),
+                "Drums and bass lay down the groove; the electric piano joins at bar 3.",
+                layers=(_rest("lead"), _rest("steel"), _enter("epiano", 3)),
+            ),
+            SectionPlan(
+                "A",
+                8,
+                ("i7", "IV7", "i7", "IV7", "bIII", "IV", "v7", "IV"),
+                "The hook.",
+                layers=(_rest("steel"),),
+            ),
+            SectionPlan(
+                "A'",
+                8,
+                ("i7", "IV7", "i7", "IV7", "bIII", "IV", "bVII", "IV"),
+                "The hook again; steel drums answer in its gaps.",
+            ),
+            SectionPlan(
+                "B",
+                8,
+                ("bVImaj7", "bVII", "i7", "IV7", "bVImaj7", "bVII", "IV", "V"),
+                "Run! Louder, the lead climbs to its peak.",
+            ),
+            SectionPlan(
+                "Breakdown",
+                4,
+                ("i7", "i7", "IV7", "IV7"),
+                "Bass and drums alone; the lead comes back with a pickup in the last bar.",
+                layers=(
+                    _rest("steel"),
+                    _rest("epiano"),
+                    _enter("lead", 4, "sixteenth pickup"),
+                ),
+            ),
+            SectionPlan(
+                "A''",
+                8,
+                ("i7", "IV7", "i7", "IV7", "bIII", "IV", "v7", "IV"),
+                "The hook with everyone.",
+            ),
+            SectionPlan(
+                "Turnaround",
+                2,
+                ("bVII", "V"),
+                "Unison stab run and a tom fill back to A.",
+                layers=(_rest("steel"),),
             ),
         ),
         loop=True,
         percussion_allowed=True,
         melody="Short, cheeky, very rhythmic; the dorian i7-IV7 groove is the engine.",
         accompaniment="Funky and tight: everything short except the lead's peak notes.",
-        dos=("Use 7th chords", "Keep the loop short (30-45 s)"),
-        donts=(_ORIGINAL,),
-        expression="Lead: humanize (legato 0.75, timing_ticks 6) and pitchBend scoops into peak "
-        "notes with set_automation. Bass and drums: humanize timing_ticks 3, "
+        dos=(
+            "Start with the drum-and-bass groove before the hook",
+            "Use 7th chords",
+            "Fill at the end of every fourth bar",
+            "Play B louder than A",
+            "Keep the loop short (45-60 s)",
+        ),
+        donts=(
+            "Keep every pitched part at or below C6 so the saw lead never turns shrill",
+            _ORIGINAL,
+        ),
+        patterns={
+            "lead hook (ticks)": "Sixteenth pickup at 3600 of the bar before; 0 (360), 480 "
+            "(360), 1200 (240), 1440 (1300 held peak).",
+            "bass (ticks)": "Sixteenths from 0: root, ghost (velocity 40), octave, root; "
+            "slide by step into the next chord at 3600.",
+            "epiano stabs (ticks)": "7th chords at 480, 1440, 2400, 3360 (about 200).",
+            "kit (ticks)": "Kick 36 at 0, 1440, 1920; snare 38 at 960 and 2880; hat 42 "
+            "every eighth, open hat 46 at 3360; crash 49 at section starts.",
+            "fill (ticks)": "Every fourth bar: snare 38 at 2880, 3120, toms 48, 45 at 3360, 3600.",
+        },
+        expression="Lead: humanize (legato 0.75, timing_ticks 6) and pitchBend scoops into "
+        "peak notes with set_automation. Bass and drums: humanize timing_ticks 3, "
         "velocity_variation 8 for groove.",
     ),
     Template(
