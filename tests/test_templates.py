@@ -394,9 +394,20 @@ CHIP_AND_16BIT = [
 ]
 
 
-@pytest.mark.parametrize("template_id", CHIP_AND_16BIT)
-def test_8bit_and_16bit_templates_carry_the_old_realm_lessons(template_id: str) -> None:
-    """Owner request: the console templates get intros, layering and tamer registers."""
+WAYFARER_IDS = [
+    "wayfarer-city",
+    "wayfarer-dungeon",
+    "wayfarer-forest",
+    "wayfarer-harbor",
+    "wayfarer-village",
+    "wayfarer-desert",
+]
+
+
+@pytest.mark.parametrize("template_id", CHIP_AND_16BIT + WAYFARER_IDS)
+def test_refreshed_templates_carry_the_old_realm_lessons(template_id: str) -> None:
+    """Owner request: the console and wayfarer templates get intros, layering, a break
+    where the melody rests and tamer registers (see docs/reference/09-composing-playbook.md)."""
     template = TEMPLATES[template_id]
     melody = next(p.track_id for p in template.parts if p.role == "melody")
     intro = template.form[0]
@@ -408,9 +419,17 @@ def test_8bit_and_16bit_templates_carry_the_old_realm_lessons(template_id: str) 
         if part.role != "percussion":
             assert part.highest <= 84, part
     assert any("(ticks)" in name for name in template.patterns)
-    assert any("fill" in name or "walk" in name for name in template.patterns) or any(
-        "walk" in d.lower() for d in template.dos
-    )
+    if template_id in CHIP_AND_16BIT:
+        assert any("fill" in name or "walk" in name for name in template.patterns) or any(
+            "walk" in d.lower() for d in template.dos
+        )
+    rests = [
+        s.label
+        for s in template.form[1:]
+        for layer in s.layers
+        if layer.track_id == melody and layer.action == "rest"
+    ]
+    assert rests or template_id in CHIP_AND_16BIT, "needs a break where the melody rests"
     for section in template.form:
         run = longest = 1
         for i in range(1, section.bars):
