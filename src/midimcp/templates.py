@@ -189,7 +189,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     "Singable 4-bar phrases; mostly stepwise with one expressive leap (4th-6th) "
                     "per phrase; land on chord tones on beat 1; breathe in bar 4 of each phrase.",
                     low=67,
-                    high=91,
+                    high=84,
                 ),
                 _part(
                     "accompaniment",
@@ -295,7 +295,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     1,
                     "Long-short patterns, gentle turns around the 6th degree (the dorian colour).",
                     low=62,
-                    high=88,
+                    high=84,
                 ),
                 _part(
                     "accompaniment",
@@ -395,7 +395,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     1,
                     "A 3-5 note motif, high and isolated, repeated with small changes; long rests.",
                     low=72,
-                    high=96,
+                    high=84,
                 ),
                 _part(
                     "pad",
@@ -485,7 +485,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     2,
                     "Running eighth notes in jig rhythm, repeated 2-bar cells, ornament with neighbour notes.",
                     low=62,
-                    high=91,
+                    high=84,
                 ),
                 _part(
                     "countermelody",
@@ -497,7 +497,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     1,
                     "Answers the fiddle in the gaps (call and response), section B only.",
                     low=72,
-                    high=93,
+                    high=84,
                 ),
                 _part(
                     "accompaniment",
@@ -603,7 +603,7 @@ TEMPLATES: Final[dict[str, Template]] = {
                     1,
                     "Floating counter-line in B, an octave above the horn.",
                     low=72,
-                    high=93,
+                    high=84,
                 ),
                 _part(
                     "accompaniment",

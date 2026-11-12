@@ -60,7 +60,7 @@ The web UI's Loop plays exactly the loop region back-to-back, the way a game eng
 ## Musical guidance (late-1990s RPG MIDI character)
 
 - 4- or 8-bar phrases with a memorable motif; develop it (A / B / A′) instead of repeating it unchanged.
-- Leave rests and breath points in wind melodies; keep the flute roughly in MIDI 67–93.
+- Leave rests and breath points in wind melodies; keep the flute roughly in MIDI 67–84 (nothing above C6).
 - Sparse accompaniment: lute arpeggios or broken chords in MIDI 48–67, leaving room for the melody.
 - Modest polyphony (2–4 simultaneous notes per accompaniment track), restrained velocities (55–90) with a contour.
 - Loops should end on the opening chord or its dominant so the restart feels natural.
