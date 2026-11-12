@@ -61,6 +61,7 @@ Second change: the **composition service** (single mutation authority with locks
 | 36 | ✅ Old Realm island town template | `feature/old-realm-island-town-template` | `old-realm-island-town`: driving 4/4 A-harmonic-minor theme for a mystic island town — two harps in canon on a rising three-note figure, a high ocarina call, bells on the downbeat, low string drones, a timpani ostinato over tonic and subdominant pedals, a flute side tune and bongo eighths in the outro; every part at or below C6 |
 | 37 | ✅ Octave transpose in the note editor | `feature/octave-transpose-controls` | **Octave down** / **Octave up** buttons and Shift + up/down arrow move the selection (or the whole track when nothing is selected) by whole octaves in one revision; refuses moves that would push a note outside MIDI 0-127 |
 | 38 | ✅ Revert button in the note editor | `feature/editor-revert-button`, `fix/editor-revert-panel` | **Revert song...** beside Undo opens a panel listing earlier versions of the song, newest first, in plain words (who, when, what changed; unchanged tracks left out); pick one and **Revert song** puts every track back as a new revision, so Undo reverses it |
+| 39 | 🟨 Refresh the 8-bit and 16-bit templates | `feature/retro-templates-refresh` | Bring the Old Realm lessons to the 8-bit and 16-bit templates: intros, layered sections, parts at or below C6, tick patterns, walking bass, fills and better kits |
 
 ## Phase 4 — Editing depth and quality
 
