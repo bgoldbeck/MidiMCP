@@ -66,6 +66,14 @@ The web UI's Loop plays exactly the loop region back-to-back, the way a game eng
 - Loops should end on the opening chord or its dominant so the restart feels natural.
 - Compose original melodies; never reproduce an existing game's music.
 
+## The owner's ear (lessons from feedback)
+
+- Keep every pitched part at or below C6 (MIDI 84); higher sounds shrill to the owner.
+- Put something moving on top from the first bar of the tune: a hook rhythm answered at other pitches, not a bed of identical arpeggios.
+- Follow the template's intro, breaks and layers; play B louder than A, swell over four bars, fill the end of every fourth bar, walk the bass by scale step into each chord.
+- Let plucked notes (guitar, lute, harp) ring until the same pitch is plucked again or the bar ends, at most four at once.
+- Read `list_revisions` before writing over a song: the owner may have changed it in the web UI. Build on their change.
+
 ## Making it sound played, not typed
 
 A melody with every note on the grid, one velocity and no movement inside held notes sounds robotic (`validate_project` warns `MECHANICAL_MELODY`). After the notes are final:
