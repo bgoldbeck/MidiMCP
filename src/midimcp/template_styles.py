@@ -62,7 +62,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "Long, singing phrases (half and whole notes with dotted-quarter pickups); "
                 "enters in A, climbs to its highest note in B.",
                 low=62,
-                high=91,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -233,7 +233,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "Dance tune: quarter + two eighths figures, dotted rhythms on beat 1; "
                 "4-bar phrases in question/answer pairs.",
                 low=72,
-                high=96,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -362,7 +362,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 1,
                 "Floating phrases with long held notes and turns; uses the raised 6th of dorian.",
                 low=64,
-                high=88,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -507,7 +507,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "Sea-shanty swing: dotted-quarter + eighth figures, phrases that rise "
                 "and fall like waves.",
                 low=62,
-                high=86,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -531,7 +531,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 2,
                 "Upward glissando-like runs at section starts, otherwise sparse chords.",
                 low=48,
-                high=91,
+                high=84,
             ),
             _part(
                 "pad",
@@ -1038,7 +1038,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 2,
                 "Sparkling high arpeggios once per 2 bars.",
                 low=72,
-                high=100,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -1159,7 +1159,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 1,
                 "Folk-song phrases of 2 bars with a long final note; mostly stepwise.",
                 low=72,
-                high=93,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -1485,7 +1485,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "silent for the last bars of A'. Even in C keep the line mostly stepwise "
                 "with held notes: no broken-chord leaps, and reach the high note only once.",
                 low=64,
-                high=86,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -1688,7 +1688,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "two- or three-note grace pickups (about 100 ticks each) from below; leaves "
                 "space on beats 2 and 4 for the guitar. In A' it plays above the horn.",
                 low=62,
-                high=88,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -1887,7 +1887,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "into a dotted note on beat 3; 2-bar phrases that sigh down by step. In the "
                 "drone dance it plays a light repeated-note tune in the octave above.",
                 low=62,
-                high=88,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -1927,7 +1927,7 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 "A twinkling quarter-note ostinato high above everything: 5th, root, 3rd, root "
                 "of the chord, the same shape every bar. Soft.",
                 low=72,
-                high=90,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -4323,7 +4323,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 "Folk-dance-like tune in steady quarters and eighths; repeat the first "
                 "phrase faster in the return.",
                 low=60,
-                high=86,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -4400,7 +4400,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 1,
                 "Soaring lead with long notes over the fast bass; sixteenth runs into peaks.",
                 low=60,
-                high=91,
+                high=84,
             ),
             _part(
                 "countermelody",
@@ -4488,7 +4488,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 1,
                 "Passionate melody with dramatic leaps and fast turns; uses the harmonic-minor V.",
                 low=62,
-                high=93,
+                high=84,
             ),
             _part(
                 "accompaniment",
@@ -4579,7 +4579,7 @@ RETRO_GAMES: Final[tuple[Template, ...]] = (
                 1,
                 "Quirky, conversational tune with chromatic passing notes.",
                 low=60,
-                high=86,
+                high=84,
             ),
             _part(
                 "countermelody",

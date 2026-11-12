@@ -436,3 +436,11 @@ def test_refreshed_templates_carry_the_old_realm_lessons(template_id: str) -> No
             run = run + 1 if section.numeral_at(i) == section.numeral_at(i - 1) else 1
             longest = max(longest, run)
         assert longest <= 4, section.label
+
+
+@pytest.mark.parametrize("template_id", list(TEMPLATES))
+def test_every_builtin_template_stays_at_or_below_c6(template_id: str) -> None:
+    """Owner rule (docs/reference/09-composing-playbook.md): anything above C6 sounds shrill."""
+    for part in TEMPLATES[template_id].parts:
+        if part.role != "percussion":
+            assert part.highest <= 84, part
