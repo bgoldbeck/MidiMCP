@@ -9,6 +9,7 @@ How we design templates and write songs, collected from the owner's feedback so 
 - **No boring loops.** A bed that repeats the same arpeggio at one volume, with no tune until the middle, is boring. There must be something moving on top from the first bar of the tune.
 - **Plucked notes ring.** Guitar, lute and harp notes sound for their real length: each one rings until the same pitch is plucked again or the bar ends, with at most four sounding at once. Short 400-tick plucks sound muted. Pizzicato stays short.
 - **Originality.** Never copy or paraphrase a melody from an existing game. Templates describe genre traits only, and songs are always new.
+- **In key is not enough.** Check notes against the chord and the other voices sounding at the same time. Island Town's repeated E-F-G harp figure clashed with the pad's sustained E over Am; E-F-G sharp did the same over E major. Use chord-tone anchors for repeated accompaniment, strong beats and held wind notes. Keep passing and neighbour tones brief and resolve them by step. Preserve the canon's rhythm while changing its pitches with the harmony. Do not remove the intended G sharp from the harmonic-minor V to silence a key warning.
 
 ## Template design checklist
 
@@ -62,6 +63,7 @@ Every built-in template should have:
    - `NOTE_OUT_OF_KEY` is fine on borrowed chords (bVI, bVII, bII, harmonic-minor V).
    - Too many chromatic approach notes in the bass sound sour, so walk by scale step.
    - Fix `NOTE_OUTSIDE_INSTRUMENT_RANGE`, `POLYPHONY_EXCEEDED`, `UNISON_OVERLAP`, `BREATH_LENGTH`, `LOOP_ENERGY_JUMP` (fill the last bar) and `MELODY_MASKED` (keep accompaniment under the tune).
+   - Also inspect repeated accompaniment and held melody notes against each sounding chord, including delayed echoes and sustained pads. Key membership and a clean validator result do not rule out harsh semitone or minor-ninth clashes. Listen to the combined voices; do not judge their harmony from isolated tracks or render metadata alone.
 6. **Render** with `render_preview` and confirm `clippedSamples` is 0. Tell the owner what it should sound like and what is not yet heard.
 
 **Revisions:** every mutation needs the latest `expected_revision`. On `REVISION_CONFLICT`, call `list_revisions` first: the owner may have changed an instrument or notes in the web UI. Build on their change; never overwrite it.

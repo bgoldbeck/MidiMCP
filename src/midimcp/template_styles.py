@@ -2807,7 +2807,9 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 1,
                 "The call: a high note on the downbeat, a drop of a 4th or 5th, then quick "
                 "eighths that climb and turn back; every other bar ends on a long note. "
-                "Stay between E4 and C6.",
+                "Stay between E4 and C6. Anchor strong beats and held notes to the current "
+                "chord; keep non-chord tones brief, weak-beat passing notes that resolve "
+                "by step before the next strong beat.",
                 low=64,
                 high=84,
             ),
@@ -2819,9 +2821,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -7,
                 -0.3,
                 1,
-                "A woody side voice: in A it answers with slow rising three-note steps (one "
-                "per beat); in C and the outro it carries its own tune of long notes "
-                "ornamented by a quick neighbour turn.",
+                "A woody side voice: in A it answers with three rising chord tones (one "
+                "per beat); in C and the outro it carries its own tune of long chord tones "
+                "ornamented by a brief neighbour turn that resolves. Do not hold scale "
+                "steps against the pad merely because they are in key.",
                 low=64,
                 high=81,
             ),
@@ -2833,9 +2836,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 -8,
                 -0.35,
                 1,
-                "The canon's leader: three rising eighths from a chord tone on beat 1 (for "
-                "example the 2nd, 3rd and 4th of the scale), then rest; the next bar answers "
-                "it a step lower or falls back.",
+                "The canon's leader: three rising chord-tone eighths on beat 1, then rest; "
+                "the next bar changes inversion or falls back. Use the chord-tone examples "
+                "in patterns, not three consecutive scale steps. Avoid recurring F against "
+                "the pad's E over Am or E major.",
                 low=59,
                 high=76,
             ),
@@ -2848,7 +2852,9 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                 0.35,
                 1,
                 "The canon's follower: the same three-note figure two beats later (on beat 3), "
-                "panned to the other side, so the bar ripples left then right.",
+                "panned to the other side, so the bar ripples left then right. Check the "
+                "echo against the chord and melody sounding at its own entrance; do not "
+                "repeat a dissonance just to preserve imitation.",
                 low=59,
                 high=79,
             ),
@@ -2971,10 +2977,10 @@ OLD_REALM: Final[tuple[Template, ...]] = (
                     "V",
                 ),
                 "The harps' canon starts, the low strings and bells come in and the ocarina "
-                "calls; halfway the flute answers with slow rising steps.",
+                "calls; halfway the flute answers with rising chord tones.",
                 layers=(
                     _exit("harpsichord", 2, "lets the harps take over"),
-                    _enter("flute", 9, "slow rising answers"),
+                    _enter("flute", 9, "rising chord-tone answers in the ocarina's gaps"),
                     _rest("timpani"),
                     _rest("bongos"),
                 ),
@@ -3034,23 +3040,39 @@ OLD_REALM: Final[tuple[Template, ...]] = (
         loop=True,
         percussion_allowed=True,
         melody="A short restless call built on a drop and a climb; harmonic minor (G sharp "
-        "over the V chord) for an old, eastern-tinged colour.",
+        "over the V chord) for an old, eastern-tinged colour. Held notes and strong beats "
+        "belong to the sounding chord. Resolve brief passing or neighbour tones by step; "
+        "do not sustain A against the E chord's G sharp.",
         accompaniment="Two harps in canon are the engine; long low pedals, timpani and bells "
-        "give it weight. The bongos only in the outro.",
+        "give it weight. Build the canon from each chord's triad, with different inversions "
+        "for variety; a note being in the scale does not make it consonant with the pad. "
+        "The bongos only in the outro.",
         dos=(
             "Keep the harp canon going in every tune section",
             "Hold the low strings through each pedal",
             "Raise the 7th (G sharp) over the V chord",
+            "Check both harps, the pad and the active wind together at each chord change; "
+            "strong beats and held wind notes should agree with that chord",
+            "Render and audition the combined voices, especially Am and E-major bars; "
+            "validation success alone does not prove the harmony sounds cohesive",
         ),
         donts=(
             "No drum kit: timpani, bells and bongos only",
             "Keep every part at or below C6 so the high end never turns shrill",
             "Don't let the flute and ocarina play tunes at the same time",
+            "Don't repeat E-F-G or E-F-G sharp harp figures over a sustained E; avoid "
+            "exposed semitone or minor-ninth clashes with the pad",
             _ORIGINAL,
         ),
         patterns={
             "harp canon (ticks)": "Leader: three eighths at 0, 480, 960 (about 400 each). "
-            "Echo: the same three at 1920, 2400, 2880.",
+            "Echo: the same three at 1920, 2400, 2880. Choose pitches from the current "
+            "chord, using the chord-tone examples below; preserve the rhythm, not a fixed "
+            "scale fragment across every harmony.",
+            "harp chord-tone examples (MIDI)": "In the default key of A: Am C4-E4-A4 "
+            "(60,64,69) or E4-A4-C5 (64,69,72); F C4-F4-A4 (60,65,69); "
+            "G B3-D4-G4 (59,62,67); E B3-E4-G sharp4 (59,64,68); "
+            "Dm D4-F4-A4 (62,65,69). Transpose with the key and keep each part in range.",
             "timpani (ticks)": "Root at 0 and 1440, 3rd or 5th at 2880; roll of sixteenths at "
             "2880, 3120, 3360, 3600 into every second bar.",
             "bells (ticks)": "Root at 0 of every second bar (about 600); optional octave at 1920.",
