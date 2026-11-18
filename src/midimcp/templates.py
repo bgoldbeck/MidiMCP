@@ -1111,13 +1111,17 @@ def template_from_dict(data: Any) -> Template:
 
     if not isinstance(data, dict):
         raise TemplateValidationError("template must be a JSON object")
-    unknown = set(data) - set(_TEMPLATE_FIELDS) - {
-        "formBars",
-        "ticksPerBar",
-        "builtIn",
-        "chart",
-        "resolvedCategory",
-    }
+    unknown = (
+        set(data)
+        - set(_TEMPLATE_FIELDS)
+        - {
+            "formBars",
+            "ticksPerBar",
+            "builtIn",
+            "chart",
+            "resolvedCategory",
+        }
+    )
     if unknown:
         errors.append(f"unknown fields: {', '.join(sorted(unknown))}")
     tid = need(data, "id", str, "template")
