@@ -9,7 +9,7 @@ MCP is a public adapter over the composition service, never a second data author
 | `list_capabilities` | — | Schema versions, limits, modes, audio engine status |
 | `list_soundbanks` | filter? | Installed banks, IDs, licenses, availability |
 | `list_instruments` | bankId / search | Exact instrument IDs, aliases, ranges |
-| `list_projects` | search / tag | Project IDs + metadata |
+| `list_projects` (optional `search`, every word must match title/tags/usage/template/mood/key/category; optional `category`; returns `categories` with counts) | search / tag | Project IDs + metadata |
 | `create_project` | title, meter, tempo, key, profile, brief | New project, revision 1 |
 | `get_project` | projectId, section/track filters | Score, locks, current revision |
 | `set_arrangement` | projectId, expectedRevision, sections/harmony | New revision |

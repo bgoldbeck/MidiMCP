@@ -26,6 +26,7 @@ const state = {
   ownRevisions: new Set(), // revisions this page created; their events are not "news"
   org: { favorites: [], collections: [] }, // favorites + the user's collections
   filter: "all", // "all" | "favorites" | a collection id
+  category: "all", // "all" | a song category (from the song's template)
   sort: "recent",
 };
 
@@ -158,14 +159,17 @@ function onServerEvent(event) {
 
 async function refreshLibrary() {
   const search = $("search").value.trim();
-  const { projects } = await state.api.projects(search);
+  const { projects, categories = [] } = await state.api.projects(search);
   state.projects = projects;
   if (!["all", "favorites"].includes(state.filter) && !state.org.collections.some((c) => c.id === state.filter)) {
     state.filter = "all"; // that collection was deleted
   }
+  if (state.category !== "all" && !categories.some((c) => c.name === state.category)) state.category = "all";
   renderFilters();
-  const shown = sortSongs(projects.filter((p) => state.filter === "all"
-    || (state.filter === "favorites" ? p.favorite : p.collections.includes(state.filter))));
+  renderCategories(categories, projects);
+  const shown = sortSongs(projects.filter((p) => (state.filter === "all"
+    || (state.filter === "favorites" ? p.favorite : p.collections.includes(state.filter)))
+    && (state.category === "all" || p.category === state.category)));
   const names = new Map(state.org.collections.map((c) => [c.id, c.name]));
   const list = $("project-list");
   list.replaceChildren(...shown.map((p) => el("li", {
@@ -177,18 +181,39 @@ async function refreshLibrary() {
   el("span", { class: "text" },
     el("span", { class: "title", text: p.title }),
     p.collections.length ? el("span", { class: "sub" }, ...p.collections.map((id) => el("span", { class: "badge", text: names.get(id) || id }))) : null,
-    el("span", { class: "sub", text: [p.usage, `rev ${p.headRevision}`, relativeTime(p.updatedAt)].filter(Boolean).join(" · ") })))));
+    el("span", { class: "sub", text: [p.usage, state.category === "all" ? p.category : null, `rev ${p.headRevision}`, relativeTime(p.updatedAt)].filter(Boolean).join(" · ") })))));
   const empty = $("library-empty");
   if (projects.length === 0 && !search) {
     empty.textContent = "No songs yet. Ask your AI client to compose one; it appears here automatically.";
   } else if (shown.length === 0 && state.filter === "favorites") {
     empty.textContent = "No favorites yet. Click ☆ next to a song to star it.";
+  } else if (shown.length === 0 && search) {
+    empty.textContent = "No songs match that search.";
+  } else if (shown.length === 0 && state.category !== "all") {
+    empty.textContent = "No songs in this category here.";
   } else if (shown.length === 0 && state.filter !== "all") {
     empty.textContent = "No songs in this collection yet. Open a song and tick this collection under its title.";
   } else {
     empty.textContent = "";
   }
   empty.hidden = !empty.textContent;
+}
+
+// Categories come from each song's template (built-in families, the user's own template
+// categories, or No template). Counts are for the current search.
+function renderCategories(categories, projects) {
+  const counts = new Map();
+  for (const p of projects) counts.set(p.category, (counts.get(p.category) || 0) + 1);
+  const chips = [["all", "All categories", null], ...categories
+    .filter((c) => counts.has(c.name) || c.name === state.category)
+    .map((c) => [c.name, c.name, counts.get(c.name) || 0])];
+  $("library-categories").hidden = categories.length < 2;
+  $("library-categories").replaceChildren(...chips.map(([id, label, count]) => el("button", {
+    class: `chip${state.category === id ? " active" : ""}`,
+    "data-category": id,
+    "aria-pressed": state.category === id ? "true" : "false",
+    onclick: () => { state.category = id; prefs.set("category", id); refreshLibrary().catch(showError); },
+  }, label, count === null ? null : el("span", { class: "count", text: String(count) }))));
 }
 
 function sortSongs(songs) {
@@ -844,6 +869,7 @@ async function enterApp(status) {
   if (patches.status === "fulfilled") state.patches = patches.value.patches.map(p => ({...p,available:p.available && audio.samplerAvailable !== false}));
   else showError(patches.reason);
   state.filter = prefs.get("filter", "all");
+  state.category = prefs.get("category", "all");
   state.sort = prefs.get("sort", "recent");
   $("library-sort").value = state.sort;
   $("library-sort").onchange = () => {

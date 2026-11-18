@@ -565,3 +565,40 @@ def test_reset_instrument_respects_allowed_list(service: CompositionService) -> 
     snap = service.get_project("n")
     assert snap.score.track("lute").instrument_id == "retro.lute"
     assert snap.brief.allowed_instrument_ids == ["retro.harp", "retro.lute"]
+
+
+def test_song_categories_and_word_search(service: CompositionService, tmp_path: Path) -> None:
+    from midimcp.templates import TemplateLibrary
+
+    service.create_from_template(template_id="peaceful-town", title="Town", project_id="town")
+    service.create_from_template(
+        template_id="retro-8bit-overworld", title="Pixel Meadow", project_id="pixel"
+    )
+    library = TemplateLibrary(tmp_path)
+    library.duplicate("tavern", "plop-tavern")
+    data = library.detail("plop-tavern")
+    data["category"] = "Monster Plop"
+    library.save("plop-tavern", data)
+    service.create_from_template(template_id="plop-tavern", title="Snorebug", project_id="snore")
+    service.create_project(title="Loose Sketch", tempo_bpm=100, meter=(4, 4), tonic="C", bars=4)
+
+    by_id = {p["projectId"]: p["category"] for p in service.list_projects()}
+    assert by_id == {
+        "town": "Classic RPG",
+        "pixel": "8-bit",
+        "snore": "Monster Plop",
+        "loose-sketch": "No template",
+    }
+    assert [p["projectId"] for p in service.list_projects(category="monster plop")] == ["snore"]
+    names = [c["name"] for c in service.song_categories()]
+    assert names[:2] == ["Classic RPG", "8-bit"] and set(names) == set(by_id.values())
+    # every word must match somewhere: title, template, mood, key, category...
+    assert [p["projectId"] for p in service.list_projects("8-bit meadow")] == ["pixel"]
+    assert [p["projectId"] for p in service.list_projects("peaceful-town")] == ["town"]
+    assert [p["projectId"] for p in service.list_projects("plop")] == ["snore"]
+    assert service.list_projects("8-bit tavern") == []
+    town = next(p for p in service.list_projects() if p["projectId"] == "town")
+    assert town["templateName"] == "Peaceful Town" and town["key"]
+    # a deleted custom template leaves its songs under My templates
+    library.delete("plop-tavern")
+    assert service.list_projects(category="My templates")[0]["projectId"] == "snore"

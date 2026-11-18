@@ -368,8 +368,12 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
     @route("/api/projects", ["GET"])
     async def projects(request: Request) -> Response:
         search = request.query_params.get("search") or None
+        category = request.query_params.get("category") or None
         return await _call(
-            lambda: {"projects": ctx.organizer.annotate(service.list_projects(search))}
+            lambda: {
+                "categories": service.song_categories(),
+                "projects": ctx.organizer.annotate(service.list_projects(search, category)),
+            }
         )
 
     @route("/api/collections", ["GET", "POST"])

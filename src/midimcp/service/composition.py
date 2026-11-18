@@ -61,6 +61,12 @@ from midimcp.service.errors import (
 )
 from midimcp.store import CommitResult, ProjectSnapshot, ProjectStore
 from midimcp.store.errors import RevisionConflict
+from midimcp.templates import (
+    CUSTOM_CATEGORY,
+    TemplateLibrary,
+    category_for_id,
+    sort_categories,
+)
 from midimcp.validation import ValidationReport, validate_score
 
 if TYPE_CHECKING:
@@ -83,6 +89,19 @@ _TRACK_PROPERTIES = {
     "sampler",
     "release_seconds",
 }
+
+
+NO_TEMPLATE_CATEGORY = "No template"
+
+
+def song_category(library: TemplateLibrary, template, template_id: str | None) -> str:
+    """A song's category is its template's; songs without one, or whose custom template was
+    deleted, fall into No template / My templates."""
+    if template is not None:
+        return library.category_of(template)
+    if not template_id:
+        return NO_TEMPLATE_CATEGORY
+    return category_for_id(template_id) if library.is_builtin(template_id) else CUSTOM_CATEGORY
 
 
 @dataclass(frozen=True)
@@ -122,8 +141,50 @@ class CompositionService:
     def get_project(self, project_id: str) -> ProjectSnapshot:
         return self.store.load(project_id)
 
-    def list_projects(self, search: str | None = None) -> list[dict]:
-        return [p.to_dict() for p in self.store.list_projects(search)]
+    def list_projects(self, search: str | None = None, category: str | None = None) -> list[dict]:
+        """Songs, newest first, each with its ``category`` (from the template it was made from).
+        ``search``: every word must match the title, id, usage, tags, template, mood, setting,
+        key or category. ``category``: only that category (case-insensitive)."""
+        library = TemplateLibrary(self.store.root)
+        templates = library.all()
+        wanted = category.strip().casefold() if category and category.strip() else None
+        words = (search or "").casefold().split()
+        found = []
+        for listing in self.store.list_projects():
+            song = listing.to_dict()
+            template = templates.get(listing.template_id or "")
+            song["category"] = song_category(library, template, listing.template_id)
+            song["templateName"] = template.name if template else None
+            if wanted is not None and song["category"].casefold() != wanted:
+                continue
+            if words:
+                haystack = " ".join(
+                    str(v)
+                    for v in (
+                        song["title"],
+                        song["projectId"],
+                        song["usage"],
+                        " ".join(song["tags"]),
+                        song["templateId"],
+                        song["templateName"],
+                        song["mood"],
+                        song["setting"],
+                        song["key"],
+                        song["category"],
+                    )
+                    if v
+                ).casefold()
+                if not all(w in haystack for w in words):
+                    continue
+            found.append(song)
+        return found
+
+    def song_categories(self) -> list[dict]:
+        """Every song category in use with its song count, ordered like template categories."""
+        counts: dict[str, int] = {}
+        for song in self.list_projects():
+            counts[song["category"]] = counts.get(song["category"], 0) + 1
+        return [{"name": name, "count": counts[name]} for name in sort_categories(counts)]
 
     def list_revisions(self, project_id: str) -> list[dict]:
         return [r.to_dict() for r in self.store.list_revisions(project_id)]
