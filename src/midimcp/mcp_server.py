@@ -223,10 +223,16 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
 
     @server.tool()
     @_tool_errors
-    def list_projects(search: str | None = None) -> dict[str, Any]:
-        """Projects (songs) with title, usage, tags, head revision, and the user's
-        organization: favorite (starred) and the ids of collections holding the song."""
-        return {"projects": ctx.organizer.annotate(service.list_projects(search))}
+    def list_projects(search: str | None = None, category: str | None = None) -> dict[str, Any]:
+        """Projects (songs) with title, usage, tags, head revision, template, mood, key and
+        category (the category of the template the song was made from, e.g. Old Realm or the
+        user's own such as Monster Plop), plus the user's organization: favorite (starred) and
+        the ids of collections holding the song. search: every word must match one of those
+        fields. category: only songs in that category. Also returns all categories with counts."""
+        return {
+            "categories": service.song_categories(),
+            "projects": ctx.organizer.annotate(service.list_projects(search, category)),
+        }
 
     @server.tool()
     @_tool_errors

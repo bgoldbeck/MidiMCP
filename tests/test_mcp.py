@@ -438,7 +438,7 @@ def test_stdio_transport(tmp_path: Path) -> None:
     async def go() -> None:
         async with Client(params) as client:
             projects = await call(client, "list_projects")
-            assert projects == {"projects": []}
+            assert projects == {"categories": [], "projects": []}
 
     run(go())
 

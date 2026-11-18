@@ -204,7 +204,7 @@ class ProjectStore:
             finally:
                 if staging.exists():
                     shutil.rmtree(staging, ignore_errors=True)
-            self._update_index(score, info, created_at=info.created_at)
+            self._update_index(score, brief, info, created_at=info.created_at)
             result = CommitResult(ProjectSnapshot(project_id, 1, score, brief, info), report)
         self._notify(result)
         return result
@@ -255,7 +255,7 @@ class ProjectStore:
             except FileExistsError as exc:
                 # Another process committed this revision number first.
                 raise RevisionConflict(project_id, expected_revision, new_revision) from exc
-            self._update_index(score, info, created_at=manifest["createdAt"])
+            self._update_index(score, brief, info, created_at=manifest["createdAt"])
             result = CommitResult(
                 ProjectSnapshot(project_id, new_revision, score, brief, info), report
             )
@@ -347,7 +347,9 @@ class ProjectStore:
             except Exception:
                 log.warning("skipping unreadable project %s", project_dir.name, exc_info=True)
                 continue
-            listings.append(self._listing(snapshot.score, snapshot.info, manifest["createdAt"]))
+            listings.append(
+                self._listing(snapshot.score, snapshot.brief, snapshot.info, manifest["createdAt"])
+            )
         self.index.replace_all(listings)
 
     # -------------------------------------------------------------- internals
@@ -465,7 +467,9 @@ class ProjectStore:
         if rolled:
             manifest = self._read_manifest(project_dir)
             snapshot = self._read_snapshot(self._revision_path(project_dir, head), project_dir.name)
-            self._update_index(snapshot.score, snapshot.info, created_at=manifest["createdAt"])
+            self._update_index(
+                snapshot.score, snapshot.brief, snapshot.info, created_at=manifest["createdAt"]
+            )
         return manifest
 
     def _load_head(self, project_dir: Path, manifest: dict) -> ProjectSnapshot:
@@ -551,7 +555,10 @@ class ProjectStore:
             return CommitResult(snapshot, validate_score(snapshot.score, snapshot.brief), True)
         return None
 
-    def _listing(self, score: Score, info: RevisionInfo, created_at: str) -> ProjectListing:
+    def _listing(
+        self, score: Score, brief: Brief, info: RevisionInfo, created_at: str
+    ) -> ProjectListing:
+        tonality = score.tonality
         return ProjectListing(
             project_id=score.project_id,
             title=score.metadata.title,
@@ -560,11 +567,17 @@ class ProjectStore:
             head_revision=info.revision,
             created_at=created_at,
             updated_at=info.created_at,
+            template_id=brief.template_id,
+            mood=brief.mood,
+            setting=brief.setting,
+            key_name=f"{tonality.display_spelling} {tonality.mode}",
         )
 
-    def _update_index(self, score: Score, info: RevisionInfo, created_at: str) -> None:
+    def _update_index(
+        self, score: Score, brief: Brief, info: RevisionInfo, created_at: str
+    ) -> None:
         # The index is a rebuildable cache: a failure here must not fail a durable commit.
         try:
-            self.index.upsert(self._listing(score, info, created_at))
+            self.index.upsert(self._listing(score, brief, info, created_at))
         except sqlite3.Error:
             log.warning("library index update failed; it will be rebuilt", exc_info=True)

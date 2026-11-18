@@ -355,3 +355,22 @@ def test_delete_moves_project_to_trash(store: ProjectStore, score: Score) -> Non
     store.create_project(score)
     second = store.delete_project("lanterns-of-the-vale")
     assert second != trash and second.is_dir()
+
+
+def test_old_index_table_is_rebuilt_with_new_fields(store: ProjectStore, score: Score) -> None:
+    import sqlite3
+    from contextlib import closing
+
+    store.create_project(score, brief=Brief(mood="sleepy", template_id="peaceful-town"))
+    # Make the index look like one written by an older version: only the old table.
+    with closing(sqlite3.connect(store.root / "library.sqlite")) as conn, conn:
+        conn.execute("DROP TABLE songs_v2")
+        conn.execute(
+            "CREATE TABLE projects (project_id TEXT PRIMARY KEY, title TEXT NOT NULL,"
+            " usage TEXT, tags TEXT NOT NULL, head_revision INTEGER NOT NULL,"
+            " created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+    [listing] = store.list_projects()
+    assert (listing.template_id, listing.mood) == ("peaceful-town", "sleepy")
+    assert listing.key_name
+    assert [p.project_id for p in store.list_projects("SLEEPY town")] == [listing.project_id]
