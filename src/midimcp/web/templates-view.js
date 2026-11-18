@@ -8,16 +8,48 @@ const noteName = (pitch) => `${NOTE_NAMES[pitch % 12]}${Math.floor(pitch / 12) -
 export function setupTemplates({ api, el, showError, instrumentName }) {
   const $ = (id) => document.getElementById(id);
   let current = null;
+  const FILTER_KEY = "midimcp.templateCategory";
+  let filter = "all";
+  try { filter = localStorage.getItem(FILTER_KEY) || "all"; } catch { /* storage unavailable */ }
 
-  async function refreshList(selectId = current?.id) {
-    const { templates } = await api.templates();
-    $("template-list").replaceChildren(...templates.map((t) => el("li", {
+  function setFilter(value, selectId) {
+    filter = value;
+    try { localStorage.setItem(FILTER_KEY, value); } catch { /* storage unavailable */ }
+    refreshList(selectId).catch(showError);
+  }
+
+  function templateItem(t, selectId) {
+    return el("li", {
       class: t.id === selectId ? "active" : "",
       "data-template": t.id,
       onclick: () => open(t.id).catch(showError),
     },
     el("span", { class: "title" }, t.name, el("span", { class: t.builtIn ? "badge" : "badge custom", text: t.builtIn ? "built-in" : "custom" })),
-    el("span", { class: "sub", text: `${t.meter} · ${t.tempoBpm} BPM · ${t.mode} · ${t.bars} bars` }))));
+    el("span", { class: "sub", text: `${t.meter} · ${t.tempoBpm} BPM · ${t.mode} · ${t.bars} bars` }));
+  }
+
+  async function refreshList(selectId = current?.id) {
+    const { templates, categories = [] } = await api.templates();
+    if (filter !== "all" && !categories.some((c) => c.name === filter)) filter = "all";
+    const chips = [["all", "All", templates.length], ...categories.map((c) => [c.name, c.name, c.count])];
+    $("template-filters").replaceChildren(...chips.map(([id, label, count]) => el("button", {
+      class: `chip${filter === id ? " active" : ""}`,
+      "data-category": id,
+      "aria-pressed": filter === id ? "true" : "false",
+      onclick: () => setFilter(id, selectId),
+    }, label, el("span", { class: "count", text: String(count) }))));
+    const items = [];
+    for (const c of categories) {
+      if (filter !== "all" && filter !== c.name) continue;
+      const group = templates.filter((t) => (t.category || "") === c.name);
+      if (!group.length) continue;
+      if (filter === "all") {
+        items.push(el("li", { class: "group", "data-group": c.name }, c.name, el("span", { class: "count", text: String(group.length) })));
+      }
+      items.push(...group.map((t) => templateItem(t, selectId)));
+    }
+    if (!categories.length) items.push(...templates.map((t) => templateItem(t, selectId)));
+    $("template-list").replaceChildren(...items);
   }
 
   function list(items) {
@@ -39,7 +71,9 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
     $("template-empty").hidden = true;
     $("template-editor").hidden = true;
     $("template-detail").hidden = false;
-    for (const li of $("template-list").children) li.classList.toggle("active", li.dataset.template === id);
+    for (const li of $("template-list").children) {
+      if (li.dataset.template) li.classList.toggle("active", li.dataset.template === id);
+    }
     render(current);
   }
 
@@ -55,6 +89,7 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
       el("div", { class: "song-head" },
         el("div", {},
           el("h2", {}, t.name, el("span", { class: t.builtIn ? "badge" : "badge custom", text: t.builtIn ? "built-in" : "custom" })),
+          el("p", { class: "meta", text: `Category: ${t.resolvedCategory || "–"}${t.builtIn ? "" : t.category ? "" : " (set \"category\" in Edit to file it elsewhere)"}` }),
           el("p", { class: "meta", text: t.summary }),
           el("p", { class: "meta", text: `${t.default_tempo} BPM (range ${t.tempo_range[0]}–${t.tempo_range[1]}) · ${t.meter[0]}/${t.meter[1]} · ${t.default_tonic} ${t.mode} (also: ${t.alternative_modes.join(", ") || "–"}) · ${t.formBars} bars · ${t.loop ? "loops" : "no loop"} · ${t.percussion_allowed ? "percussion allowed" : "no percussion"}` }),
           el("p", { class: "meta", text: `Mood: ${t.mood}. Setting: ${t.setting}.` })),
@@ -109,7 +144,8 @@ export function setupTemplates({ api, el, showError, instrumentName }) {
 
   function edit() {
     const editable = { ...current };
-    for (const key of ["builtIn", "chart", "formBars", "ticksPerBar"]) delete editable[key];
+    for (const key of ["builtIn", "chart", "formBars", "ticksPerBar", "resolvedCategory"]) delete editable[key];
+    if (!("category" in editable)) editable.category = "";
     $("template-json").value = JSON.stringify(editable, null, 2);
     $("template-status").textContent = "";
     $("template-editor").hidden = false;

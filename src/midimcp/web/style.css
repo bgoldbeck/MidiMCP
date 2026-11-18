@@ -182,6 +182,9 @@ button.download { font-size: 15px; padding: 9px 16px; }
 .lib-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
 .lib-row select { flex: 1; min-width: 0; }
 button.small { padding: 4px 8px; font-size: 12px; }
+.project-list li.group { cursor: default; padding: 10px 2px 4px; border: 0; color: var(--muted); font: 600 11px system-ui; letter-spacing: .06em; text-transform: uppercase; }
+.project-list li.group:hover { background: transparent; }
+.project-list li.group .count { opacity: .7; margin-left: 6px; }
 .project-list li.song { display: flex; gap: 8px; align-items: start; }
 .project-list li.song .text { flex: 1; min-width: 0; }
 button.star { background: none; border: 0; padding: 0 2px; font-size: 18px; line-height: 1.2; color: var(--muted); cursor: pointer; }

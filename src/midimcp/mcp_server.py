@@ -291,10 +291,15 @@ def build_mcp_server(ctx: AppContext) -> MCPServer:
 
     @server.tool()
     @_tool_errors
-    def list_templates() -> dict[str, Any]:
-        """Composition templates (peaceful town, forest, crypt, tavern, sea, borderlands):
-        tempo, meter, mode, ensemble and form. Pass template_id to create_project."""
-        return {"templates": ctx.templates.summaries()}
+    def list_templates(category: str | None = None) -> dict[str, Any]:
+        """Composition templates with tempo, meter, mode, ensemble, form and category (e.g.
+        Classic RPG, Old Realm, Wayfarer, 8-bit, 16-bit, Retro, or the user's own groups).
+        Pass category to list one group only. Pass template_id to create_project. A custom
+        template's group is its "category" field (empty = My templates)."""
+        return {
+            "categories": ctx.templates.categories(),
+            "templates": ctx.templates.summaries(category),
+        }
 
     @server.tool()
     @_tool_errors

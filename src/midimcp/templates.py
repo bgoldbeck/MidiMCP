@@ -93,6 +93,36 @@ class SectionPlan:
         return replace(self, bars=length, layers=tuple(layers))
 
 
+MAX_CATEGORY_LENGTH: Final = 40
+CUSTOM_CATEGORY: Final = "My templates"
+# Built-in template families, matched by id prefix (first match wins). A template's own
+# ``category`` field overrides this, so custom templates can join or start any group.
+_CATEGORY_PREFIXES: Final = (
+    ("old-realm-", "Old Realm"),
+    ("retro-8bit-", "8-bit"),
+    ("retro-16bit-", "16-bit"),
+    ("retro-", "Retro"),
+    ("wayfarer-", "Wayfarer"),
+)
+CLASSIC_CATEGORY: Final = "Classic RPG"
+CATEGORY_ORDER: Final = (
+    CLASSIC_CATEGORY,
+    "Old Realm",
+    "Wayfarer",
+    "8-bit",
+    "16-bit",
+    "Retro",
+)
+
+
+def category_for_id(template_id: str) -> str:
+    """Category of a template that does not name one: its family prefix, else Classic RPG."""
+    for prefix, category in _CATEGORY_PREFIXES:
+        if template_id.startswith(prefix):
+            return category
+    return CLASSIC_CATEGORY
+
+
 @dataclass(frozen=True)
 class Template:
     id: str
@@ -116,6 +146,11 @@ class Template:
     donts: tuple[str, ...]
     patterns: dict[str, str] = field(default_factory=dict)
     expression: str = ""  # how to humanize / shape the parts (humanize_notes, shape_expression)
+    category: str = ""  # group shown on the Templates page; empty = derived from the id
+
+    @property
+    def resolved_category(self) -> str:
+        return self.category.strip() or category_for_id(self.id)
 
     @property
     def form_bars(self) -> int:
@@ -125,6 +160,7 @@ class Template:
         return {
             "id": self.id,
             "name": self.name,
+            "category": self.resolved_category,
             "summary": self.summary,
             "mood": self.mood,
             "tempoBpm": self.default_tempo,
@@ -140,6 +176,7 @@ class Template:
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["formBars"] = self.form_bars
+        data["resolvedCategory"] = self.resolved_category
         data["ticksPerBar"] = ticks_per_bar(DEFAULT_PPQ, *self.meter)
         return data
 
@@ -987,6 +1024,7 @@ _TEMPLATE_FIELDS = (
     "donts",
     "patterns",
     "expression",
+    "category",
 )
 _ID_TEXT = re.compile(r"^[a-z0-9][a-z0-9-]{0,47}$")
 
@@ -1073,7 +1111,13 @@ def template_from_dict(data: Any) -> Template:
 
     if not isinstance(data, dict):
         raise TemplateValidationError("template must be a JSON object")
-    unknown = set(data) - set(_TEMPLATE_FIELDS) - {"formBars", "ticksPerBar", "builtIn", "chart"}
+    unknown = set(data) - set(_TEMPLATE_FIELDS) - {
+        "formBars",
+        "ticksPerBar",
+        "builtIn",
+        "chart",
+        "resolvedCategory",
+    }
     if unknown:
         errors.append(f"unknown fields: {', '.join(sorted(unknown))}")
     tid = need(data, "id", str, "template")
@@ -1215,6 +1259,10 @@ def template_from_dict(data: Any) -> Template:
     expression = data.get("expression", "")
     if not isinstance(expression, str):
         errors.append("template: 'expression' must be text")
+    category = data.get("category", "")
+    if not isinstance(category, str) or len(category) > MAX_CATEGORY_LENGTH:
+        errors.append(f"template: 'category' must be text of at most {MAX_CATEGORY_LENGTH} chars")
+        category = ""
     if errors:
         raise TemplateValidationError("; ".join(errors[:12]))
     return Template(
@@ -1239,6 +1287,7 @@ def template_from_dict(data: Any) -> Template:
         donts=tuple(str(d) for d in donts),
         patterns=dict(patterns),
         expression=expression,
+        category=category.strip(),
     )
 
 
@@ -1260,6 +1309,15 @@ def chart_preview(template: Template) -> list[dict[str, Any]]:
         }
         for s in template.form
     ]
+
+
+def sort_categories(names: Any) -> list[str]:
+    """Built-in families in their fixed order, then the rest alphabetically, My templates last."""
+    order = {name: i for i, name in enumerate(CATEGORY_ORDER)}
+    return sorted(
+        set(names),
+        key=lambda n: (n == CUSTOM_CATEGORY, order.get(n, len(order)), n.casefold()),
+    )
 
 
 class TemplateLibrary:
@@ -1300,13 +1358,35 @@ class TemplateLibrary:
             )
         return template
 
-    def summaries(self) -> list[dict[str, Any]]:
-        return [{**t.summary_dict(), "builtIn": self.is_builtin(t.id)} for t in self.all().values()]
+    def category_of(self, template: Template) -> str:
+        """The template's own category; otherwise its family (built-in) or My templates."""
+        if template.category.strip():
+            return template.category.strip()
+        return template.resolved_category if self.is_builtin(template.id) else CUSTOM_CATEGORY
+
+    def categories(self) -> list[dict[str, Any]]:
+        """Every category in use with its template count, built-in families first."""
+        counts: dict[str, int] = {}
+        for template in self.all().values():
+            name = self.category_of(template)
+            counts[name] = counts.get(name, 0) + 1
+        return [{"name": name, "count": counts[name]} for name in sort_categories(counts)]
+
+    def summaries(self, category: str | None = None) -> list[dict[str, Any]]:
+        wanted = category.strip().casefold() if category and category.strip() else None
+        found = []
+        for t in self.all().values():
+            name = self.category_of(t)
+            if wanted is not None and name.casefold() != wanted:
+                continue
+            found.append({**t.summary_dict(), "category": name, "builtIn": self.is_builtin(t.id)})
+        return found
 
     def detail(self, template_id: str) -> dict[str, Any]:
         template = self.get(template_id)
         return {
             **template.to_dict(),
+            "resolvedCategory": self.category_of(template),
             "builtIn": self.is_builtin(template_id),
             "chart": chart_preview(template),
         }
