@@ -444,3 +444,38 @@ def test_every_builtin_template_stays_at_or_below_c6(template_id: str) -> None:
     for part in TEMPLATES[template_id].parts:
         if part.role != "percussion":
             assert part.highest <= 84, part
+
+
+def test_builtin_categories_follow_family_prefix(tmp_path: Path) -> None:
+    library = TemplateLibrary(tmp_path)
+    by_id = {s["id"]: s["category"] for s in library.summaries()}
+    assert by_id["tavern"] == "Classic RPG"
+    assert by_id["old-realm-town"] == "Old Realm"
+    assert by_id["wayfarer-city"] == "Wayfarer"
+    assert by_id["retro-8bit-overworld"] == "8-bit"
+    assert by_id["retro-16bit-boss"] == "16-bit"
+    assert by_id["retro-pc-adventure"] == "Retro"
+    names = [c["name"] for c in library.categories()]
+    assert names == ["Classic RPG", "Old Realm", "Wayfarer", "8-bit", "16-bit", "Retro"]
+    assert sum(c["count"] for c in library.categories()) == len(TEMPLATES)
+    eight_bit = library.summaries("8-BIT")
+    assert {s["id"] for s in eight_bit} == {"retro-8bit-overworld", "retro-8bit-dungeon"}
+
+
+def test_custom_template_category(tmp_path: Path) -> None:
+    library = TemplateLibrary(tmp_path)
+    library.duplicate("tavern", "my-tavern")
+    assert library.detail("my-tavern")["resolvedCategory"] == "My templates"
+    data = library.detail("my-tavern")
+    data["category"] = "  Monster Plop "
+    library.save("my-tavern", data)
+    reloaded = TemplateLibrary(tmp_path)
+    assert reloaded.get("my-tavern").category == "Monster Plop"
+    assert reloaded.detail("my-tavern")["resolvedCategory"] == "Monster Plop"
+    assert [c["name"] for c in reloaded.categories()][-1] == "Monster Plop"
+    library.duplicate("old-realm-town", "my-town")
+    names = [c["name"] for c in TemplateLibrary(tmp_path).categories()]
+    assert names[-2:] == ["Monster Plop", "My templates"]
+    data["category"] = "x" * 41
+    with pytest.raises(TemplateError):
+        library.save("my-tavern", data)

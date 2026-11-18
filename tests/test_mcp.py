@@ -473,6 +473,9 @@ def test_templates_via_mcp(ctx: AppContext) -> None:
         async with Client(build_mcp_server(ctx)) as client:
             listed = await call(client, "list_templates")
             assert len(listed["templates"]) == len(TEMPLATES)
+            assert listed["categories"][0] == {"name": "Classic RPG", "count": 6}
+            eight = await call(client, "list_templates", category="8-bit")
+            assert {t["category"] for t in eight["templates"]} == {"8-bit"}
             detail = await call(client, "get_template", template_id="tavern")
             assert detail["form"][0]["progression"][1] == "bVII"
             created = await call(

@@ -317,7 +317,12 @@ def register_api(server: MCPServer, ctx: AppContext) -> None:
 
     @route("/api/templates", ["GET"])
     async def templates(request: Request) -> Response:
-        return await _call(lambda: {"templates": ctx.templates.summaries()})
+        return await _call(
+            lambda: {
+                "categories": ctx.templates.categories(),
+                "templates": ctx.templates.summaries(request.query_params.get("category")),
+            }
+        )
 
     @route("/api/templates/{template_id}", ["GET", "PUT", "DELETE"])
     async def template(request: Request) -> Response:
